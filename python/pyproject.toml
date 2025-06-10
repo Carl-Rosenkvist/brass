@@ -1,0 +1,18 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11", "setuptools"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "brass"
+version = "0.1"
+description = "Binary Reader and Analysis Suite Software"
+authors = [{ name = "Carl B. Rosenkvist" }]
+requires-python = ">=3.8"
+dependencies = []
+
+[tool.scikit-build]
+build-dir = "build"
+cmake.source-dir = ".."
+cmake.version = ">=3.14"
+cmake.args = ["-DWITH_PYBIND=ON"]
+sdist.include = ["../CMakeLists.txt", "../src", "../analyses", "../include", "."]
