@@ -1,0 +1,84 @@
+# ------------------
+# General
+# ------------------
+*.log
+*.tmp
+*.swp
+*.DS_Store
+*.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+
+# ------------------
+# Python
+# ------------------
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage / testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# ------------------
+# C++
+# ------------------
+# Build artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+*.o
+*.obj
+*.so
+*.a
+*.out
+*.exe
+*.dll
+*.lib
+*.pdb
+
+# Generated files
+*.mod
+*.pch
+
+# IDE-specific
+.vscode/
+.idea/
+*.user
+*.suo
+*.vcxproj*
+*.xcodeproj/
+*.swp
+
+# ------------------
+# Optional: data / experiments
+# ------------------
+*.dat
+*.csv
+*.tsv
+*.yaml
+*.yml
+*.json
+results/
+plots/
+tables/

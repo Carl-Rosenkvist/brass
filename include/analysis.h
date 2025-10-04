@@ -58,8 +58,6 @@ struct Entry {
 void run_analysis(const std::vector<std::pair<std::string, std::string>>& file_and_meta,
                   const std::string& analysis_name,
                   const std::vector<std::string>& quantities,
-                  bool save_output = true,
-                  bool print_output = true,
                   const std::string& output_folder = ".");
 
 #endif // ANALYSIS_H

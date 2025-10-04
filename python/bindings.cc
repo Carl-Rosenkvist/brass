@@ -96,14 +96,12 @@ public:
     }
 };
 
-PYBIND11_MODULE(brass, m) {
+PYBIND11_MODULE(_brass, m) {
 
 m.def("run_analysis", &run_analysis,
       py::arg("file_and_meta"),
       py::arg("analysis_name"),
       py::arg("quantities"),
-      py::arg("save_output") = true,
-      py::arg("print_output") = true,
       py::arg("output_folder") = ".");
 
 

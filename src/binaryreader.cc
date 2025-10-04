@@ -19,7 +19,7 @@ const std::unordered_map<std::string, QuantityInfo> quantity_string_map = {
     {"xsecfac",      {Quantity::XSEC_FACTOR,  QuantityType::Double}},
     {"proc_id_origin",   {Quantity::PROC_ID_ORIGIN,   QuantityType::Int32}},
     {"proc_type_origin", {Quantity::PROC_TYPE_ORIGIN, QuantityType::Int32}},
-    {"t_last_coll",  {Quantity::TIME_LAST_COLL, QuantityType::Double}},
+    {"time_last_coll",  {Quantity::TIME_LAST_COLL, QuantityType::Double}},
     {"pdg_mother1",  {Quantity::PDG_MOTHER1,   QuantityType::Int32}},
     {"pdg_mother2",  {Quantity::PDG_MOTHER2,   QuantityType::Int32}},
     {"baryon_number",{Quantity::BARYON_NUMBER, QuantityType::Int32}},

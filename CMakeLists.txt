@@ -19,7 +19,7 @@ set(SRC_FILES
 )
 
 set(ANALYSIS_FILES
-    analyses/bulkd.cc
+    analyses/bulk.cc
 )
 
 # Third-party: yaml-cpp (vendored)
@@ -33,7 +33,7 @@ add_executable(brass
 target_link_libraries(brass PRIVATE yaml-cpp)
 
 
-# ------------- Python module ----------
+
 option(BUILD_PYTHON "Build Python extension module" ON)
 
 if(BUILD_PYTHON)
@@ -41,25 +41,28 @@ if(BUILD_PYTHON)
   find_package(pybind11 CONFIG REQUIRED)
   find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
-  pybind11_add_module(brass_py
+  pybind11_add_module(_brass
       python/bindings.cc
       src/analysis.cc
       src/analysisregister.cc
       src/binaryreader.cc
       src/datatree.cc
       src/mergekey.cc
-      analyses/rapidity_spectra.cc
+      analyses/bulk.cc
   )
-  target_include_directories(brass_py PRIVATE include)
-  target_link_libraries(brass_py PRIVATE yaml-cpp)
-  set_target_properties(brass_py PROPERTIES OUTPUT_NAME "brass")
+  target_include_directories(_brass PRIVATE include)
+  target_link_libraries(_brass PRIVATE yaml-cpp)
 
-  if(DEFINED SKBUILD_PLATLIB_DIR)
-    install(TARGETS brass_py LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
-  endif()
+  # write the extension next to brass/__init__.py so `import brass` works immediately
+  set_target_properties(_brass PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python/brass"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python/brass"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/python/brass"
+    OUTPUT_NAME "_brass"   # (optional; pybind11 already uses _brass)
+  )
 endif()
 # ---- Tests ----
-option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS "Build unit tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
 

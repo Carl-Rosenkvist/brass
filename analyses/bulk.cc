@@ -62,15 +62,19 @@ public:
         }
     }
 
-    void finalize() override {
-        if (n_events > 0) {
-              d2N_dpT_dy.scale(1.0 / n_events);
-              for (auto& [_, o] : per_pdg_) {
-                 o.d2N_dpT_dy.scale(1.0 / n_events);
-             }
-         }
-    }
+    
+void finalize() override {
+    if (n_events == 0) return;
 
+    const double dy  = (y_max - y_min) / static_cast<double>(y_bins);
+    const double dpt = (pt_max - pt_min) / static_cast<double>(pt_bins);
+    const double norm = static_cast<double>(n_events) * dy * dpt;  // per-event, per-dy, per-dpT
+
+    d2N_dpT_dy.scale(1.0 / norm);
+    for (auto& [_, o] : per_pdg_) {
+        o.d2N_dpT_dy.scale(1.0 / norm);
+    }
+}
     void save(const std::string& dir) override {
         YAML::Emitter out;
         out << YAML::BeginMap;
@@ -92,8 +96,9 @@ public:
         out << YAML::EndMap;
 
         out << YAML::EndMap;
-
-        std::ofstream f(dir + "/bulk.yaml");
+        
+        std::string meta_label = label_from_keyset(keys); 
+        std::ofstream f(dir + "/bulk-"+meta_label+".yaml");
         f << out.c_str();
     }
 

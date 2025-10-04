@@ -43,17 +43,14 @@ void DispatchingAccessor::on_header(Header& header) {
 void run_analysis(const std::vector<std::pair<std::string, std::string>>& file_and_meta,
                   const std::string& analysis_name,
                   const std::vector<std::string>& quantities,
-                  bool save_output,
-                  bool print_output,
                   const std::string& output_folder)
 {
     if (quantities.empty()) throw std::runtime_error("No quantities provided");
 
-    if (save_output) {
-        std::error_code ec;
-        std::filesystem::create_directories(output_folder, ec);
-        if (ec) throw std::runtime_error("create_directories failed: " + ec.message());
-    }
+    std::error_code ec;
+    std::filesystem::create_directories(output_folder, ec);
+    if (ec) throw std::runtime_error("create_directories failed: " + ec.message());
+    
 
     std::vector<std::pair<std::string, MergeKeySet>> input_files;
     input_files.reserve(file_and_meta.size());
@@ -96,13 +93,11 @@ void run_analysis(const std::vector<std::pair<std::string, std::string>>& file_a
     }
 
     for (auto& e : results) {
-        e.analysis->finalize();
-        
-    if (save_output) {
+        e.analysis->finalize(); 
         e.analysis->save(output_folder);
     }
 }
-}
+
 
 
 

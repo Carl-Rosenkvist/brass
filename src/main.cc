@@ -20,12 +20,11 @@ int main(int argc, char* argv[]) {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0]
                   << " <file[:key=val,...]>... <analysis> <quantities...>"
-                  << " [--no-save] [--no-print] [--output-folder <path>]\n"
+                  << " [--output-folder <path>]\n"
                   << "       or: " << argv[0] << " --list-analyses\n";
         return 1;
     }
 
-    // ... (rest of main unchanged)
     // Collect (file, meta) pairs — meta is the substring after ':' (or empty)
     std::vector<std::pair<std::string, std::string>> file_and_meta;
     int i = 1;
@@ -50,19 +49,13 @@ int main(int argc, char* argv[]) {
     }
     const std::string analysis_name = argv[i++];
 
-    // Flags and quantities
-    bool save_output = true;
-    bool print_output = true;
+    // Output folder and quantities
     std::filesystem::path output_folder = ".";
     std::vector<std::string> quantities;
 
     for (; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--no-save") {
-            save_output = false;
-        } else if (arg == "--no-print") {
-            print_output = false;
-        } else if (arg == "--output-folder") {
+        if (arg == "--output-folder") {
             if (i + 1 >= argc) {
                 std::cerr << "Error: --output-folder requires a path argument.\n";
                 return 1;
@@ -77,8 +70,6 @@ int main(int argc, char* argv[]) {
         run_analysis(file_and_meta,
                      analysis_name,
                      quantities,
-                     save_output,
-                     print_output,
                      output_folder.string());
     } catch (const std::exception& e) {
         std::cerr << "run_analysis failed: " << e.what() << "\n";

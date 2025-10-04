@@ -1,6 +1,9 @@
 #include "mergekey.h"
 #include <algorithm>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
+
 
 // ---- MergeKey implementation ----
 MergeKey::MergeKey(std::string n, MergeKeyValue v)
@@ -103,12 +106,26 @@ bool ends_with(const std::string& str, const std::string& suffix) {
            str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+
 std::string label_from_keyset(const MergeKeySet& ks) {
     std::ostringstream oss;
-    for (size_t i = 0; i < ks.size(); ++i) {
-        if (i) oss << " | ";
-        oss << ks[i].name << "=";
-        std::visit([&](auto const& x){ oss << x; }, ks[i].value);
+    bool first = true;
+    for (auto const& mk : ks) {
+        if (!first) {
+            oss << "_";
+        }
+        first = false;
+        oss << mk.name << "-";
+        std::visit([&oss](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, double>) {
+                // fixed-point with trimming
+                oss << std::setprecision(6) << std::fixed << arg;
+            } else {
+                oss << arg;
+            }
+        }, mk.value);
     }
     return oss.str();
 }
+
