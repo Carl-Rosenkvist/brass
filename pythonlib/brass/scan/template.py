@@ -1,30 +1,6 @@
 #!/usr/bin/env python3
 import yaml
 
-# ---- Base template for a normal run ----
-def default_cfg():
-    return {
-        "Logging": {"default": "ERROR"},
-        "General": {
-            "Modus": "Collider",
-            "Time_Step_Mode": "Fixed",
-            "Delta_Time": 1.0,
-            "End_Time": 200,
-            "Randomseed": -1,
-            "Nevents": 1,
-        },
-        "Modi": {
-            "Collider": {
-                "Calculation_Frame": "center of mass",
-                "Projectile": {"Particles": {2212: 82, 2112: 126}},
-                "Target": {"Particles": {2212: 82, 2112: 126}},
-                "Sqrtsnn": 17.3,
-                "Fermi_Motion": "frozen",
-                "Impact": {"Range": [0,3.4], "Sample": "uniform"},
-            }
-        },
-    }
-
 # ---- Force quoting of all strings ----
 class QuotedStr(str): pass
 

@@ -79,8 +79,9 @@ public:
 };
 
 
-
-
+std::vector<std::string> list_analyses() {
+    return AnalysisRegistry::instance().list_registered();
+}
 
 // Trampoline to call Python overrides
 class PyAccessor : public Accessor {
@@ -103,6 +104,11 @@ m.def("run_analysis", &run_analysis,
       py::arg("analysis_name"),
       py::arg("quantities"),
       py::arg("output_folder") = ".");
+
+
+    m.def("list_analyses", &list_analyses,
+          "Return the names of all registered analyses as a list of strings");
+
 
 
     py::class_<ParticleBlock>(m, "ParticleBlock")

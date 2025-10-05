@@ -1,0 +1,26 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "pybind11>=2.11", "setuptools>=68"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "brass"
+version = "0.1"
+description = "Binary Reader and Analysis Suite Software"
+authors = [{ name = "Carl B. Rosenkvist" }]
+requires-python = ">=3.8"
+dependencies = []
+
+
+[tool.scikit-build]
+cmake.source-dir = ".."          # <— was ".", must be the repo root
+cmake.args = ["-DBUILD_PYTHON=ON"]
+build-dir = "../build"           # optional, keeps build/ at repo root
+cmake.version = ">=3.14"
+sdist.include = [
+  "../CMakeLists.txt",
+  "../src", "../analyses", "../include",
+  "../external/yaml-cpp",
+  ".",                            # include python package itself
+]
+[project.scripts]
+brass-analyze = "brass.cli.analyze_runs:main"
