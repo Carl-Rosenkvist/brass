@@ -75,33 +75,38 @@ void finalize() override {
         o.d2N_dpT_dy.scale(1.0 / norm);
     }
 }
-    void save(const std::string& dir) override {
-        YAML::Emitter out;
-        out << YAML::BeginMap;
+    
 
-        out << YAML::Key << "merge_key"     << YAML::Value; to_yaml(out, keys);
-        out << YAML::Key << "smash_version" << YAML::Value << YAML::DoubleQuoted << smash_version;
-        out << YAML::Key << "n_events"      << YAML::Value << n_events;
 
-        // totals
-        out << YAML::Key << "d2N_dpT_dy"    << YAML::Value;
-        to_yaml(out, "pt", "y", d2N_dpT_dy);
+void save(const std::string& dir) override {
+    static bool s_first = true;        // resets each program run
+    static std::mutex s_io_mtx;
 
-        // per-PDG spectra
-        out << YAML::Key << "spectra" << YAML::Value << YAML::BeginMap;
-        for (auto const& [pdg, o] : per_pdg_) {
-            out << YAML::Key << std::to_string(pdg) << YAML::Value;
-            to_yaml(out, "pt", "y", o.d2N_dpT_dy);
-        }
-        out << YAML::EndMap;
+    const std::string out_path = dir + "/bulk.yaml";
+    std::lock_guard<std::mutex> lk(s_io_mtx);
 
-        out << YAML::EndMap;
-        
-        std::string meta_label = label_from_keyset(keys); 
-        std::ofstream f(dir + "/bulk-"+meta_label+".yaml");
-        f << out.c_str();
+    std::ofstream f(out_path, s_first ? std::ios::trunc : std::ios::app);
+    if (!f) throw std::runtime_error("BulkObservables: cannot open " + out_path);
+
+    YAML::Emitter out;
+    out << YAML::BeginMap;
+
+    out << YAML::Key << "merge_key"     << YAML::Value; to_yaml(out, keys);
+    out << YAML::Key << "n_events"      << YAML::Value << n_events;
+    out << YAML::Key << "smash_version" << YAML::Value << smash_version;
+
+    out << YAML::Key << "spectra" << YAML::Value << YAML::BeginMap;
+    for (auto const& [pdg, o] : per_pdg_) {
+        out << YAML::Key << std::to_string(pdg) << YAML::Value;
+        to_yaml(out, "pt", "y", o.d2N_dpT_dy);
     }
+    out << YAML::EndMap; // spectra
+    out << YAML::EndMap; // doc
 
+    f << "---\n" << out.c_str() << "\n";
+
+    s_first = false;
+}
 private:
     struct Obs {
         Histogram2D d2N_dpT_dy;

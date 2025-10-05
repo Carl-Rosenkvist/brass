@@ -92,7 +92,7 @@ private:
     std::vector<double> counts_;  // stored in row-major: [x][y]
 };
 
-// YAML serialization for Histogram2D with axis names
+
 inline void to_yaml(YAML::Emitter& out,
                     const std::string& x_name,
                     const std::string& y_name,
@@ -107,18 +107,16 @@ inline void to_yaml(YAML::Emitter& out,
     out << YAML::Key << x_name + "_bins" << YAML::Value << h.num_x_bins();
     out << YAML::Key << y_name + "_bins" << YAML::Value << h.num_y_bins();
 
-    out << YAML::Key << "counts" << YAML::Value << YAML::BeginSeq;
+    // flatten counts row-major: i over x, j over y
+    out << YAML::Key << "counts" << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (size_t i = 0; i < h.num_x_bins(); ++i) {
-        out << YAML::Flow << YAML::BeginSeq;
         for (size_t j = 0; j < h.num_y_bins(); ++j) {
             out << h.get_bin_count(i, j);
         }
-        out << YAML::EndSeq;
     }
     out << YAML::EndSeq;
 
     out << YAML::EndMap;
 }
-
 
 #endif // HISTOGRAM2D_H
