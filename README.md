@@ -1,5 +1,5 @@
-# BRASS
-Binary Reader and Analysis Suite
+# BRASS (Binary Reader and Analysis Suite Software)
+
 A simple and extensible C++/Python library for reading and analyzing binary particle output files.
 
 ## Features
@@ -10,15 +10,48 @@ A simple and extensible C++/Python library for reading and analyzing binary part
 - No external dependencies (except optionally `pybind11`)
 - Devloped primarly for SMASH
 ## Build Instructions
-
+In repository
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+pip install pythonlib
 ```
+## Performance
 
-This reads the binary file and dispatches particle blocks to any registered analysis.
+<img width="1713" height="715" alt="image" src="https://github.com/user-attachments/assets/03b56538-1b2c-4bea-a3a9-8dd6922975de" />
+
+
+
+# brass-analyze
+
+Command-line tool for running registered analyses on multiple SMASH run directories.
+
+## Usage
+
+brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
+
+- OUTPUT_DIR — top directory containing run subfolders (`out-*` by default)
+- ANALYSIS_NAME — name of a registered analysis (see `--list-analyses`)
+
+## Options
+
+--list-analyses
+  List registered analyses and exit.
+
+--pattern PATTERN
+  Glob for run folders (default: out-*).
+
+--keys KEY1 KEY2 ...
+  Dotted keys from config for labeling runs (last segment used as name).
+  Example:
+    --keys Modi.Collider.Sqrtsnn General.Nevents
+
+--results-subdir DIR
+  Subdirectory to store results (default: data).
+
+--strict-quantities
+  Fail if Quantities differ across runs (default: warn and use first).
+
+-v, --verbose
+  Print detailed information.
 
 ## Writing Analyses
 
@@ -172,9 +205,6 @@ Each analysis plugin in BRASS subclasses the `Analysis` interface and is respons
 When you run over multiple binary files, BRASS uses user-supplied metadata (like `sqrt_s`, `projectile`, `target`) to associate results with a **merge key**. 
 You define metadata like this:
 
-```bash
-./binary_reader file1.bin:sqrt_s=5.02,target=Pb file2.bin:sqrt_s=5.02,target=Pb simple pdg pz p0
-```
 
 ### YAML Output
 
