@@ -96,7 +96,7 @@ inline void to_yaml(YAML::Emitter& out, const Histogram1D& h)
 {
     out << YAML::BeginMap;
 
-    out << YAML::Key << "counts" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    out << YAML::Key << "values" << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (size_t i = 0; i < h.num_bins(); ++i) {
         out << h.raw_bin_content(i);
     }

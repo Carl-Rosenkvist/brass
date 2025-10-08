@@ -108,7 +108,7 @@ inline void to_yaml(YAML::Emitter& out,
     out << YAML::Key << y_name + "_bins" << YAML::Value << h.num_y_bins();
 
     // flatten counts row-major: i over x, j over y
-    out << YAML::Key << "counts" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+    out << YAML::Key << "values" << YAML::Value << YAML::Flow << YAML::BeginSeq;
     for (size_t i = 0; i < h.num_x_bins(); ++i) {
         for (size_t j = 0; j < h.num_y_bins(); ++j) {
             out << h.get_bin_count(i, j);

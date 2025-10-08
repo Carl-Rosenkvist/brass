@@ -32,15 +32,6 @@ public:
 
     void analyze_particle_block(const ParticleBlock& b, const Accessor& a) override {
         // event selection: needs at least one wounded nucleon
-        bool has_wounded = false;
-        for (size_t i = 0; i < b.npart; ++i) {
-            int pdg = a.get_int("pdg", b, i);
-            if ((pdg == 2212 || pdg == 2112) && a.get_int("ncoll", b, i) > 0) {
-                has_wounded = true;
-                break;
-            }
-        }
-        if (!has_wounded) return;
         ++n_events;
 
         // fill spectra
@@ -130,4 +121,4 @@ private:
     std::unordered_map<int, Obs> per_pdg_;
 };
 
-REGISTER_ANALYSIS("BulkObservables", BulkObservables);
+REGISTER_ANALYSIS("bulk", BulkObservables);

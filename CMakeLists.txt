@@ -45,6 +45,8 @@ if(BUILD_PYTHON)
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pythonlib/brass"
     OUTPUT_NAME "_brass"
   )
+  install(TARGETS _brass DESTINATION brass)
+
 endif()
 
 # ---- Tests ----
