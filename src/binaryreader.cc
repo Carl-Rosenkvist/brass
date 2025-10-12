@@ -1,4 +1,4 @@
-#include "BinaryReader.h"
+#include "binaryreader.h"
 
 // --- Registry ---
 
