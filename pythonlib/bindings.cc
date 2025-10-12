@@ -4,24 +4,17 @@
 #include <pybind11/numpy.h>
 #include <filesystem>
 
-
-#include "binaryreader.h"
+#include "binaryreader.h"      // <- match header casing
 #include "analysis.h"
 #include "analysisregister.h"
 
-
-
-
 namespace py = pybind11;
 
-
 #include <optional>
-
-
 #include <sstream>
-
-
-
+#include <type_traits>         // for std::is_trivially_copyable_v
+#include <cstring>             // for std::memcpy
+#include <span>                // for std::span
 
 // Helper: safe read from a span at byte offset
 template <class T>
@@ -49,13 +42,14 @@ public:
         for (size_t i = 0; i < block.npart; ++i) {
             std::span<const char> particle = block.particle(i);
 
-            for (const auto& [name, info] : quantity_string_map) {
-                auto it = layout->find(info.quantity);
+            // quantity_string_map is now: name -> QuantityType
+            for (const auto& [name, qtype] : quantity_string_map) {
+                auto it = layout->find(name);       // layout is name -> offset
                 if (it == layout->end()) continue;
 
                 const size_t offset = it->second;
 
-                switch (info.type) {
+                switch (qtype) {
                     case QuantityType::Double: {
                         double v = read_from_span<double>(particle, offset);
                         doubles[name].push_back(v);
@@ -78,7 +72,6 @@ public:
     const std::vector<int>&     get_event_sizes()                         const { return event_sizes; }
 };
 
-
 std::vector<std::string> list_analyses() {
     return AnalysisRegistry::instance().list_registered();
 }
@@ -99,17 +92,14 @@ public:
 
 PYBIND11_MODULE(_brass, m) {
 
-m.def("run_analysis", &run_analysis,
-      py::arg("file_and_meta"),
-      py::arg("analysis_name"),
-      py::arg("quantities"),
-      py::arg("output_folder") = ".");
-
+    m.def("run_analysis", &run_analysis,
+          py::arg("file_and_meta"),
+          py::arg("analysis_name"),
+          py::arg("quantities"),
+          py::arg("output_folder") = ".");
 
     m.def("list_analyses", &list_analyses,
           "Return the names of all registered analyses as a list of strings");
-
-
 
     py::class_<ParticleBlock>(m, "ParticleBlock")
         .def_readonly("event_number", &ParticleBlock::event_number)
@@ -126,11 +116,12 @@ m.def("run_analysis", &run_analysis,
         .def("on_end_block", &Accessor::on_end_block)
         .def("get_int", &Accessor::get_int)
         .def("get_double", &Accessor::get_double);
+
     py::class_<BinaryReader>(m, "BinaryReader")
         .def(py::init<const std::string&, const std::vector<std::string>&, std::shared_ptr<Accessor>>())
         .def("read", &BinaryReader::read);
 
-     py::class_<CollectorAccessor, Accessor, std::shared_ptr<CollectorAccessor>>(m, "CollectorAccessor")
+    py::class_<CollectorAccessor, Accessor, std::shared_ptr<CollectorAccessor>>(m, "CollectorAccessor")
         .def(py::init<>())
         .def("get_double_array", [](const CollectorAccessor& self, const std::string& name) {
             const auto& vec = self.get_double_array(name);
@@ -140,10 +131,8 @@ m.def("run_analysis", &run_analysis,
             const auto& vec = self.get_event_sizes();
             return py::array(vec.size(), vec.data());
         })
-
         .def("get_int_array", [](const CollectorAccessor& self, const std::string& name) {
             const auto& vec = self.get_int_array(name);
             return py::array(vec.size(), vec.data());
         });
-
 }
