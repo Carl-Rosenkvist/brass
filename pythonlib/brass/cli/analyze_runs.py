@@ -38,9 +38,19 @@ def main(argv=None):
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
 
+
     # Handle --list-analyses early
     if args.list_analyses:
-        return _list_analyses()
+        analyses = br.list_analyses()
+        if not analyses:
+            print("No analyses available.")
+        else:
+            print("Available Analyses:")
+            print("-------------------")
+            for name in analyses:
+                print(f"  • {name}")
+        sys.exit(0)
+           
 
     # Require positionals if not just listing
     if not args.output_dir or not args.analysis_names:
