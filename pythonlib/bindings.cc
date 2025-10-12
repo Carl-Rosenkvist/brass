@@ -94,7 +94,7 @@ PYBIND11_MODULE(_brass, m) {
 
     m.def("run_analysis", &run_analysis,
           py::arg("file_and_meta"),
-          py::arg("analysis_name"),
+          py::arg("analysis_names"),
           py::arg("quantities"),
           py::arg("output_folder") = ".");
 

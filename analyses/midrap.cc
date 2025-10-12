@@ -1,5 +1,5 @@
 #include "analysis.h"
-#include "analysisregister.h"
+#include "analysisregister.h"   // <- fix name
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -8,11 +8,13 @@
 #include <mutex>
 #include <atomic>
 #include <cmath>
+#include "mergekey.h"            // <- ensure label_from_keyset is declared
 
 class Midrapidity : public Analysis {
 public:
-  Midrapidity()
-  : n_events_(0),
+  explicit Midrapidity(const std::string& name)      // <- match macro
+  : Analysis(name),
+    n_events_(0),
     pdgs_({211,-211,321,-321}),
     pdg_set_(pdgs_.begin(), pdgs_.end()) {}
 
@@ -46,21 +48,19 @@ public:
   }
 
   void save(const std::string& out_dir) override {
-    static bool s_header_written = false;      // process-wide for Midrapidity
+    static bool s_header_written = false;
     static std::mutex s_io_mtx;
 
     const std::string out_path = out_dir + "/mid_rap.csv";
-
     std::lock_guard<std::mutex> lk(s_io_mtx);
 
-    // first writer: overwrite + header; others: append, no header
     const bool first = !s_header_written;
-    std::ofstream ofs(out_path, first ? (std::ios::trunc) : (std::ios::app));
+    std::ofstream ofs(out_path, first ? std::ios::trunc : std::ios::app);
     if (!ofs) throw std::runtime_error("Midrapidity: cannot open " + out_path);
 
     if (first) {
       ofs << "label";
-      for (int pdg : pdgs_) ofs << "," << pdg;   // per-event yields
+      for (int pdg : pdgs_) ofs << "," << pdg;
       ofs << "\n";
       s_header_written = true;
     }
@@ -78,7 +78,7 @@ private:
   int n_events_;
   std::vector<int> pdgs_;
   std::unordered_set<int> pdg_set_;
-  std::unordered_map<int, double> pdg_count_; // <— double for normalized values
+  std::unordered_map<int, double> pdg_count_;
 };
 
-REGISTER_ANALYSIS("Midrapidity", Midrapidity);
+REGISTER_ANALYSIS("midrapidity", Midrapidity);

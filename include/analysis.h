@@ -8,27 +8,39 @@
 #include <string>
 #include <variant>
 #include <vector>
-
 #include <yaml-cpp/yaml.h>
 
 #include "binaryreader.h"
 #include "histogram1d.h"
 #include "datatree.h"
 #include "mergekey.h"
+
 class Analysis {
 protected:
     MergeKeySet keys;
     std::string smash_version;
+    std::string analysis_name;
 
 public:
+    explicit Analysis(const std::string& name) : analysis_name(name) {}
     virtual ~Analysis() = default;
+
+    const std::string& name() const { return analysis_name; }
+    const MergeKeySet& get_merge_keys() const { return keys; }
+    void set_merge_keys(MergeKeySet k) { keys = std::move(k); }
+
+    // Two analyses can combine iff they have the same analysis name AND same merge keys
+    virtual bool can_combine(const Analysis& other) const {
+        if (analysis_name != other.analysis_name) return false;
+        // If MergeKeySet has only operator<, equality = !(a<b) && !(b<a)
+        const auto& a = keys;
+        const auto& b = other.keys;
+        return !(a < b) && !(b < a);
+    }
+
     virtual Analysis& operator+=(const Analysis& other) = 0;
 
-    void set_merge_keys(MergeKeySet k);
-    const MergeKeySet& get_merge_keys() const;
-
     void on_header(Header& header);
-
     const std::string& get_smash_version() const { return smash_version; }
 
     virtual void analyze_particle_block(const ParticleBlock& block, const Accessor& accessor) = 0;
@@ -36,7 +48,6 @@ public:
     virtual void save(const std::string& save_dir_path) = 0;
     virtual void print_result_to(std::ostream& os) const {}
 };
-
 // ---------- Dispatcher ----------
 class DispatchingAccessor : public Accessor {
 public:
@@ -56,7 +67,7 @@ struct Entry {
 };
 
 void run_analysis(const std::vector<std::pair<std::string, std::string>>& file_and_meta,
-                  const std::string& analysis_name,
+                  const std::vector<std::string>& analysis_names,
                   const std::vector<std::string>& quantities,
                   const std::string& output_folder = ".");
 

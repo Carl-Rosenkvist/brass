@@ -9,19 +9,14 @@ def get_by_path(d, dotted, default=None):
             return default
         cur = cur[p]
     return cur
-
-def _list_analyses():
-    try:
-        names = br.list_analyses()
-        if not isinstance(names, (list, tuple)):
-            raise TypeError("list_analyses did not return a list/tuple")
-    except Exception as e:
-        print(f"[ERROR] unable to query registered analyses: {e}", file=sys.stderr)
-        return 2
-    print("Available analyses:")
-    for n in names:
-        print(f" - {n}")
-    return 0
+def _dedupe_preserve_order(seq):
+    seen = set()
+    out = []
+    for x in seq:
+        if x not in seen:
+            out.append(x)
+            seen.add(x)
+    return out
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
@@ -30,12 +25,14 @@ def main(argv=None):
     ap.add_argument("--list-analyses", action="store_true",
                     help="List registered analyses and exit")
     ap.add_argument("output_dir", nargs="?", help="Top directory containing run subfolders")
-    ap.add_argument("analysis_name", nargs="?", help="Name passed to brass.run_analysis")
+    # accept one or more analysis names
+    ap.add_argument("analysis_names", nargs="*", help="One or more analysis names (e.g. bulk dNdY)")
     ap.add_argument("--pattern", default="out-*", help="Glob for run folders (default: out-*)")
     ap.add_argument("--keys", nargs="+", required=False,
-                    help="Dotted keys for labels (last segment used in label), e.g.: "
-                         "Modi.Collider.Sqrtsnn General.Nevents")
-    ap.add_argument("--results-subdir", default="data", help="Where to store analysis results (default: data)")
+                    help=("Dotted keys for labels (last segment used in label), e.g.: "
+                          "Modi.Collider.Sqrtsnn General.Nevents"))
+    ap.add_argument("--results-subdir", default="data",
+                    help="Where to store analysis results (default: data)")
     ap.add_argument("--strict-quantities", action="store_true",
                     help="Fail if Quantities differ across runs (default: warn and use first)")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -46,22 +43,31 @@ def main(argv=None):
         return _list_analyses()
 
     # Require positionals if not just listing
-    if not args.output_dir or not args.analysis_name:
-        ap.error("output_dir and analysis_name are required unless --list-analyses is used")
+    if not args.output_dir or not args.analysis_names:
+        ap.error("output_dir and at least one analysis name are required unless --list-analyses is used")
 
-    # Validate requested analysis against registry
+    # Normalize analysis names: support comma-separated or space-separated, de-dup
+    raw_names = []
+    for item in args.analysis_names:
+        raw_names.extend([p for p in (item.split(",") if "," in item else [item]) if p])
+    requested = _dedupe_preserve_order(raw_names)
+
+    # Validate requested analyses against registry
     try:
         available = list(br.list_analyses())
     except Exception as e:
         print(f"[ERROR] unable to query registered analyses: {e}", file=sys.stderr)
         return 2
 
-    if args.analysis_name not in available:
-        print(f"[ERROR] unknown analysis: '{args.analysis_name}'", file=sys.stderr)
-        suggestion = difflib.get_close_matches(args.analysis_name, available, n=1)
-        if suggestion:
-            print(f"        did you mean: '{suggestion[0]}'?", file=sys.stderr)
-        print("        use --list-analyses to see options.", file=sys.stderr)
+    unknown = [n for n in requested if n not in available]
+    if unknown:
+        print(f"[ERROR] unknown analyses: {', '.join(unknown)}", file=sys.stderr)
+        if len(available):
+            for n in unknown:
+                suggestion = difflib.get_close_matches(n, available, n=1)
+                if suggestion:
+                    print(f"        did you mean: '{suggestion[0]}' for '{n}'?", file=sys.stderr)
+            print("        use --list-analyses to see options.", file=sys.stderr)
         return 2
 
     out_top = os.path.abspath(args.output_dir)
@@ -97,7 +103,6 @@ def main(argv=None):
         elif q != first_quantities:
             mismatches.append((rd, q))
 
-        # label from requested keys (use only the last segment as name)
         parts = []
         for k in (args.keys or []):
             val = get_by_path(cfg, k, "NA")
@@ -129,11 +134,13 @@ def main(argv=None):
     if args.verbose:
         print(f"[INFO] N files: {len(file_and_meta)}")
         print(f"[INFO] Quantities: {first_quantities}")
+        print(f"[INFO] Analyses: {requested}")
         print(f"[INFO] Results dir: {results_dir}")
 
+    # Call the vectorized binding
     br.run_analysis(
         file_and_meta=file_and_meta,
-        analysis_name=args.analysis_name,
+        analysis_names=requested,     # <— multiple analyses supported
         quantities=first_quantities or [],
         output_folder=results_dir,
     )
@@ -141,6 +148,3 @@ def main(argv=None):
     if args.verbose:
         print("[DONE]")
     return 0
-
-if __name__ == "__main__":
-    sys.exit(main())

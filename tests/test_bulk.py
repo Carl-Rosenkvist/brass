@@ -55,7 +55,7 @@ def test_bulk_distributions(tmp_path):
 
     br.run_analysis(
         file_and_meta=[(str(bin_path), "Bogus=20")],
-        analysis_name="bulk",
+        analysis_names=["bulk"],
         quantities=["pdg", "p0", "px", "py", "pz"],
         output_folder=str(out_dir),
     )
