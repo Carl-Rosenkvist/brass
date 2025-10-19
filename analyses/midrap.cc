@@ -9,7 +9,7 @@
 #include <atomic>
 #include <cmath>
 #include "mergekey.h"            // <- ensure label_from_keyset is declared
-
+#include <unordered_set>
 class Midrapidity : public Analysis {
 public:
   explicit Midrapidity(const std::string& name)      // <- match macro

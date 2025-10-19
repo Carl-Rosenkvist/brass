@@ -33,22 +33,46 @@ public:
         return *this;
     }
 
+
     void analyze_particle_block(const ParticleBlock& b, const Accessor& a) override {
         ++n_events;
-        for (size_t i = 0; i < b.npart; ++i) {
-            const int pdg   = a.get_int("pdg", b, i);
-            const double E  = a.get_double("p0", b, i);
-            const double pz = a.get_double("pz", b, i);
-            const double px = a.get_double("px", b, i);
-            const double py = a.get_double("py", b, i);
+
+        static thread_local bool init = false;
+        static thread_local Accessor::QuantityHandle h_p0, h_pz, h_px, h_py, h_pdg;
+        static thread_local double inv_dy, inv_dpt;
+
+        if (!init) {
+            h_p0  = a.resolve("p0");
+            h_pz  = a.resolve("pz");
+            h_px  = a.resolve("px");
+            h_py  = a.resolve("py");
+            h_pdg = a.resolve("pdg");
+            inv_dy  = 1.0 / ((y_max - y_min) / double(y_bins));
+            inv_dpt = 1.0 / ((pt_max - pt_min) / double(pt_bins));
+            init = true;
+        }
+
+        for (uint32_t i = 0; i < b.npart; ++i) {
+            const double E  = a.get_double_fast(b, h_p0,  i);
+            const double pz = a.get_double_fast(b, h_pz,  i);
             if (E <= std::abs(pz)) continue;
+
+            const double px  = a.get_double_fast(b, h_px,  i);
+            const double py  = a.get_double_fast(b, h_py,  i);
+            const int    pdg = a.get_int_fast   (b, h_pdg, i);
+
             const double y  = 0.5 * std::log((E + pz) / (E - pz));
-            const double pt = std::hypot(px, py);
-            d2N_dpT_dy.fill(pt, y);
-            obs_for(pdg).d2N_dpT_dy.fill(pt, y);
+            const double pt = std::sqrt(px*px + py*py);
+
+            const int by = int((y  - y_min) * inv_dy);
+            const int bp = int((pt - pt_min) * inv_dpt);
+            if ((unsigned)by < y_bins && (unsigned)bp < pt_bins) {
+                d2N_dpT_dy.fill(pt, y);
+                obs_for(pdg).d2N_dpT_dy.fill(pt, y);
+                // or add_bin(bp,by) if you implement a direct-bin increment
+            }
         }
     }
-
     void finalize() override {
         if (n_events == 0) return;
         const double dy   = (y_max - y_min) / static_cast<double>(y_bins);

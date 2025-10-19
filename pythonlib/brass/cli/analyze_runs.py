@@ -2,6 +2,38 @@
 import os, sys, glob, argparse, yaml, difflib
 import brass as br
 
+import importlib, importlib.util, sys, os
+
+def _import_any(target):
+    # if file path
+    if os.path.isfile(target) and target.endswith(".py"):
+        modname = os.path.splitext(os.path.basename(target))[0]
+        spec = importlib.util.spec_from_file_location(modname, target)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Failed to load module from file {target}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    else:
+        # dotted name
+        try:
+            return importlib.import_module(target)
+        except ImportError:
+            # fallback: if it's a relative path without .py
+            if os.path.exists(target):
+                dirpath = os.path.dirname(os.path.abspath(target))
+                if dirpath not in sys.path:
+                    sys.path.insert(0, dirpath)
+                modname = os.path.splitext(os.path.basename(target))[0]
+                return importlib.import_module(modname)
+            raise
+
+def _import_python_analyses(targets):
+    for t in targets:
+        try:
+            _import_any(t)
+        except Exception as e:
+            print(f"[WARN] Failed to import {t}: {e}", file=sys.stderr)
 def get_by_path(d, dotted, default=None):
     cur = d
     for p in dotted.split("."):
@@ -36,9 +68,15 @@ def main(argv=None):
     ap.add_argument("--strict-quantities", action="store_true",
                     help="Fail if Quantities differ across runs (default: warn and use first)")
     ap.add_argument("-v", "--verbose", action="store_true")
+    
+    ap.add_argument(
+        "--load", metavar="MODULE_OR_FILE", nargs="*", default=[],
+        help="Import Python module(s) or file(s) that register analyses."
+    )
+
     args = ap.parse_args(argv)
 
-
+    _import_python_analyses(args.load)
     # Handle --list-analyses early
     if args.list_analyses:
         analyses = br.list_analyses()

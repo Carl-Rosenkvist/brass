@@ -199,6 +199,9 @@ struct ParticleBlock {
 
 // --- Accessor base class ---
 
+
+// --- Accessor base class ---
+
 class Accessor {
 public:
     virtual void on_particle_block(const ParticleBlock& block) {}
@@ -207,6 +210,11 @@ public:
 
     void set_layout(const std::unordered_map<std::string, size_t>* layout_in);
 
+    const std::unordered_map<std::string, size_t>& layout_map() const {
+        if (!layout) throw std::runtime_error("Layout not set in Accessor");
+        return *layout;
+    }
+
     template<typename T>
     T quantity(const std::string& name, const ParticleBlock& block, size_t particle_index) const;
 
@@ -214,10 +222,51 @@ public:
     double  get_double(const std::string& name, const ParticleBlock& block, size_t i) const;
     virtual void on_header(Header& header_in){};
 
+    // Resolve-once handle for hot loops
+    struct QuantityHandle {
+        size_t        offset;
+        QuantityType  type;
+    };
+
+    inline QuantityHandle resolve(const std::string& name) const {
+        if (!layout) throw std::runtime_error("Layout not set");
+        auto it_off = layout->find(name);
+        if (it_off == layout->end()) throw std::runtime_error("Unknown quantity in layout: " + name);
+        auto it_ty = quantity_string_map.find(name);
+        if (it_ty == quantity_string_map.end()) throw std::runtime_error("Unknown quantity type: " + name);
+        return { it_off->second, it_ty->second };
+    }
+
+    inline double get_double_fast(const ParticleBlock& b, size_t off, size_t i) const noexcept {
+        const char* p = b.particles.data() + i * b.particle_size + off;
+        return *reinterpret_cast<const double*>(p);
+    }
+
+    inline int32_t get_int_fast(const ParticleBlock& b, size_t off, size_t i) const noexcept {
+        const char* p = b.particles.data() + i * b.particle_size + off;
+        return *reinterpret_cast<const int32_t*>(p);
+    }
+
+    // (Optional) type-checked fast getters for debug builds
+    inline double get_double_fast(const ParticleBlock& b, const QuantityHandle& h, size_t i) const noexcept {
+#ifndef NDEBUG
+        if (h.type != QuantityType::Double) throw std::logic_error("get_double_fast: wrong type");
+#endif
+        return get_double_fast(b, h.offset, i);
+    }
+    inline int32_t get_int_fast(const ParticleBlock& b, const QuantityHandle& h, size_t i) const noexcept {
+#ifndef NDEBUG
+        if (h.type != QuantityType::Int32) throw std::logic_error("get_int_fast: wrong type");
+#endif
+        return get_int_fast(b, h.offset, i);
+    }
+
 protected:
     const std::unordered_map<std::string, size_t>* layout = nullptr;
     std::optional<Header> header = std::nullopt;
 };
+
+
 
 template<typename T>
 T Accessor::quantity(const std::string& name, const ParticleBlock& block, size_t particle_index) const {
