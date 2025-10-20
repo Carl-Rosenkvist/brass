@@ -17,14 +17,6 @@ QUANTITIES = [
     "pdg_mother1","pdg_mother2",
     "baryon_number","strangeness"
 ]
-import brass as br
-print("brass path:", br.__file__)
-
-print("analyses:", br.list_analyses())
-print("has run_analysis:", hasattr(br, "run_analysis"))
-
-import sys
-print("_brass loaded?", "_brass" in sys.modules)
 
 def main():
     if len(sys.argv) < 2:
@@ -34,8 +26,6 @@ def main():
     binfile = sys.argv[1]
     outdir  = sys.argv[2] if len(sys.argv) > 2 else "results_py"
 
-    # sanity: ensure analysis is registered
-    # print(br.list_analyses())
 
     t0 = time.perf_counter()
     print(br.list_analyses())

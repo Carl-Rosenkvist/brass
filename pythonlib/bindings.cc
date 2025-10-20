@@ -174,6 +174,18 @@ static py::list gather_block_arrays_generic(
     return out;
 }
 
+// helpers (e.g., near PythonAnalysis)
+static pybind11::object mkvalue_to_py(const MergeKeyValue& v) {
+    return std::visit([](auto const& x){ return pybind11::cast(x); }, v);
+}
+
+static pybind11::dict mergekeys_to_pydict(const MergeKeySet& ks) {
+    pybind11::dict d;
+    for (auto const& mk : ks) {
+        d[pybind11::str(mk.name)] = mkvalue_to_py(mk.value);
+    }
+    return d;
+}
 class PythonAnalysis : public Analysis {
 public:
     PythonAnalysis(const std::string& name,
@@ -211,7 +223,9 @@ public:
 
     void save(const std::string& out_dir) override {
         pybind11::gil_scoped_acquire gil;
-        if (py::hasattr(obj_, "save")) obj_.attr("save")(out_dir, opts_);
+        if (py::hasattr(obj_, "save")) {
+            obj_.attr("save")(out_dir, mergekeys_to_pydict(this->keys), opts_);
+        }
     }
 
 private:
@@ -230,6 +244,7 @@ PYBIND11_MODULE(_brass, m) {
     m.def("list_analyses", &list_analyses,
           "Return the names of all registered analyses as a list of strings");
 
+    m.def("_clear_registry", [] { AnalysisRegistry::instance().clear(); });
     // --- ParticleBlock / EndBlock ---
     py::class_<ParticleBlock>(m, "ParticleBlock")
         .def_readonly("event_number",   &ParticleBlock::event_number)

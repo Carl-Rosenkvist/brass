@@ -17,7 +17,9 @@ public:
     std::shared_ptr<Analysis> create(const std::string& name) const; // 'name' is the key
 
     std::vector<std::string> list_registered() const;
-
+    void clear() {
+        factories_.clear();
+    }
 private:
     std::unordered_map<std::string, Factory> factories_;
 };

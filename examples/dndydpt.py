@@ -1,7 +1,7 @@
 # dndydpt_py.py
 import numpy as np
 import brass as br
-
+from pathlib import Path
 class Dndydpt:
     def __init__(self, y_edges, pt_edges, track_pdgs=None):
         self.y_edges  = np.asarray(y_edges)
@@ -57,13 +57,38 @@ class Dndydpt:
         for H in self.per_pdg.values():
             H /= norm
 
-    def save(self, out_dir, opts):
-        np.savez(f"{out_dir}/dndydpt_python.npz",
-                 H_inclusive=self.H_incl,
-                 y_edges=self.y_edges,
-                 pt_edges=self.pt_edges,
-                 n_events=int(self.n_events),        # <-- use the counter
-                 **{f"pdg_{k}": v for k,v in self.per_pdg.items()})
+    def _fmt_val(self,v):
+        if isinstance(v, float):
+            return f"{round(v, 3):g}"      # 3-dec rounding like C++ MergeKey
+        return str(v)
+    
+    def _label_from_keys(self,keys: dict) -> str:
+        # stable, sorted, and filesystem-safe label like "Sqrtsnn-10" or "A-1_B-2.5"
+        parts = [f"{k}-{self._fmt_val(keys[k])}" for k in sorted(keys)]
+        return "_".join(parts).replace("/", "-")
+    
+    def save(self, out_dir, keys, opts):
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        tag = self._label_from_keys(keys)
+    
+        # One file per merge key
+        path = out_dir / f"dndydpt_{tag}.npz"
+    
+        np.savez(
+            path,
+            H_inclusive=self.H_incl,
+            y_edges=self.y_edges,
+            pt_edges=self.pt_edges,
+            n_events=int(self.n_events),
+            **{f"pdg_{k}": v for k, v in self.per_pdg.items()},
+            # optional: lightweight metadata
+            keys=keys,
+            analysis_name=getattr(self, "name", "dndydpt_python"),
+            version=getattr(self, "smash_version", None),
+        )
+
+
 
 # Register
 edges_y  = np.linspace(-4, 4, 31)
