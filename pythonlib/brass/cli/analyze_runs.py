@@ -1,8 +1,15 @@
 # brass/cli/analyze_runs.py
-import os, sys, glob, argparse, yaml, difflib
-import brass as br
+import os
+import sys
+import glob
+import argparse
+import yaml
+import difflib
+import importlib
+import importlib.util
 
-import importlib, importlib.util, sys, os
+import brass as br
+from brass import MetaBuilder  
 
 def _import_any(target):
     # if file path
@@ -34,6 +41,7 @@ def _import_python_analyses(targets):
             _import_any(t)
         except Exception as e:
             print(f"[WARN] Failed to import {t}: {e}", file=sys.stderr)
+
 def get_by_path(d, dotted, default=None):
     cur = d
     for p in dotted.split("."):
@@ -41,6 +49,7 @@ def get_by_path(d, dotted, default=None):
             return default
         cur = cur[p]
     return cur
+
 def _dedupe_preserve_order(seq):
     seen = set()
     out = []
@@ -57,18 +66,21 @@ def main(argv=None):
     ap.add_argument("--list-analyses", action="store_true",
                     help="List registered analyses and exit")
     ap.add_argument("output_dir", nargs="?", help="Top directory containing run subfolders")
-    # accept one or more analysis names
     ap.add_argument("analysis_names", nargs="*", help="One or more analysis names (e.g. bulk dNdY)")
     ap.add_argument("--pattern", default="out-*", help="Glob for run folders (default: out-*)")
-    ap.add_argument("--keys", nargs="+", required=False,
-                    help=("Dotted keys for labels (last segment used in label), e.g.: "
-                          "Modi.Collider.Sqrtsnn General.Nevents"))
+    ap.add_argument(
+        "--keys", nargs="+", required=False,
+        help=("Alias-qualified dotted keys for labels. "
+              "Use 'ALIAS=Dot.Path' or 'Dot.Path' (alias defaults to last segment). "
+              "Example: Proj=Modi.Collider.Projectile.Particles "
+              "Targ=Modi.Collider.Target.Particles "
+              "Sqrtsnn=Modi.Collider.Sqrtsnn")
+    )
     ap.add_argument("--results-subdir", default="data",
                     help="Where to store analysis results (default: data)")
     ap.add_argument("--strict-quantities", action="store_true",
                     help="Fail if Quantities differ across runs (default: warn and use first)")
     ap.add_argument("-v", "--verbose", action="store_true")
-    
     ap.add_argument(
         "--load", metavar="MODULE_OR_FILE", nargs="*", default=[],
         help="Import Python module(s) or file(s) that register analyses."
@@ -77,6 +89,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     _import_python_analyses(args.load)
+
     # Handle --list-analyses early
     if args.list_analyses:
         analyses = br.list_analyses()
@@ -88,19 +101,15 @@ def main(argv=None):
             for name in analyses:
                 print(f"  • {name}")
         sys.exit(0)
-           
 
-    # Require positionals if not just listing
     if not args.output_dir or not args.analysis_names:
         ap.error("output_dir and at least one analysis name are required unless --list-analyses is used")
 
-    # Normalize analysis names: support comma-separated or space-separated, de-dup
     raw_names = []
     for item in args.analysis_names:
         raw_names.extend([p for p in (item.split(",") if "," in item else [item]) if p])
     requested = _dedupe_preserve_order(raw_names)
 
-    # Validate requested analyses against registry
     try:
         available = list(br.list_analyses())
     except Exception as e:
@@ -128,6 +137,9 @@ def main(argv=None):
     first_quantities = None
     mismatches = []
 
+
+    meta_builder = MetaBuilder(args.keys or [], missing="NA", expand_dicts=True, expand_lists=True)
+
     for rd in runs:
         binf = os.path.join(rd, "particles_binary.bin")
         ymlf = os.path.join(rd, "config.yaml")
@@ -151,13 +163,7 @@ def main(argv=None):
         elif q != first_quantities:
             mismatches.append((rd, q))
 
-        parts = []
-        for k in (args.keys or []):
-            val = get_by_path(cfg, k, "NA")
-            last = k.split(".")[-1]
-            parts.append(f"{last}={val}")
-        meta = ",".join(parts)
-
+        meta, _ = meta_builder.build(cfg)
         file_and_meta.append((binf, meta))
         if args.verbose:
             print(f"[OK] {rd} -> {meta}")
@@ -185,10 +191,9 @@ def main(argv=None):
         print(f"[INFO] Analyses: {requested}")
         print(f"[INFO] Results dir: {results_dir}")
 
-    # Call the vectorized binding
     br.run_analysis(
         file_and_meta=file_and_meta,
-        analysis_names=requested,     # <— multiple analyses supported
+        analysis_names=requested,
         quantities=first_quantities or [],
         output_folder=results_dir,
     )
@@ -196,3 +201,7 @@ def main(argv=None):
     if args.verbose:
         print("[DONE]")
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

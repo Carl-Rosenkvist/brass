@@ -5,7 +5,7 @@ import argparse
 import brass as br
 import time
 # 1) import your python analysis module so it registers itself
-import dndydpt  # <- this file you showed; calling register_python_analysis(...)
+import dndydpt  
 
 # 2) Quantities must EXACTLY match what the file contains
 QUANTITIES = [
@@ -17,7 +17,6 @@ QUANTITIES = [
     "pdg_mother1","pdg_mother2",
     "baryon_number","strangeness"
 ]
-
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} /path/to/particles_oscar2013_extended.bin [outdir]")
