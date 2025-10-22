@@ -1,6 +1,7 @@
 from itertools import product
 from .template import smash_cmd
 
+
 class Scan:
     def __init__(self):
         # groups of small cfg patches; sweep = cartesian product of groups
@@ -16,8 +17,13 @@ class Scan:
         if not isinstance(values, (list, tuple)):
             values = [values]
 
-        if (events is not None or max_events is not None) and key not in ("Modi.Collider.Sqrtsnn", "Modi.Collider.Impact.Value"):
-            raise ValueError("events/max_events splitting is only allowed for Modi.Collider.Sqrtsnn or Modi.Collider.Impact.Value")
+        if (events is not None or max_events is not None) and key not in (
+            "Modi.Collider.Sqrtsnn",
+            "Modi.Collider.Impact.Value",
+        ):
+            raise ValueError(
+                "events/max_events splitting is only allowed for Modi.Collider.Sqrtsnn or Modi.Collider.Impact.Value"
+            )
         if (events is not None or max_events is not None) and self._split_used:
             raise ValueError("Only one split parameter allowed in a scan")
         if events is not None or max_events is not None:

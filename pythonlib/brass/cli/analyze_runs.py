@@ -9,7 +9,8 @@ import importlib
 import importlib.util
 
 import brass as br
-from brass import MetaBuilder  
+from brass import MetaBuilder
+
 
 def _import_any(target):
     # if file path
@@ -35,12 +36,14 @@ def _import_any(target):
                 return importlib.import_module(modname)
             raise
 
+
 def _import_python_analyses(targets):
     for t in targets:
         try:
             _import_any(t)
         except Exception as e:
             print(f"[WARN] Failed to import {t}: {e}", file=sys.stderr)
+
 
 def get_by_path(d, dotted, default=None):
     cur = d
@@ -49,6 +52,7 @@ def get_by_path(d, dotted, default=None):
             return default
         cur = cur[p]
     return cur
+
 
 def _dedupe_preserve_order(seq):
     seen = set()
@@ -59,31 +63,52 @@ def _dedupe_preserve_order(seq):
             seen.add(x)
     return out
 
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Scan run dirs, build meta labels from keys, check Quantities, run brass.run_analysis."
     )
-    ap.add_argument("--list-analyses", action="store_true",
-                    help="List registered analyses and exit")
-    ap.add_argument("output_dir", nargs="?", help="Top directory containing run subfolders")
-    ap.add_argument("analysis_names", nargs="*", help="One or more analysis names (e.g. bulk dNdY)")
-    ap.add_argument("--pattern", default="out-*", help="Glob for run folders (default: out-*)")
     ap.add_argument(
-        "--keys", nargs="+", required=False,
-        help=("Alias-qualified dotted keys for labels. "
-              "Use 'ALIAS=Dot.Path' or 'Dot.Path' (alias defaults to last segment). "
-              "Example: Proj=Modi.Collider.Projectile.Particles "
-              "Targ=Modi.Collider.Target.Particles "
-              "Sqrtsnn=Modi.Collider.Sqrtsnn")
+        "--list-analyses", action="store_true", help="List registered analyses and exit"
     )
-    ap.add_argument("--results-subdir", default="data",
-                    help="Where to store analysis results (default: data)")
-    ap.add_argument("--strict-quantities", action="store_true",
-                    help="Fail if Quantities differ across runs (default: warn and use first)")
+    ap.add_argument(
+        "output_dir", nargs="?", help="Top directory containing run subfolders"
+    )
+    ap.add_argument(
+        "analysis_names", nargs="*", help="One or more analysis names (e.g. bulk dNdY)"
+    )
+    ap.add_argument(
+        "--pattern", default="out-*", help="Glob for run folders (default: out-*)"
+    )
+    ap.add_argument(
+        "--keys",
+        nargs="+",
+        required=False,
+        help=(
+            "Alias-qualified dotted keys for labels. "
+            "Use 'ALIAS=Dot.Path' or 'Dot.Path' (alias defaults to last segment). "
+            "Example: Proj=Modi.Collider.Projectile.Particles "
+            "Targ=Modi.Collider.Target.Particles "
+            "Sqrtsnn=Modi.Collider.Sqrtsnn"
+        ),
+    )
+    ap.add_argument(
+        "--results-subdir",
+        default="data",
+        help="Where to store analysis results (default: data)",
+    )
+    ap.add_argument(
+        "--strict-quantities",
+        action="store_true",
+        help="Fail if Quantities differ across runs (default: warn and use first)",
+    )
     ap.add_argument("-v", "--verbose", action="store_true")
     ap.add_argument(
-        "--load", metavar="MODULE_OR_FILE", nargs="*", default=[],
-        help="Import Python module(s) or file(s) that register analyses."
+        "--load",
+        metavar="MODULE_OR_FILE",
+        nargs="*",
+        default=[],
+        help="Import Python module(s) or file(s) that register analyses.",
     )
 
     args = ap.parse_args(argv)
@@ -103,7 +128,9 @@ def main(argv=None):
         sys.exit(0)
 
     if not args.output_dir or not args.analysis_names:
-        ap.error("output_dir and at least one analysis name are required unless --list-analyses is used")
+        ap.error(
+            "output_dir and at least one analysis name are required unless --list-analyses is used"
+        )
 
     raw_names = []
     for item in args.analysis_names:
@@ -123,7 +150,10 @@ def main(argv=None):
             for n in unknown:
                 suggestion = difflib.get_close_matches(n, available, n=1)
                 if suggestion:
-                    print(f"        did you mean: '{suggestion[0]}' for '{n}'?", file=sys.stderr)
+                    print(
+                        f"        did you mean: '{suggestion[0]}' for '{n}'?",
+                        file=sys.stderr,
+                    )
             print("        use --list-analyses to see options.", file=sys.stderr)
         return 2
 
@@ -137,8 +167,9 @@ def main(argv=None):
     first_quantities = None
     mismatches = []
 
-
-    meta_builder = MetaBuilder(args.keys or [], missing="NA", expand_dicts=True, expand_lists=True)
+    meta_builder = MetaBuilder(
+        args.keys or [], missing="NA", expand_dicts=True, expand_lists=True
+    )
 
     for rd in runs:
         binf = os.path.join(rd, "particles_binary.bin")
@@ -173,8 +204,13 @@ def main(argv=None):
         return 2
 
     if mismatches:
-        msg = ["[ERROR] Quantities mismatch detected:" if args.strict_quantities
-               else "[WARN] Quantities mismatch detected (using first set):"]
+        msg = [
+            (
+                "[ERROR] Quantities mismatch detected:"
+                if args.strict_quantities
+                else "[WARN] Quantities mismatch detected (using first set):"
+            )
+        ]
         msg.append(f"  First: {first_quantities}")
         for rd, q in mismatches:
             msg.append(f"  {rd}: {q}")

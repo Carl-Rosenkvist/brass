@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class HistND:
     """
     Fast N-D histogram with bincount + flat indexing.
@@ -13,6 +14,7 @@ class HistND:
     track_variance : bool, default False
         If True, also track sum of weights squared (sumw2) for error estimation.
     """
+
     def __init__(self, edges, dtype=float, track_variance=False):
         self.edges = [np.asarray(e) for e in edges]
         self.D = len(self.edges)
@@ -64,7 +66,9 @@ class HistND:
         out_dtype = np.result_type(self.counts.dtype, other.counts.dtype)
 
         out = HistND(self.edges, dtype=out_dtype, track_variance=out_track)
-        out.counts = self.counts.astype(out_dtype, copy=False) + other.counts.astype(out_dtype, copy=False)
+        out.counts = self.counts.astype(out_dtype, copy=False) + other.counts.astype(
+            out_dtype, copy=False
+        )
 
         if out_track:
             a = getattr(self, "sumw2", None)
@@ -265,5 +269,7 @@ class HistND:
             raise ValueError("Histogram shapes/edges must match.")
 
     def __repr__(self):
-        return (f"HistND(nbins={tuple(self.nbins.tolist())}, "
-                f"dtype={self.counts.dtype}, track_variance={self.track_variance})")
+        return (
+            f"HistND(nbins={tuple(self.nbins.tolist())}, "
+            f"dtype={self.counts.dtype}, track_variance={self.track_variance})"
+        )

@@ -5,6 +5,7 @@ import yaml
 import brass as br
 from writing_utils import writeHeader, writeParticleBlock, writeEndBlock
 
+
 def generate_particles(n, mass=0.139):
     parts = []
     for _ in range(n):
@@ -16,6 +17,7 @@ def generate_particles(n, mass=0.139):
         parts.append((pdg, p0, px, py, pz))
     return parts
 
+
 def write_binary(events, bfile):
     writeHeader(bfile)
     impact_parameter = 0.0
@@ -23,6 +25,7 @@ def write_binary(events, bfile):
     for i, event in enumerate(events):
         writeParticleBlock(bfile, i, ensemble_number, event)
         writeEndBlock(bfile, i, ensemble_number, impact_parameter, empty=False)
+
 
 def test_merge_events(tmp_path):
     # make two files with the SAME merge key -> they should combine
@@ -54,9 +57,8 @@ def test_merge_events(tmp_path):
         data = yaml.safe_load(f)  # single doc written by this test
 
     assert data["n_events"] == 4  # 2 files * 2 events each
-    spectra = data["spectra"][211]    # keys are strings in YAML
+    spectra = data["spectra"][211]  # keys are strings in YAML
     merge_key = data["merge_key"]
-
 
 
 def test_should_not_merge_events(tmp_path):
