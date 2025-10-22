@@ -6,28 +6,33 @@ build-backend = "scikit_build_core.build"
 name = "pybrass"
 version = "0.0.1"
 description = "Binary Reader and Analysis Suite Software"
-readme = "README_PYPI.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8"
 authors = [{ name = "Carl B. Rosenkvist" }]
 license = { file = "LICENSE" }
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: C++",
-  "License :: OSI Approved :: MIT License",   # matches your LICENSE
+  "License :: OSI Approved :: MIT License",
   "Operating System :: POSIX :: Linux",
   "Operating System :: MacOS",
 ]
-dependencies = []
+
+dependencies = [
+  "numpy>=2.1.3",
+  "pyyaml>=6.0.2",
+]
 
 [project.scripts]
 brass-analyze = "brass.cli.analyze_runs:main"
 
 [tool.scikit-build]
-# CMake project is at repo root:
 cmake.source-dir = "."
 build-dir = "build"
-cmake.args = ["-DBUILD_PYTHON=ON"]
 cmake.version = ">=3.18"
+cmake.args = ["-DBUILD_PYTHON=ON"]
+cmake.build-type = "Release"
+cmake.define = { CMAKE_INTERPROCEDURAL_OPTIMIZATION = "ON" }
 
 # Ensure the wheel contains pythonlib/brass/
 wheel.packages = ["pythonlib/brass"]
@@ -40,7 +45,19 @@ sdist.include = [
   "include/**/*",
   "external/yaml-cpp/**/*",
   "tests/**/*",
-  "README_PYPI.md",
+  "README.md",
   "LICENSE",
   ".",  # the python package itself
 ]
+
+[tool.cibuildwheel]
+build = "cp3?-*"
+skip = "pp* *-musllinux_*"
+
+test-requires = ["pytest"]
+test-command = "python -c \"import brass, import importlib.metadata as m; print('brass from:', brass.__file__); print('pybrass version:', m.version('pybrass'))\" && pytest -vv -ra --maxfail=1 --disable-warnings tests"
+
+
+archs.macos = ["universal2"]
+archs.linux = ["x86_64", "aarch64"]
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "4" }

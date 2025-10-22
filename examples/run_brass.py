@@ -29,8 +29,8 @@ def main():
     t0 = time.perf_counter()
     print(br.list_analyses())
     br.run_analysis(
-        file_and_meta=[(binfile, "")],          # no meta label needed
-        analysis_names=["dndydpt_py"],          # <-- your Python analysis
+        file_and_meta=[(binfile, "meta_key=1")],          
+        analysis_names=["dndydpt_py"],          
         quantities=QUANTITIES,
         output_folder=outdir,
     )

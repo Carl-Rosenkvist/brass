@@ -3,22 +3,45 @@
 A simple and extensible C++/Python library for reading and analyzing binary particle output files.
 
 ## Features
-- C++ header-based binary file reader for particle data
+- C++ binary file reader for particle data
 - Plugin-style extensible analysis system (via registry macros)
-- Optional Python bindings via `pybind11`
 - Histogramming utilities
-- No external dependencies (except optionally `pybind11`)
 - Devloped primarly for SMASH
+
 ## Build Instructions
-In repository
+in repository
 ```bash
-pip install pythonlib
+pip install .
 ```
-## Performance
 
-<img width="1713" height="715" alt="image" src="https://github.com/user-attachments/assets/03b56538-1b2c-4bea-a3a9-8dd6922975de" />
+or from PyPI
 
 
+```bash
+pip install pybrass
+```
+
+## Simplest Usage
+
+```py 
+
+from brass import BinaryReader, Accessor
+
+QUANTITIES = ["p0", "px", "py", "pz", "pdg"]
+
+class Example(Accessor):
+    def on_particle_block(self, block):
+        arrays = dict(self.gather_block_arrays(block, QUANTITIES))
+        E = arrays["p0"]
+        px = arrays["px"]
+        py = arrays["py"]
+        pz = arrays["pz"]
+        pdg = arrays["pdg"]
+        # do something with E, px, py, pz, pdg here
+
+reader = BinaryReader("events.bin", QUANTITIES, Example())
+reader.read()
+```
 
 # brass-analyze
 
@@ -50,271 +73,202 @@ brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
 --strict-quantities
   Fail if Quantities differ across runs (default: warn and use first).
 
+--load 
+  Load python files containing an analysis class registration 
+
 -v, --verbose
   Print detailed information.
 
 ## Writing Analyses
 
-You can create a custom analysis by subclassing `Analysis`:
+```python
+import numpy as np
+import brass as br
+from pathlib import Path
 
-```cpp
-class MyAnalysis : public Analysis {
-public:
-    void analyze_particle_block(const ParticleBlock& block, const Accessor& accessor) override {
-        // your logic here
-    }
-    void finalize() override {}
-    void save(const std::string& path) override {}
-};
+class Dndydpt:
+    def __init__(self, y_edges, pt_edges, track_pdgs=None):
+        self.y_edges  = np.asarray(y_edges)
+        self.pt_edges = np.asarray(pt_edges)
 
-REGISTER_ANALYSIS("my_analysis", MyAnalysis)
-```
+        # 2D histogram over (pt, y), with variance tracking for errors
+        self.incl     = br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+        self.per_pdg  = {}   # pdg -> HistND([pt, y], track_variance=True)
+        self.track    = set(track_pdgs or [])
+        self.n_events = 0
 
-```cpp
-#include "analysis.h"
-#include "analysisregister.h"
-#include "histogram2d.h"
-#include <cmath>
-#include <vector>
-#include <fstream>
-#include <unordered_map>
-#include <string>
+    def on_particle_block(self, block, accessor, opts):
+        self.n_events += 1
+        pairs = accessor.gather_block_arrays(block, ["p0","pz","px","py","pdg"])
+        cols  = {k: v for k, v in pairs}
+        E, pz, px, py, pdg = cols["p0"], cols["pz"], cols["px"], cols["py"], cols["pdg"]
 
-class BulkObservables : public Analysis {
-public:
-    BulkObservables()
-      : y_min(-4.0), y_max(4.0), y_bins(30),
-        pt_min(0.0), pt_max(3.0), pt_bins(30),
-        d2N_dpT_dy(pt_min, pt_max, pt_bins,
-                   y_min, y_max, y_bins),
-        n_events(0) {}
+        m = (E > np.abs(pz))  # avoid invalid rapidity
+        if not m.any():
+            return
+        E, pz, px, py, pdg = E[m], pz[m], px[m], py[m], pdg[m]
 
-    Analysis& operator+=(const Analysis& other) override {
-        auto const* o = dynamic_cast<const BulkObservables*>(&other);
-        if (!o) throw std::runtime_error("merge mismatch");
+        y  = 0.5*np.log((E + pz) / (E - pz))
+        pt = np.hypot(px, py)
 
-        d2N_dpT_dy += o->d2N_dpT_dy;
-        n_events   += o->n_events;
+        # inclusive fill
+        self.incl.fill(pt, y)
 
-        for (auto const& [pdg, src] : o->per_pdg_) {
-            auto& dst = obs_for(pdg);
-            dst.d2N_dpT_dy += src.d2N_dpT_dy;
-        }
-        return *this;
-    }
+        # optional per-PDG fills
+        if self.track:
+            pdgs_here = np.intersect1d(np.unique(pdg), np.fromiter(self.track, dtype=int))
+            for val in pdgs_here:
+                sel = (pdg == val)
+                H = self.per_pdg.setdefault(
+                    int(val), br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+                )
+                H.fill(pt, y, mask=sel)
 
-    void analyze_particle_block(const ParticleBlock& b, const Accessor& a) override {
-        // event selection: needs at least one wounded nucleon
-        bool has_wounded = false;
-        for (size_t i = 0; i < b.npart; ++i) {
-            int pdg = a.get_int("pdg", b, i);
-            if ((pdg == 2212 || pdg == 2112) && a.get_int("ncoll", b, i) > 0) {
-                has_wounded = true;
-                break;
-            }
-        }
-        if (!has_wounded) return;
-        ++n_events;
+    def merge_from(self, other, opts):
+        self.incl.merge_(other.incl)
+        for k, H in other.per_pdg.items():
+            self.per_pdg.setdefault(k, br.HistND([self.pt_edges, self.y_edges], track_variance=True))
+            self.per_pdg[k].merge_(H)
+        self.n_events += getattr(other, "n_events", 0)
 
-        // fill spectra
-        for (size_t i = 0; i < b.npart; ++i) {
-            const int pdg   = a.get_int("pdg", b, i);
-            const double E  = a.get_double("p0", b, i);
-            const double pz = a.get_double("pz", b, i);
-            const double px = a.get_double("px", b, i);
-            const double py = a.get_double("py", b, i);
+    def finalize(self, opts):
+        """
+        Normalize to d^2N/(dy dpt) per event, and compute per-bin errors.
+        Error per bin = sqrt(variance), with variance propagated under normalization.
+        """
+        dy  = np.diff(self.y_edges)   # (ny,)
+        dpt = np.diff(self.pt_edges)  # (npt,)
+        area = dpt[:, None] * dy[None, :]     # (npt, ny), supports non-uniform bins
+        n_ev = max(int(self.n_events), 1)
 
-            if (E <= std::abs(pz)) continue;
-            const double y  = 0.5 * std::log((E + pz) / (E - pz));
-            const double pt = std::hypot(px, py);
+        # Normalize counts -> per-event per (dy dpt)
+        self._normalize_hist2d_(self.incl, n_ev, area)
+        for H in self.per_pdg.values():
+            self._normalize_hist2d_(H, n_ev, area)
 
-            d2N_dpT_dy.fill(pt, y);
+    @staticmethod
+    def _normalize_hist2d_(H, n_ev, area):
+        """
+        Counts and variance normalization:
+          value_norm = counts / (n_ev * area)
+          var_norm   = sumw2 / (n_ev^2 * area^2)   (since errors() = sqrt(sumw2))
+        """
+        H.counts[:] = H.counts / (n_ev * area)
+        if getattr(H, "sumw2", None) is not None:
+            H.sumw2[:] = H.sumw2 / ((n_ev * area) ** 2)
 
-            auto& obs = obs_for(pdg);
-            obs.d2N_dpT_dy.fill(pt, y);
-        }
-    }
+    def _fmt_val(self, v):
+        return f"{round(v, 3):g}" if isinstance(v, float) else str(v)
 
-    void finalize() override {
-        if (n_events > 0) {
-              d2N_dpT_dy.scale(1.0 / n_events);
-              for (auto& [_, o] : per_pdg_) {
-                 o.d2N_dpT_dy.scale(1.0 / n_events);
-             }
-         }
-    }
+    def _label_from_keys(self, keys: dict) -> str:
+        parts = [f"{k}-{self._fmt_val(keys[k])}" for k in sorted(keys)]
+        return "_".join(parts).replace("/", "-")
 
-    void save(const std::string& dir) override {
-        YAML::Emitter out;
-        out << YAML::BeginMap;
+    def save(self, out_dir, keys, opts):
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        tag = self._label_from_keys(keys)
+        path = out_dir / f"dndydpt_{tag}.npz"
 
-        out << YAML::Key << "merge_key"     << YAML::Value; to_yaml(out, keys);
-        out << YAML::Key << "smash_version" << YAML::Value << YAML::DoubleQuoted << smash_version;
-        out << YAML::Key << "n_events"      << YAML::Value << n_events;
+        # Build dict of per-PDG outputs: values + errors (if available)
+        pdg_arrays = {}
+        for k, H in self.per_pdg.items():
+            pdg_arrays[f"pdg_{k}"] = H.counts
+            if getattr(H, "sumw2", None) is not None:
+                pdg_arrays[f"pdg_{k}_err"] = np.sqrt(H.sumw2)
 
-        // totals
-        out << YAML::Key << "d2N_dpT_dy"    << YAML::Value;
-        to_yaml(out, "pt", "y", d2N_dpT_dy);
+        # Inclusive arrays: values + errors
+        extras = {}
+        if getattr(self.incl, "sumw2", None) is not None:
+            extras["H_inclusive_err"] = np.sqrt(self.incl.sumw2)
 
-        // per-PDG spectra
-        out << YAML::Key << "spectra" << YAML::Value << YAML::BeginMap;
-        for (auto const& [pdg, o] : per_pdg_) {
-            out << YAML::Key << std::to_string(pdg) << YAML::Value;
-            to_yaml(out, "pt", "y", o.d2N_dpT_dy);
-        }
-        out << YAML::EndMap;
+        np.savez(
+            path,
+            H_inclusive=self.incl.counts,
+            y_edges=self.y_edges,
+            pt_edges=self.pt_edges,
+            n_events=int(self.n_events),
+            **pdg_arrays,
+            **extras,
+            keys=keys,
+            analysis_name=getattr(self, "name", "dndydpt_python"),
+            version=getattr(self, "smash_version", None),
+        )
 
-        out << YAML::EndMap;
+# Register
+edges_y  = np.linspace(-4, 4, 31)
+edges_pt = np.linspace(0.0, 3.0, 31)
 
-        std::ofstream f(dir + "/bulk.yaml");
-        f << out.c_str();
-    }
-
-private:
-    struct Obs {
-        Histogram2D d2N_dpT_dy;
-        Obs(double pt_min, double pt_max, size_t pt_bins,
-            double y_min, double y_max, size_t y_bins)
-          : d2N_dpT_dy(pt_min, pt_max, pt_bins,
-                       y_min, y_max, y_bins) {}
-    };
-
-    Obs& obs_for(int pdg) {
-        auto [it, inserted] = per_pdg_.try_emplace(
-            pdg, pt_min, pt_max, pt_bins, y_min, y_max, y_bins);
-        return it->second;
-    }
-
-    double y_min, y_max, pt_min, pt_max;
-    size_t y_bins, pt_bins;
-    Histogram2D d2N_dpT_dy;
-    int n_events;
-
-    std::unordered_map<int, Obs> per_pdg_;
-};
-
-REGISTER_ANALYSIS("BulkObservables", BulkObservables);
-
+br.register_python_analysis(
+    "dndydpt_py",
+    lambda: Dndydpt(edges_y, edges_pt, track_pdgs=[2212, 211, -211]),
+    {},
+)
 ```
 ## How Analyses Work
 
-Each analysis plugin in BRASS subclasses the `Analysis` interface and is responsible for processing particle blocks and storing results.
+Each analysis plugin in BRASS subclasses the `Analysis` interface and is responsible for processing particle blocks and storing results.  
+
+## Run an Analysis 
+
+```python
+import sys
+import os
+import argparse
+import brass as br
+import time
+# 1) import your python analysis module so it registers itself
+import dndydpt  
+
+# 2) Quantities must EXACTLY match what the file contains
+QUANTITIES = [
+    "t","x","y","z",
+    "mass","p0","px","py","pz",
+    "pdg","id","charge","ncoll",
+    "form_time","xsecfac",
+    "proc_id_origin","proc_type_origin","time_last_coll",
+    "pdg_mother1","pdg_mother2",
+    "baryon_number","strangeness"
+]
+def main():
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} /path/to/particles_oscar2013_extended.bin [outdir]")
+        sys.exit(1)
+
+    binfile = sys.argv[1]
+    outdir  = sys.argv[2] if len(sys.argv) > 2 else "results_py"
+
+
+    t0 = time.perf_counter()
+    print(br.list_analyses())
+    br.run_analysis(
+        file_and_meta=[(binfile, "meta_key=1")],          
+        analysis_names=["dndydpt_py"],          
+        quantities=QUANTITIES,
+        output_folder=outdir,
+    )
+    t1 = time.perf_counter()
+    print(f"[PY] dndydpt_py elapsed: {t1-t0:.6f} s")
+
+if __name__ == "__main__":
+    main()
+
+```
+
 
 ### Merging by Metadata
 
 When you run over multiple binary files, BRASS uses user-supplied metadata (like `sqrt_s`, `projectile`, `target`) to associate results with a **merge key**. 
 You define metadata like this:
 
-
-### YAML Output
-
-Each analysis writes a human-readable YAML file named after the analysis, e.g., `simple.yaml`, which contains:
-- The `smash_version`
-- The `merge_keys`
-- The `data` block with all computed quantities
-
-Example output:
-```yaml
-merge_key:
-  sqrts: 17.3
-  system: "PbPb"
-smash_version: "SMASH-3.2-38-g5c9a7cbef"
-n_events: 40
-d2N_dpT_dy:
-  pt_range: [0, 3]
-  y_range: [-4, 4]
-  pt_bins: 30
-  y_bins: 30
-  counts: ...
-```
-## Python usage
-```py 
-from brass import BinaryReader, CollectorAccessor
-import numpy as np
-accessor = CollectorAccessor()
-reader = BinaryReader("particles_binary.bin", ["pdg", "pz", "p0"], accessor)
-reader.read()
-
-pz = accessor.get_double_array("pz")
-e  = accessor.get_double_array("p0")
-pdg = accessor.get_int_array("pdg")
-
-y = 0.5 * np.log((e + pz) / (e - pz))
-```
-
-## Run analyses through Python
-```py 
-
-import os
-import yaml
-import brass as br
-
-# --- point these to a few run directories you want to analyze ---
-RUN_DIRS = [
-    "runs/out-001",
-    "runs/out-002",
-]
-
-def load_meta(yaml_path):
-    with open(yaml_path, "r") as f:
-        cfg = yaml.safe_load(f) or {}
-
-    coll = (cfg.get("Modi", {}) or {}).get("Collider", {}) or {}
-    proj = (coll.get("Projectile", {}) or {}).get("Particles", {}) or {}
-    targ = (coll.get("Target", {}) or {}).get("Particles", {}) or {}
-
-    Zp, Np = int(proj.get(2212, 0)), int(proj.get(2112, 0))
-    Zt, Nt = int(targ.get(2212, 0)), int(targ.get(2112, 0))
-
-    def sym(Z, N):
-        # Just a couple of common cases; falls back to A=Z+N
-        if   (Z, N) == (82, 126): return "Pb"
-        if   (Z, N) == (1, 0):    return "p"
-        return f"A{Z+N}"
-
-    system = f"{sym(Zt, Nt)}{sym(Zp, Np)}"
-    sqrts  = coll.get("Sqrtsnn", "unknown")
-    return f"system={system},sqrts={sqrts}"
-
-def main():
-    file_and_meta = []
-    used_quantities = None
-
-    for d in RUN_DIRS:
-        bin_path  = os.path.join(d, "particles_binary.bin")
-        yaml_path = os.path.join(d, "config.yaml")
-        if not (os.path.isfile(bin_path) and os.path.isfile(yaml_path)):
-            print(f"[skip] Missing files in {d}")
-            continue
-
-        # Optional: read quantities once (if present). Otherwise, use [].
-        with open(yaml_path, "r") as f:
-            cfg = yaml.safe_load(f) or {}
-        q = (((cfg.get("Output", {}) or {}).get("Particles", {}) or {})
-             .get("Quantities", []) or [])
-        q = [str(x) for x in q]
-
-        if used_quantities is None:
-            used_quantities = q
-        elif used_quantities != q:
-            print(f"[warn] Quantities differ in {yaml_path}; using the first set.")
-
-        meta = load_meta(yaml_path)
-        file_and_meta.append((bin_path, meta))
-
-    if not file_and_meta:
-        raise SystemExit("No valid runs found.")
-
-    br.run_analysis(
-        file_and_meta=file_and_meta,     # [(path_to_bin, "meta=..."), ...]
-        analysis_name="my_analysis",     # label for outputs
-        quantities=used_quantities or [],# [] if you don't care / not in YAML
-        save_output=True,
-        print_output=False,
-        output_folder="results"          # will be created if missing
+```python
+ br.run_analysis(
+        file_and_meta=[(binfile, "meta_key=1"),(binfile, "meta_key=1")],          
+        analysis_names=["dndydpt_py"],          
+        quantities=QUANTITIES,
+        output_folder=outdir,
     )
-    print("[done] brass analysis finished -> results/")
-
-if __name__ == "__main__":
-    main()
 ```
+This will call the ``merge_from``method in ``Analysis`` class 
+
+
