@@ -3,10 +3,14 @@
 A simple and extensible C++/Python library for reading and analyzing binary particle output files.
 
 ## Features
+- Blazingly fast (see performance) 
 - C++ binary file reader for particle data
 - Plugin-style extensible analysis system (via registry macros)
 - Histogramming utilities
-- Devloped primarly for SMASH
+- Developed primarily for SMASH
+
+## Performance
+<img width="800" alt="performance plot" src="https://github.com/user-attachments/assets/79095661-4f6e-4762-9b0e-f16df368dd28" />
 
 ## Build Instructions
 in repository
