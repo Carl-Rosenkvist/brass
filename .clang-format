@@ -1,0 +1,4 @@
+BasedOnStyle: Google    # or LLVM, Mozilla, etc.
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never

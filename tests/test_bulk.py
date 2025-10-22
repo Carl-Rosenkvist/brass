@@ -3,7 +3,12 @@ import math
 import yaml
 import numpy as np
 import brass as br
-from writing_utils import writeHeader, writeParticleBlock, writeEndBlock, write_config_yaml
+from writing_utils import (
+    writeHeader,
+    writeParticleBlock,
+    writeEndBlock,
+    write_config_yaml,
+)
 
 
 def make_config_yaml_for_bulk():
@@ -82,8 +87,8 @@ def test_bulk_distributions(tmp_path):
     y_edges = np.linspace(*spectra["y_range"], spectra["y_bins"] + 1)
 
     # --- projections from analysis
-    dn_dy_analysis = counts.sum(axis=0)*(pt_edges[1]-pt_edges[0]) 
-    dn_dpt_analysis = counts.sum(axis=1)*(y_edges[1]-y_edges[0])
+    dn_dy_analysis = counts.sum(axis=0) * (pt_edges[1] - pt_edges[0])
+    dn_dpt_analysis = counts.sum(axis=1) * (y_edges[1] - y_edges[0])
 
     # --- compute from truth (the generated particles)
     all_parts = [p for ev in events for p in ev]
@@ -96,9 +101,8 @@ def test_bulk_distributions(tmp_path):
 
     dn_dy_truth, _ = np.histogram(y, bins=y_edges)
     dn_dpt_truth, _ = np.histogram(pt, bins=pt_edges)
-    dn_dy_truth = dn_dy_truth / (n_events*(y_edges[1]-y_edges[0]))
-    dn_dpt_truth = dn_dpt_truth / (n_events*(pt_edges[1]-pt_edges[0]))
-
+    dn_dy_truth = dn_dy_truth / (n_events * (y_edges[1] - y_edges[0]))
+    dn_dpt_truth = dn_dpt_truth / (n_events * (pt_edges[1] - pt_edges[0]))
 
     # --- consistency checks (integrated counts and shape correlation)
     assert np.isclose(dn_dy_analysis.sum(), dn_dy_truth.sum(), rtol=10e-5)
@@ -111,7 +115,7 @@ def test_bulk_distributions(tmp_path):
     # --- basic shape sanity
     assert corr_y > 0.999, f"Low correlation in dN/dy: {corr_y}"
     assert corr_pt > 0.999, f"Low correlation in dN/dpT: {corr_pt}"
-    
+
     # --- optional logging for debug output
     print(f"Total counts (analysis): {counts.sum()}")
     print(f"Correlation dN/dy = {corr_y:.3f}, dN/dpT = {corr_pt:.3f}")

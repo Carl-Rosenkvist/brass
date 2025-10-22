@@ -1,9 +1,15 @@
 # brass/meta.py
 from typing import Any, Dict, Iterable, List, Tuple
 
+
 class MetaBuilder:
-    def __init__(self, key_specs: Iterable[str], missing: str = "NA",
-                 expand_dicts: bool = True, expand_lists: bool = True):
+    def __init__(
+        self,
+        key_specs: Iterable[str],
+        missing: str = "NA",
+        expand_dicts: bool = True,
+        expand_lists: bool = True,
+    ):
         """
         key_specs entries:
           - 'ALIAS=Dot.Path'
@@ -17,7 +23,9 @@ class MetaBuilder:
           - True  -> [a,b] -> ALIAS_0=a, ALIAS_1=b
           - False -> serialize list to a single string
         """
-        self.specs: List[Tuple[str, str]] = [self._parse_key_spec(s) for s in (key_specs or [])]
+        self.specs: List[Tuple[str, str]] = [
+            self._parse_key_spec(s) for s in (key_specs or [])
+        ]
         self.missing = missing
         self.expand_dicts = expand_dicts
         self.expand_lists = expand_lists

@@ -1,6 +1,8 @@
-from writing_utils import*
+from writing_utils import *
+
 # tests/test_write_config_yaml.py
 import yaml
+
 
 def test_write_config_yaml_roundtrip(tmp_path):
     # Arrange: dotted key overrides
@@ -10,7 +12,6 @@ def test_write_config_yaml_roundtrip(tmp_path):
         "Modi.Collider.Projectile.Particles.2112": 126,
         "Modi.Collider.Target.Particles.2212": 82,
         "Modi.Collider.Target.Particles.2112": 126,
-        
         "Output.Particles.Quantities": ["pdg", "pz", "p0"],
     }
     expected = {
@@ -21,9 +22,7 @@ def test_write_config_yaml_roundtrip(tmp_path):
                 "Target": {"Particles": {2212: 82, 2112: 126}},
             }
         },
-        "Output": {
-            "Particles": {"Quantities": ["pdg", "pz", "p0"]}
-        }
+        "Output": {"Particles": {"Quantities": ["pdg", "pz", "p0"]}},
     }
 
     path = tmp_path / "config.yaml"

@@ -2,29 +2,30 @@ import numpy as np
 import brass as br
 from pathlib import Path
 
+
 class Dndydpt:
     def __init__(self, y_edges, pt_edges, track_pdgs=None):
-        self.y_edges  = np.asarray(y_edges)
+        self.y_edges = np.asarray(y_edges)
         self.pt_edges = np.asarray(pt_edges)
 
         # 2D histogram over (pt, y), with variance tracking for errors
-        self.incl     = br.HistND([self.pt_edges, self.y_edges], track_variance=True)
-        self.per_pdg  = {}   # pdg -> HistND([pt, y], track_variance=True)
-        self.track    = set(track_pdgs or [])
+        self.incl = br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+        self.per_pdg = {}  # pdg -> HistND([pt, y], track_variance=True)
+        self.track = set(track_pdgs or [])
         self.n_events = 0
 
     def on_particle_block(self, block, accessor, opts):
         self.n_events += 1
-        pairs = accessor.gather_block_arrays(block, ["p0","pz","px","py","pdg"])
-        cols  = {k: v for k, v in pairs}
+        pairs = accessor.gather_block_arrays(block, ["p0", "pz", "px", "py", "pdg"])
+        cols = {k: v for k, v in pairs}
         E, pz, px, py, pdg = cols["p0"], cols["pz"], cols["px"], cols["py"], cols["pdg"]
 
-        m = (E > np.abs(pz))  # avoid invalid rapidity
+        m = E > np.abs(pz)  # avoid invalid rapidity
         if not m.any():
             return
         E, pz, px, py, pdg = E[m], pz[m], px[m], py[m], pdg[m]
 
-        y  = 0.5*np.log((E + pz) / (E - pz))
+        y = 0.5 * np.log((E + pz) / (E - pz))
         pt = np.hypot(px, py)
 
         # inclusive fill
@@ -32,18 +33,23 @@ class Dndydpt:
 
         # optional per-PDG fills
         if self.track:
-            pdgs_here = np.intersect1d(np.unique(pdg), np.fromiter(self.track, dtype=int))
+            pdgs_here = np.intersect1d(
+                np.unique(pdg), np.fromiter(self.track, dtype=int)
+            )
             for val in pdgs_here:
-                sel = (pdg == val)
+                sel = pdg == val
                 H = self.per_pdg.setdefault(
-                    int(val), br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+                    int(val),
+                    br.HistND([self.pt_edges, self.y_edges], track_variance=True),
                 )
                 H.fill(pt, y, mask=sel)
 
     def merge_from(self, other, opts):
         self.incl.merge_(other.incl)
         for k, H in other.per_pdg.items():
-            self.per_pdg.setdefault(k, br.HistND([self.pt_edges, self.y_edges], track_variance=True))
+            self.per_pdg.setdefault(
+                k, br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+            )
             self.per_pdg[k].merge_(H)
         self.n_events += getattr(other, "n_events", 0)
 
@@ -52,9 +58,9 @@ class Dndydpt:
         Normalize to d^2N/(dy dpt) per event, and compute per-bin errors.
         Error per bin = sqrt(variance), with variance propagated under normalization.
         """
-        dy  = np.diff(self.y_edges)   # (ny,)
+        dy = np.diff(self.y_edges)  # (ny,)
         dpt = np.diff(self.pt_edges)  # (npt,)
-        area = dpt[:, None] * dy[None, :]     # (npt, ny), supports non-uniform bins
+        area = dpt[:, None] * dy[None, :]  # (npt, ny), supports non-uniform bins
         n_ev = max(int(self.n_events), 1)
 
         # Normalize counts -> per-event per (dy dpt)
@@ -111,8 +117,9 @@ class Dndydpt:
             version=getattr(self, "smash_version", None),
         )
 
+
 # Register
-edges_y  = np.linspace(-4, 4, 31)
+edges_y = np.linspace(-4, 4, 31)
 edges_pt = np.linspace(0.0, 3.0, 31)
 
 br.register_python_analysis(
