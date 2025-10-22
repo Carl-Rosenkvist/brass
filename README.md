@@ -263,12 +263,12 @@ You define metadata like this:
 
 ```python
  br.run_analysis(
-        file_and_meta=[(binfile, "meta_key=1"),(binfile, "meta_key=1")],          
+        file_and_meta=[(binfile_A, "meta_key=1"),(binfile_B, "meta_key=1"),(binfile_C, "meta_key=2")],          
         analysis_names=["dndydpt_py"],          
         quantities=QUANTITIES,
         output_folder=outdir,
     )
 ```
-This will call the ``merge_from``method in ``Analysis`` class 
+This will call the ``merge_from``method in ``Analysis`` class such that ``binfile_A``and ``binfile_B``wil be merged. 
 
 
