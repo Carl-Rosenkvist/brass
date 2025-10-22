@@ -1,0 +1,16 @@
+-c {"Modi": {"Collider": {"Sqrtsnn": 2.0}}, "General": {"Nevents": 50}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 2.0}}, "General": {"Nevents": 50}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 2.75}}, "General": {"Nevents": 36}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 2.75}}, "General": {"Nevents": 36}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 3.5}}, "General": {"Nevents": 28}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 3.5}}, "General": {"Nevents": 28}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 3.5}}, "General": {"Nevents": 28}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 4.25}}, "General": {"Nevents": 23}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 4.25}}, "General": {"Nevents": 23}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 4.25}}, "General": {"Nevents": 23}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 4.25}}, "General": {"Nevents": 23}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 5.0}}, "General": {"Nevents": 20}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 5.0}}, "General": {"Nevents": 20}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 5.0}}, "General": {"Nevents": 20}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 5.0}}, "General": {"Nevents": 20}}
+-c {"Modi": {"Collider": {"Sqrtsnn": 5.0}}, "General": {"Nevents": 20}}

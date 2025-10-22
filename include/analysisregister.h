@@ -1,7 +1,4 @@
-// include/analysis_registry.h
-#ifndef ANALYSIS_REGISTRY_H
-#define ANALYSIS_REGISTRY_H
-
+#pragma once
 #include <functional>
 #include <memory>
 #include <string>
@@ -11,28 +8,29 @@
 
 class AnalysisRegistry {
 public:
+    // Zero-arg factory
     using Factory = std::function<std::shared_ptr<Analysis>()>;
 
     static AnalysisRegistry& instance();
 
     void register_factory(const std::string& name, Factory factory);
-    std::shared_ptr<Analysis> create(const std::string& name) const;
+    std::shared_ptr<Analysis> create(const std::string& name) const; // 'name' is the key
 
     std::vector<std::string> list_registered() const;
-
+    void clear() {
+        factories_.clear();
+    }
 private:
     std::unordered_map<std::string, Factory> factories_;
 };
 
-
+// Registers CLASS under key NAME. The lambda captures NAME and constructs CLASS(NAME).
 #define REGISTER_ANALYSIS(NAME, CLASS)                           \
     static bool _registered_##CLASS = []() {                     \
         AnalysisRegistry::instance().register_factory(           \
             NAME, []() -> std::shared_ptr<Analysis> {            \
-                return std::make_shared<CLASS>();                \
+                return std::make_shared<CLASS>(NAME);            \
             });                                                  \
         return true;                                             \
     }();                                                         \
     static const void* _anchor_##CLASS = &_registered_##CLASS;
-
-#endif // ANALYSIS_REGISTRY_H

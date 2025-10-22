@@ -7,13 +7,7 @@
 #include "analysisregister.h"
 
 
-void Analysis::set_merge_keys(MergeKeySet k) {
-    keys = std::move(k);
-}
 
-const MergeKeySet& Analysis::get_merge_keys() const {
-    return keys;
-}
 
 void Analysis::on_header(Header& header) {
     smash_version = header.smash_version;
@@ -40,68 +34,72 @@ void DispatchingAccessor::on_header(Header& header) {
     }
 }
 
+
 void run_analysis(const std::vector<std::pair<std::string, std::string>>& file_and_meta,
-                  const std::string& analysis_name,
+                  const std::vector<std::string>& analysis_names,
                   const std::vector<std::string>& quantities,
-                  bool save_output,
-                  bool print_output,
                   const std::string& output_folder)
 {
     if (quantities.empty()) throw std::runtime_error("No quantities provided");
 
-    if (save_output) {
-        std::error_code ec;
-        std::filesystem::create_directories(output_folder, ec);
-        if (ec) throw std::runtime_error("create_directories failed: " + ec.message());
-    }
+    std::error_code ec;
+    std::filesystem::create_directories(output_folder, ec);
+    if (ec) throw std::runtime_error("create_directories failed: " + ec.message());
 
-    std::vector<std::pair<std::string, MergeKeySet>> input_files;
-    input_files.reserve(file_and_meta.size());
+    // Parse & sort merge keys once
+    std::vector<std::pair<std::string, MergeKeySet>> inputs;
+    inputs.reserve(file_and_meta.size());
     for (const auto& [file, meta] : file_and_meta) {
         MergeKeySet ks = parse_merge_key(meta);
         sort_keyset(ks);
-        input_files.emplace_back(file, std::move(ks));
+        inputs.emplace_back(file, std::move(ks));
     }
 
-    std::vector<Entry> results;
-    results.reserve(input_files.size());
+    // Run each file with its own analysis instance
+    std::vector<std::shared_ptr<Analysis>> analyses;
 
-    auto find_or_insert = [&](MergeKeySet k) -> std::shared_ptr<Analysis>& {
-        auto it = std::lower_bound(results.begin(), results.end(), k,
-            [](Entry const& e, MergeKeySet const& x){ return e.key < x; });
-        if (it == results.end() || it->key < k || k < it->key) {
-            it = results.insert(it, Entry{std::move(k), nullptr});
-        }
-        return it->analysis;
-    };
-
-    for (auto& [path, key] : input_files) {
-        auto analysis = AnalysisRegistry::instance().create(analysis_name);
-        if (!analysis) throw std::runtime_error("Unknown analysis: " + analysis_name);
-
-        analysis->set_merge_keys(key);
-
+    for (auto& [path, key] : inputs) {
+        
         auto dispatcher = std::make_shared<DispatchingAccessor>();
-        dispatcher->register_analysis(analysis);
-
+        for(const auto& analysis_name : analysis_names){
+            auto analysis = AnalysisRegistry::instance().create(analysis_name);
+            analysis->set_merge_keys(key);
+        
+        analyses.push_back(std::move(analysis));
+        dispatcher->register_analysis(analyses.back());
+        }
         BinaryReader reader(path, quantities, dispatcher);
         reader.read();
 
-        auto& slot = find_or_insert(std::move(key));
-        if (slot) {
-            *slot += *analysis;
+    }
+
+    // Sort by (analysis name, merge key) to make reduction linear
+    std::sort(analyses.begin(), analyses.end(),
+        [](const std::shared_ptr<Analysis>& a, const std::shared_ptr<Analysis>& b){
+            if (a->name() != b->name()) return a->name() < b->name();
+            const auto& ka = a->get_merge_keys();
+            const auto& kb = b->get_merge_keys();
+            if (ka < kb) return true;
+            if (kb < ka) return false;
+            return false;
+        });
+
+    // Reduce with can_combine + operator+=
+    std::vector<std::shared_ptr<Analysis>> reduced;
+    reduced.reserve(analyses.size());
+    for (auto& cur : analyses) {
+        if (reduced.empty() || !reduced.back()->can_combine(*cur)) {
+            reduced.push_back(std::move(cur));
         } else {
-            slot = std::move(analysis);
+            *reduced.back() += *cur;
         }
     }
 
-    for (auto& e : results) {
-        e.analysis->finalize();
-        
-    if (save_output) {
-        e.analysis->save(output_folder);
+    // Finalize & save
+    for (auto& a : reduced) {
+        a->finalize();
+        a->save(output_folder);
     }
-}
 }
 
 
