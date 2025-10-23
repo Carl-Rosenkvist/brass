@@ -7,7 +7,7 @@ A simple and extensible C++/Python library for reading and analyzing binary part
 - C++ binary file reader for particle data
 - Plugin-style extensible analysis system (via registry macros)
 - Histogramming utilities
-- Developed primarily for SMASH
+- Developed primarily for Binary format used by SMASH (see https://theory.gsi.de/~smash/userguide/current/doxypage_output_binary.html)
 
 ## Performance
 <img width="800" alt="performance plot" src="https://github.com/user-attachments/assets/79095661-4f6e-4762-9b0e-f16df368dd28" />
