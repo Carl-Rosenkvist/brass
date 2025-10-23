@@ -273,6 +273,6 @@ You define metadata like this:
         output_folder=outdir,
     )
 ```
-This will call the ``merge_from``method in ``Analysis`` class such that ``binfile_A``and ``binfile_B``wil be merged. 
+This will call the ``merge_from``method in ``Analysis`` class such that ``binfile_A``and ``binfile_B``will be merged. 
 
 
