@@ -1,4 +1,5 @@
-# BRASS (Binary Reader and Analysis Suite Software)
+# BRASS (Binary Reader and Analysis Suite Software) [![DOI](https://zenodo.org/badge/999239823.svg)](https://doi.org/10.5281/zenodo.17426761)
+
 
 A simple and extensible C++/Python library for reading and analyzing binary particle output files.
 
