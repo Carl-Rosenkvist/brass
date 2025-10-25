@@ -197,11 +197,87 @@ struct ParticleBlock {
     }
 };
 
+// --- Interaction block ---
+
+struct InteractionBlock {
+    const int32_t n_inout[2];   // [0] = n_in, [1] = n_out
+    const double rho;
+    const double sigma;
+    const double sigma_p;
+    const int32_t process;
+    const size_t particle_size;
+    const std::vector<char> incoming;
+    const std::vector<char> outgoing;
+
+    InteractionBlock(int32_t n_in, int32_t n_out,
+                     double rho_, double sigma_, double sigma_p_,
+                     int32_t process_, size_t psize,
+                     std::vector<char> in_data,
+                     std::vector<char> out_data)
+        : n_inout{n_in, n_out},
+          rho(rho_),
+          sigma(sigma_),
+          sigma_p(sigma_p_),
+          process(process_),
+          particle_size(psize),
+          incoming(std::move(in_data)),
+          outgoing(std::move(out_data)) {}
+
+    static InteractionBlock read_from(std::ifstream &bfile, size_t psize) {
+        // Header layout: int32 n_in, int32 n_out, double rho, double sigma, double sigma_p, int32 process
+        constexpr size_t HEADER_SIZE =
+            sizeof(int32_t) + sizeof(int32_t) + 3 * sizeof(double) + sizeof(int32_t);
+
+        auto header = read_chunk(bfile, HEADER_SIZE);
+
+        size_t off = 0;
+        const int32_t n_in   = extract_and_advance<int32_t>(header, off);
+        const int32_t n_out  = extract_and_advance<int32_t>(header, off);
+        const double  rho_   = extract_and_advance<double>(header, off);
+        const double  sigma_ = extract_and_advance<double>(header, off);
+        const double  sigma_p_ = extract_and_advance<double>(header, off);
+        const int32_t process_ = extract_and_advance<int32_t>(header, off);
+
+        // Compute byte sizes with overflow checks
+        const size_t nin  = static_cast<size_t>(n_in  < 0 ? 0 : n_in);
+        const size_t nout = static_cast<size_t>(n_out < 0 ? 0 : n_out);
+
+        const size_t bytes_in  = (psize != 0) ? nin  * psize : 0;
+        if (psize != 0 && (bytes_in / psize) != nin)
+            throw std::runtime_error("size overflow in InteractionBlock (incoming)");
+
+        const size_t bytes_out = (psize != 0) ? nout * psize : 0;
+        if (psize != 0 && (bytes_out / psize) != nout)
+            throw std::runtime_error("size overflow in InteractionBlock (outgoing)");
+
+        auto in_data  = read_chunk(bfile, bytes_in);
+        auto out_data = read_chunk(bfile, bytes_out);
+
+        return InteractionBlock(n_in, n_out, rho_, sigma_, sigma_p_, process_, psize,
+                                std::move(in_data), std::move(out_data));
+    }
+
+    size_t n_in() const  { return static_cast<size_t>(n_inout[0]); }
+    size_t n_out() const { return static_cast<size_t>(n_inout[1]); }
+
+    std::span<const char> incoming_particle(size_t i) const {
+        if (i >= n_in()) throw std::out_of_range("Incoming particle index out of range");
+        return {incoming.data() + i * particle_size, particle_size};
+    }
+
+    std::span<const char> outgoing_particle(size_t i) const {
+        if (i >= n_out()) throw std::out_of_range("Outgoing particle index out of range");
+        return {outgoing.data() + i * particle_size, particle_size};
+    }
+};
+
 // --- Accessor base class ---
 
 class Accessor {
    public:
     virtual void on_particle_block(const ParticleBlock &block) {}
+
+    virtual void on_interaction_block(const InteractionBlock &block) {}
     virtual void on_end_block(const EndBlock &block) {}
     virtual ~Accessor() = default;
 

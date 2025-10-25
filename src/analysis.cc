@@ -24,9 +24,17 @@ void DispatchingAccessor::on_particle_block(const ParticleBlock &block) {
         a->analyze_particle_block(block, *this);
     }
 }
+void DispatchingAccessor::on_interaction_block(const InteractionBlock &block) {
+    for (auto &a : analyses) {
+        a->analyze_interaction_block(block, *this);
+    }
+}
 
-void DispatchingAccessor::on_end_block(const EndBlock &) {
-    // optional
+
+void DispatchingAccessor::on_end_block(const EndBlock &block) {
+    for(auto &a : analyses){
+        a->analyze_end_block(block,*this);
+    }
 }
 
 void DispatchingAccessor::on_header(Header &header) {

@@ -45,8 +45,12 @@ class Analysis {
     void on_header(Header &header);
     const std::string &get_smash_version() const { return smash_version; }
 
-    virtual void analyze_particle_block(const ParticleBlock &block,
-                                        const Accessor &accessor) = 0;
+    virtual void analyze_particle_block(const ParticleBlock &block,const Accessor &accessor) {};
+    virtual void analyze_interaction_block(const InteractionBlock &block,const Accessor &accessor) {};
+    virtual void analyze_end_block(const EndBlock &block,const Accessor &accessor) {};
+
+
+
     virtual void finalize() = 0;
     virtual void save(const std::string &save_dir_path) = 0;
     virtual void print_result_to(std::ostream &os) const {}
@@ -56,6 +60,7 @@ class DispatchingAccessor : public Accessor {
    public:
     void register_analysis(std::shared_ptr<Analysis> analysis);
     void on_particle_block(const ParticleBlock &block) override;
+    void on_interaction_block(const InteractionBlock &block) override;
     void on_end_block(const EndBlock &block) override;
     void on_header(Header &header) override;
 

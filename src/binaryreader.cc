@@ -119,9 +119,13 @@ void BinaryReader::read() {
                     accessor->on_end_block(e_block);
                 break;
             }
-            case 'i':
-                // ignore info blocks for now
+            case 'i': {
+
+                InteractionBlock i_block = InteractionBlock::read_from(file,particle_size);
+                if (accessor && check_next(file))
+                    accessor->on_interaction_block(i_block);
                 break;
+            }
             default:
                 // unknown block tag — bail out gracefully
                 return;
