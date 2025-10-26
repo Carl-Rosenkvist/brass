@@ -4,10 +4,10 @@ from ._brass import *  # re-export its names
 from .scan.template import smash_cmd
 from .scan.scan import Scan
 from .histNd import HistND
-
-
 from .meta.meta import MetaBuilder
 
+
+from . import analyses  # this will run analyses/__init__.py
 import atexit
 
 if hasattr(_brass, "_clear_registry"):
