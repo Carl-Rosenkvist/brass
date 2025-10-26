@@ -41,6 +41,30 @@ def writeParticleBlock(f, event_number: int, ensemble_number: int, particles):
         writeParticle(f, part)
 
 
+def writeInteractionBlock(f, incoming, outgoing, rho, sigma, sigma_p, process):
+    """
+    Binary layout:
+      'i' (1 byte)
+      int32 n_in, int32 n_out
+      double rho, double sigma, double sigma_p
+      int32 process
+      n_in particle records (writeParticle)
+      n_out particle records (writeParticle)
+    """
+    incoming = incoming or []
+    outgoing = outgoing or []
+
+    f.write(struct.pack("<1s", b"i"))
+    f.write(struct.pack("<i", int(len(incoming))))
+    f.write(struct.pack("<i", int(len(outgoing))))
+    f.write(struct.pack("<ddd", float(rho), float(sigma), float(sigma_p)))
+    f.write(struct.pack("<i", int(process)))
+
+    for p in incoming:
+        writeParticle(f, p)
+    for p in outgoing:
+        writeParticle(f, p)
+
 def writeEndBlock(
     f, event_number: int, ensemble_number: int, impact_parameter: float, empty: bool
 ):

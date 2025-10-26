@@ -1,19 +1,7 @@
-#!/usr/bin/env python3
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-# Read file path from CLI
-csv_file = "xsection.csv"
-
-# Load CSV
-df = pd.read_csv(csv_file)
-m_p = 0.935
-# Sort by sqrt_s if column exists
-if "sqrt_s" in df.columns:
-    df = df.sort_values("sqrt_s")
-
-
 
 def plab_from_s(s):
     """
@@ -26,9 +14,6 @@ def plab_from_s(s):
     return np.sqrt(rad) / (2.0*m_p)
 
 def pp_total(mandelstam_s):
-    """
-    Your piecewise C++ parameterization (mb) as a function of Mandelstam s (GeV^2).
-    """
     p_lab = plab_from_s(mandelstam_s)
     out = np.empty_like(p_lab)
 
