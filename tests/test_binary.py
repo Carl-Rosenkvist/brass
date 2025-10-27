@@ -4,6 +4,7 @@ import pytest
 from brass import BinaryReader, Accessor
 from writing_utils import *
 
+
 class ArrayCollector(Accessor):
     def __init__(self, fields_d, fields_i):
         super().__init__()
@@ -14,14 +15,13 @@ class ArrayCollector(Accessor):
         self._out_store= {k: [] for k in (self._fields_d + self._fields_i)}
 
     def on_particle_block(self, block):
-        arrs = dict(self.gather_block_arrays(block, self._fields_d + self._fields_i))
+        arrs = dict(self.gather_block_arrays(block))
         for k, arr in arrs.items():
             self._store[k].extend(arr.tolist())
 
     def on_interaction_block(self, iblock):
-        names = self._fields_d + self._fields_i
-        arrs_in  = dict(self.gather_incoming_arrays(iblock, names))
-        arrs_out = dict(self.gather_outgoing_arrays(iblock, names))
+        arrs_in  = dict(self.gather_incoming_arrays(iblock))
+        arrs_out = dict(self.gather_outgoing_arrays(iblock))
         for k, arr in arrs_in.items():
             self._in_store[k].extend(arr.tolist())
         for k, arr in arrs_out.items():
@@ -40,7 +40,6 @@ class ArrayCollector(Accessor):
     def get_outgoing_array(self, name):
         dt = float if name in self._fields_d else np.int32
         return np.asarray(self._out_store[name], dtype=dt)
-
 # ----------- synthetic physics -----------
 
 def generateParticles(n):

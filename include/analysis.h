@@ -78,6 +78,7 @@ void run_analysis(
     const std::vector<std::pair<std::string, std::string>> &file_and_meta,
     const std::vector<std::string> &analysis_names,
     const std::vector<std::string> &quantities,
-    const std::string &output_folder = ".");
+    const std::string &output_folder = "."
+    );
 
 #endif  // ANALYSIS_H

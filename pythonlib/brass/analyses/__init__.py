@@ -1,1 +1,2 @@
-from . import xsection  # just importing to trigger registration
+from . import xsection
+from . import dndydmt

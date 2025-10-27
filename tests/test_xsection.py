@@ -72,8 +72,8 @@ def b_sigma_from_mb(sig_mb):
 # ---- the test ----
 def test_xsection_matches_pp_total(tmp_path):
     rng = np.random.default_rng(1234)
-    energies = [3.0, 5.0, 10.0, 20.0]  # GeV
-    N_per_energy = 40000
+    energies = [2.15,3.0, 5.0, 10.0]  # GeV
+    N_per_energy = 500_000
     bmax = 2.5  # must match Xsection default
 
     bin_path = tmp_path / "events.bin"
@@ -126,7 +126,7 @@ def test_xsection_matches_pp_total(tmp_path):
     # Read the CSV produced by your Xsection.save()
     csv_path = out_dir / "xsection.csv"
     assert csv_path.is_file(), "xsection.csv not found"
-
+    
     rows = []
     with open(csv_path, newline="") as f:
         for r in csv.DictReader(f):
@@ -141,5 +141,5 @@ def test_xsection_matches_pp_total(tmp_path):
         rec = row["xsection_mb"]
         rel = abs(rec - target) / max(target, 1e-12)
         assert (
-            rel < 0.07
+            rel < 0.01
         ), f"√s={sqrts}: rec={rec:.2f} mb vs target={target:.2f} mb (Δ={rel:.2%})"

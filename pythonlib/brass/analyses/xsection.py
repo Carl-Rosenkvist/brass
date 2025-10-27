@@ -72,13 +72,13 @@ class Xsection:
 
     def on_particle_block(self, block, accessor, opts):
         if self.initial_cols is None:
-            cols = dict(accessor.gather_block_arrays(block, QUANTITIES))
+            cols = dict(accessor.gather_block_arrays(block))
             if len(cols.get("p0", [])) >= 2:
                 self.initial_cols = cols
 
     def on_interaction_block(self, iblock, accessor, opts):
         if self.first_cols is None:
-            cols = dict(accessor.gather_incoming_arrays(iblock, QUANTITIES))
+            cols = dict(accessor.gather_incoming_arrays(iblock))
             if len(cols.get("p0", [])) >= 2:
                 self.first_cols = cols
 
