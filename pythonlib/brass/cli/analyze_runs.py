@@ -64,6 +64,30 @@ def _dedupe_preserve_order(seq):
     return out
 
 
+def _find_binary_in_run(run_dir: str, candidates: str) -> str | None:
+    """
+    Return the first existing file for any name or glob in `candidates` inside run_dir, else None.
+    """
+    pats = [p.strip() for p in (candidates or "").split(",") if p.strip()]
+    if not pats:
+        pats = ["particles_binary.bin"]
+
+    for pat in pats:
+        full = os.path.join(run_dir, pat)
+        if any(ch in pat for ch in ["*", "?", "["]):
+            matches = sorted(glob.glob(full))
+            for m in matches:
+                if os.path.isfile(m):
+                    return m
+        else:
+            if os.path.isfile(full):
+                return full
+
+    # fallback: first .bin file if no candidates matched
+    fallback = sorted(glob.glob(os.path.join(run_dir, "*.bin")))
+    return fallback[0] if fallback else None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Scan run dirs, build meta labels from keys, check Quantities, run brass.run_analysis."
@@ -109,6 +133,12 @@ def main(argv=None):
         nargs="*",
         default=[],
         help="Import Python module(s) or file(s) that register analyses.",
+    )
+    ap.add_argument(
+        "--binary-names",
+        default="particles_binary.bin",
+        help="Comma-separated candidate filenames or glob patterns searched inside each run dir. "
+             "Example: 'collisions.bin,particles_binary.bin,*.bin'. Default: particles_binary.bin",
     )
 
     args = ap.parse_args(argv)
@@ -172,11 +202,13 @@ def main(argv=None):
     )
 
     for rd in runs:
-        binf = os.path.join(rd, "particles_binary.bin")
+        binf = _find_binary_in_run(rd, args.binary_names)
         ymlf = os.path.join(rd, "config.yaml")
-        if not (os.path.isfile(binf) and os.path.isfile(ymlf)):
+
+        if not (binf and os.path.isfile(binf) and os.path.isfile(ymlf)):
             if args.verbose:
-                print(f"[SKIP] {rd} (missing binary or YAML)")
+                miss = "binary" if not (binf and os.path.isfile(binf)) else "YAML"
+                print(f"[SKIP] {rd} (missing {miss})")
             continue
 
         try:

@@ -23,7 +23,7 @@ std::vector<std::string> list_analyses() {
 
 // Trampoline to call Python overrides on Accessor
 class PyAccessor : public Accessor {
-public:
+   public:
     using Accessor::Accessor;
 
     void on_particle_block(const ParticleBlock& block) override {
@@ -39,7 +39,7 @@ public:
 
 // PythonAnalysis wrapper
 class PythonAnalysis : public Analysis {
-public:
+   public:
     PythonAnalysis(const std::string& name, py::object py_obj, py::dict opts)
         : Analysis(name), obj_(std::move(py_obj)), opts_(std::move(opts)) {}
 
@@ -54,12 +54,14 @@ public:
             if (!r.is_none()) obj_ = std::move(r);
         } else {
             throw std::runtime_error(
-                "PythonAnalysis requires 'merge_from(other, opts)' or '__iadd__(other)'");
+                "PythonAnalysis requires 'merge_from(other, opts)' or "
+                "'__iadd__(other)'");
         }
         return *this;
     }
 
-    void analyze_particle_block(const ParticleBlock& b, const Accessor& a) override {
+    void analyze_particle_block(const ParticleBlock& b,
+                                const Accessor& a) override {
         py::gil_scoped_acquire gil;
         obj_.attr("on_particle_block")(py::cast(b), py::cast(a), opts_);
     }
@@ -67,7 +69,8 @@ public:
         py::gil_scoped_acquire gil;
         obj_.attr("on_end_block")(py::cast(b), py::cast(a), opts_);
     }
-    void analyze_interaction_block(const InteractionBlock& b, const Accessor& a) override {
+    void analyze_interaction_block(const InteractionBlock& b,
+                                   const Accessor& a) override {
         py::gil_scoped_acquire gil;
         obj_.attr("on_interaction_block")(py::cast(b), py::cast(a), opts_);
     }
@@ -82,14 +85,14 @@ public:
         if (py::hasattr(obj_, "save")) {
             py::dict keys;
             for (auto const& mk : this->keys) {
-                keys[py::str(mk.name)] =
-                    std::visit([](auto const& x) { return py::cast(x); }, mk.value);
+                keys[py::str(mk.name)] = std::visit(
+                    [](auto const& x) { return py::cast(x); }, mk.value);
             }
             obj_.attr("save")(out_dir, keys, opts_);
         }
     }
 
-private:
+   private:
     py::object obj_;
     py::dict opts_;
 };
@@ -97,10 +100,8 @@ private:
 // -------------------- Module --------------------
 PYBIND11_MODULE(_brass, m) {
     // Analysis API
-    m.def("run_analysis", &run_analysis,
-          py::arg("file_and_meta"),
-          py::arg("analysis_names"),
-          py::arg("quantities"),
+    m.def("run_analysis", &run_analysis, py::arg("file_and_meta"),
+          py::arg("analysis_names"), py::arg("quantities"),
           py::arg("output_folder") = ".");
 
     m.def("list_analyses", &list_analyses);
@@ -116,15 +117,15 @@ PYBIND11_MODULE(_brass, m) {
                     return std::make_shared<PythonAnalysis>(name, obj, opts);
                 });
         },
-        py::arg("name"), py::arg("factory"), py::arg("opts") = py::dict{}
-    );
+        py::arg("name"), py::arg("factory"), py::arg("opts") = py::dict{});
 
     // Minimal type exposure
     py::class_<ParticleBlock>(m, "ParticleBlock");
     py::class_<EndBlock>(m, "EndBlock")
         .def_readonly("event_number", &EndBlock::event_number)
         .def_readonly("impact_parameter", &EndBlock::impact_parameter);
-    py::class_<InteractionBlock>(m, "InteractionBlock");
+    py::class_<InteractionBlock>(m, "InteractionBlock")
+        .def_readonly("process", &InteractionBlock::process);
 
     // Accessor
     py::class_<Accessor, PyAccessor, std::shared_ptr<Accessor>>(m, "Accessor")
@@ -141,77 +142,61 @@ PYBIND11_MODULE(_brass, m) {
              "Resolve and store field handles for fast repeated access")
 
         // New fast default gather API
-        .def("gather_block_arrays_default",
-             [](const Accessor& self, const ParticleBlock& block) {
-                 return self.gather_arrays_default(
-                     block.particles.data(),
-                     block.npart,
-                     block.particle_size
-                 );
-             },
-             py::arg("block"))
+        .def(
+            "gather_block_arrays_default",
+            [](const Accessor& self, const ParticleBlock& block) {
+                return self.gather_arrays_default(
+                    block.particles.data(), block.npart, block.particle_size);
+            },
+            py::arg("block"))
 
-        .def("gather_incoming_arrays_default",
-             [](const Accessor& self, const InteractionBlock& ib) {
-                 return self.gather_arrays_default(
-                     ib.incoming.data(),
-                     ib.n_in,
-                     ib.particle_size
-                 );
-             },
-             py::arg("interaction_block"))
+        .def(
+            "gather_incoming_arrays_default",
+            [](const Accessor& self, const InteractionBlock& ib) {
+                return self.gather_arrays_default(ib.incoming.data(), ib.n_in,
+                                                  ib.particle_size);
+            },
+            py::arg("interaction_block"))
 
-        .def("gather_outgoing_arrays_default",
-             [](const Accessor& self, const InteractionBlock& ib) {
-                 return self.gather_arrays_default(
-                     ib.outgoing.data(),
-                     ib.n_out,
-                     ib.particle_size
-                 );
-             },
-             py::arg("interaction_block"))
+        .def(
+            "gather_outgoing_arrays_default",
+            [](const Accessor& self, const InteractionBlock& ib) {
+                return self.gather_arrays_default(ib.outgoing.data(), ib.n_out,
+                                                  ib.particle_size);
+            },
+            py::arg("interaction_block"))
 
-        // ✅ Legacy aliases to keep tests and old analyses working
-        .def("gather_block_arrays",
-             [](const Accessor& self, const ParticleBlock& block) {
-                 return self.gather_arrays_default(
-                     block.particles.data(),
-                     block.npart,
-                     block.particle_size
-                 );
-             },
-             py::arg("block"),
-             "Legacy alias for gather_block_arrays_default")
+        .def(
+            "gather_block_arrays",
+            [](const Accessor& self, const ParticleBlock& block) {
+                return self.gather_arrays_default(
+                    block.particles.data(), block.npart, block.particle_size);
+            },
+            py::arg("block"), "Legacy alias for gather_block_arrays_default")
 
-        .def("gather_incoming_arrays",
-             [](const Accessor& self, const InteractionBlock& ib) {
-                 return self.gather_arrays_default(
-                     ib.incoming.data(),
-                     ib.n_in,
-                     ib.particle_size
-                 );
-             },
-             py::arg("interaction_block"),
-             "Legacy alias for gather_incoming_arrays_default")
+        .def(
+            "gather_incoming_arrays",
+            [](const Accessor& self, const InteractionBlock& ib) {
+                return self.gather_arrays_default(ib.incoming.data(), ib.n_in,
+                                                  ib.particle_size);
+            },
+            py::arg("interaction_block"),
+            "Legacy alias for gather_incoming_arrays_default")
 
-        .def("gather_outgoing_arrays",
-             [](const Accessor& self, const InteractionBlock& ib) {
-                 return self.gather_arrays_default(
-                     ib.outgoing.data(),
-                     ib.n_out,
-                     ib.particle_size
-                 );
-             },
-             py::arg("interaction_block"),
-             "Legacy alias for gather_outgoing_arrays_default");
+        .def(
+            "gather_outgoing_arrays",
+            [](const Accessor& self, const InteractionBlock& ib) {
+                return self.gather_arrays_default(ib.outgoing.data(), ib.n_out,
+                                                  ib.particle_size);
+            },
+            py::arg("interaction_block"),
+            "Legacy alias for gather_outgoing_arrays_default");
 
     // BinaryReader
     py::class_<BinaryReader>(m, "BinaryReader")
         .def(py::init<const std::string&, const std::vector<std::string>&,
                       std::shared_ptr<Accessor>>(),
-             py::arg("filename"),
-             py::arg("quantities"),
-             py::arg("accessor"))
+             py::arg("filename"), py::arg("quantities"), py::arg("accessor"))
         .def("read", &BinaryReader::read,
              py::call_guard<py::gil_scoped_release>());
 }

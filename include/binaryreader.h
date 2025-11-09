@@ -1,11 +1,10 @@
 #ifndef BINARY_READER_H
 #define BINARY_READER_H
 
-#include "accessor.h"
-#include "quantities.h"
-
 #include <memory>
 
+#include "accessor.h"
+#include "quantities.h"
 
 class BinaryReader {
    public:
@@ -19,7 +18,6 @@ class BinaryReader {
     size_t particle_size = 0;
     std::shared_ptr<Accessor> accessor;
     std::unordered_map<std::string, size_t> layout;
-
 };
 
 #endif  // BINARY_READER_H

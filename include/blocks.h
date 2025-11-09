@@ -126,10 +126,9 @@ struct InteractionBlock {
     int32_t n_in = 0;
     int32_t n_out = 0;
 
-    // Optional per-format fields (kept optional for future changes)
-    std::optional<double> rho;
-    std::optional<double> sigma;
-    std::optional<double> sigma_p;
+    double rho;
+    double sigma;
+    double sigma_p;
 
     int32_t process = 0;
     size_t particle_size = 0;
