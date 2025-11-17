@@ -37,7 +37,6 @@ class PyAccessor : public Accessor {
     }
 };
 
-// PythonAnalysis wrapper
 class PythonAnalysis : public Analysis {
    public:
     PythonAnalysis(const std::string& name, py::object py_obj, py::dict opts)
@@ -65,31 +64,40 @@ class PythonAnalysis : public Analysis {
         py::gil_scoped_acquire gil;
         obj_.attr("on_particle_block")(py::cast(b), py::cast(a), opts_);
     }
+
     void analyze_end_block(const EndBlock& b, const Accessor& a) override {
         py::gil_scoped_acquire gil;
         obj_.attr("on_end_block")(py::cast(b), py::cast(a), opts_);
     }
+
     void analyze_interaction_block(const InteractionBlock& b,
                                    const Accessor& a) override {
         py::gil_scoped_acquire gil;
         obj_.attr("on_interaction_block")(py::cast(b), py::cast(a), opts_);
     }
 
-    void finalize() override {
+    // ✔ NOW TAKES THE RESULTS DICT FROM PYTHON
+    py::object finalize_with_dict(py::object results) {
         py::gil_scoped_acquire gil;
-        if (py::hasattr(obj_, "finalize")) obj_.attr("finalize")(opts_);
+        if (py::hasattr(obj_, "finalize"))
+            obj_.attr("finalize")(results);  // modifies results IN PLACE
+        return results;                      // return the same dict back
     }
 
-    void save(const std::string& out_dir) override {
+    void save_with_dict(py::object results, const std::string& out_dir) {
         py::gil_scoped_acquire gil;
-        if (py::hasattr(obj_, "save")) {
-            py::dict keys;
-            for (auto const& mk : this->keys) {
-                keys[py::str(mk.name)] = std::visit(
-                    [](auto const& x) { return py::cast(x); }, mk.value);
-            }
-            obj_.attr("save")(out_dir, keys, opts_);
+        if (py::hasattr(obj_, "save_results")) {
+            std::string file = out_dir + "/results.pkl";
+            obj_.attr("save_results")(file, results);
         }
+    }
+
+    py::object to_state_dict() {
+        py::gil_scoped_acquire gil;
+        if (!py::hasattr(obj_, "to_state_dict")) {
+            throw std::runtime_error("PythonAnalysis: missing to_state_dict()");
+        }
+        return obj_.attr("to_state_dict")();
     }
 
    private:
@@ -97,15 +105,58 @@ class PythonAnalysis : public Analysis {
     py::dict opts_;
 };
 
-// -------------------- Module --------------------
 PYBIND11_MODULE(_brass, m) {
-    // Analysis API
     m.def("run_analysis", &run_analysis, py::arg("file_and_meta"),
           py::arg("analysis_names"), py::arg("quantities"),
           py::arg("output_folder") = ".");
 
     m.def("list_analyses", &list_analyses);
     m.def("_clear_registry", [] { AnalysisRegistry::instance().clear(); });
+
+    py::class_<Analysis, std::shared_ptr<Analysis>>(m, "Analysis")
+        .def(
+            "finalize",
+            [](Analysis& self, py::object results,
+               const std::string& /*out_dir*/) {
+                // out_dir is currently unused, but we accept it to match Python
+                if (auto* pa = dynamic_cast<PythonAnalysis*>(&self))
+                    return pa->finalize_with_dict(
+                        results);  // modifies and returns dict
+                return results;    // C++-only analyses: return unchanged
+            },
+            py::arg("results"), py::arg("output_dir"))
+        .def(
+            "save",
+            [](Analysis& self, py::object results, const std::string& out_dir) {
+                if (auto* pa = dynamic_cast<PythonAnalysis*>(&self)) {
+                    pa->save_with_dict(results, out_dir);
+                    return;
+                }
+                self.save(out_dir);
+            },
+            py::arg("results"), py::arg("output_dir"))
+        .def("to_state_dict",
+             [](Analysis& self) {
+                 auto* pa = dynamic_cast<PythonAnalysis*>(&self);
+                 if (!pa)
+                     throw std::runtime_error(
+                         "to_state_dict only valid for PythonAnalysis");
+                 return pa->to_state_dict();
+             })
+        .def("set_merge_keys_dict",
+             [](Analysis& self, const std::map<std::string, std::string>& kv) {
+                 MergeKeySet ks;
+                 for (auto& [k, v] : kv) ks.emplace_back(k, v);
+                 sort_keyset(ks);
+                 self.set_merge_keys(ks);
+             });
+
+    m.def(
+        "create_analysis",
+        [](const std::string& name) {
+            return AnalysisRegistry::instance().create(name);
+        },
+        py::arg("name"));
 
     m.def(
         "register_python_analysis",
@@ -119,7 +170,6 @@ PYBIND11_MODULE(_brass, m) {
         },
         py::arg("name"), py::arg("factory"), py::arg("opts") = py::dict{});
 
-    // Minimal type exposure
     py::class_<ParticleBlock>(m, "ParticleBlock");
     py::class_<EndBlock>(m, "EndBlock")
         .def_readonly("event_number", &EndBlock::event_number)
@@ -127,21 +177,15 @@ PYBIND11_MODULE(_brass, m) {
     py::class_<InteractionBlock>(m, "InteractionBlock")
         .def_readonly("process", &InteractionBlock::process);
 
-    // Accessor
+    // IMPORTANT: bind Accessor BEFORE DispatchingAccessor
     py::class_<Accessor, PyAccessor, std::shared_ptr<Accessor>>(m, "Accessor")
         .def(py::init<>())
-
-        // Hooks for Python subclassing
         .def("on_particle_block", &Accessor::on_particle_block)
         .def("on_end_block", &Accessor::on_end_block)
         .def("on_interaction_block", &Accessor::on_interaction_block)
-
-        // Let Python override or manually set resolved fields
         .def("set_resolved_fields", &Accessor::set_resolved_fields,
              py::arg("names"),
              "Resolve and store field handles for fast repeated access")
-
-        // New fast default gather API
         .def(
             "gather_block_arrays_default",
             [](const Accessor& self, const ParticleBlock& block) {
@@ -149,7 +193,6 @@ PYBIND11_MODULE(_brass, m) {
                     block.particles.data(), block.npart, block.particle_size);
             },
             py::arg("block"))
-
         .def(
             "gather_incoming_arrays_default",
             [](const Accessor& self, const InteractionBlock& ib) {
@@ -157,7 +200,6 @@ PYBIND11_MODULE(_brass, m) {
                                                   ib.particle_size);
             },
             py::arg("interaction_block"))
-
         .def(
             "gather_outgoing_arrays_default",
             [](const Accessor& self, const InteractionBlock& ib) {
@@ -165,7 +207,6 @@ PYBIND11_MODULE(_brass, m) {
                                                   ib.particle_size);
             },
             py::arg("interaction_block"))
-
         .def(
             "gather_block_arrays",
             [](const Accessor& self, const ParticleBlock& block) {
@@ -173,7 +214,6 @@ PYBIND11_MODULE(_brass, m) {
                     block.particles.data(), block.npart, block.particle_size);
             },
             py::arg("block"), "Legacy alias for gather_block_arrays_default")
-
         .def(
             "gather_incoming_arrays",
             [](const Accessor& self, const InteractionBlock& ib) {
@@ -182,7 +222,6 @@ PYBIND11_MODULE(_brass, m) {
             },
             py::arg("interaction_block"),
             "Legacy alias for gather_incoming_arrays_default")
-
         .def(
             "gather_outgoing_arrays",
             [](const Accessor& self, const InteractionBlock& ib) {
@@ -192,11 +231,37 @@ PYBIND11_MODULE(_brass, m) {
             py::arg("interaction_block"),
             "Legacy alias for gather_outgoing_arrays_default");
 
-    // BinaryReader
+    py::class_<DispatchingAccessor, Accessor,
+               std::shared_ptr<DispatchingAccessor>>(m, "DispatchingAccessor")
+        .def(py::init<>())
+        .def("register_analysis", &DispatchingAccessor::register_analysis);
+
     py::class_<BinaryReader>(m, "BinaryReader")
         .def(py::init<const std::string&, const std::vector<std::string>&,
                       std::shared_ptr<Accessor>>(),
              py::arg("filename"), py::arg("quantities"), py::arg("accessor"))
         .def("read", &BinaryReader::read,
              py::call_guard<py::gil_scoped_release>());
+
+    m.def(
+        "parse_meta",
+        [](const std::string& meta) {
+            MergeKeySet ks = parse_merge_key(meta);
+            std::map<std::string, std::string> out;
+            for (auto const& mk : ks) {
+                std::string v = std::visit(
+                    [](auto const& x) -> std::string {
+                        using T = std::decay_t<decltype(x)>;
+                        if constexpr (std::is_same_v<T, std::string>) {
+                            return x;
+                        } else {
+                            return std::to_string(x);
+                        }
+                    },
+                    mk.value);
+                out[mk.name] = v;
+            }
+            return out;
+        },
+        py::arg("meta"));
 }

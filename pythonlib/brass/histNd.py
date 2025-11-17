@@ -8,23 +8,32 @@ class HistND:
     Parameters
     ----------
     edges : sequence of 1D arrays
-        Bin edges per axis, length D. Uses left-closed, right-open bins [e[i], e[i+1]).
-    dtype : numpy dtype, default float
+        Bin edges per axis, length D. Uses left-closed, right-open bins [e[i], e[i+1)).
+    dtype : numpy dtype-like, default float
         Storage dtype for counts.
     track_variance : bool, default False
         If True, also track sum of weights squared (sumw2) for error estimation.
     """
 
     def __init__(self, edges, dtype=float, track_variance=False):
-        self.edges = [np.asarray(e) for e in edges]
+        # Copy edges so external modifications don't affect us
+        self.edges = [np.array(e, copy=True) for e in edges]
         self.D = len(self.edges)
         if self.D == 0:
             raise ValueError("Need at least 1 dimension.")
+
+        # Check monotonicity of edges
+        for e in self.edges:
+            if np.any(np.diff(e) <= 0):
+                raise ValueError("Bin edges must be strictly increasing for each axis.")
+
         self.nbins = np.array([len(e) - 1 for e in self.edges], dtype=np.int64)
         if np.any(self.nbins <= 0):
             raise ValueError("Each edges array must have at least 2 entries.")
 
         self.size = int(np.prod(self.nbins))
+
+        # Normalize dtype to a numpy.dtype
         self.dtype = np.dtype(dtype)
 
         # Storage
@@ -65,7 +74,8 @@ class HistND:
         out_track = self.track_variance or other.track_variance
         out_dtype = np.result_type(self.counts.dtype, other.counts.dtype)
 
-        out = HistND(self.edges, dtype=out_dtype, track_variance=out_track)
+        edges_copy = [e.copy() for e in self.edges]
+        out = HistND(edges_copy, dtype=out_dtype.type, track_variance=out_track)
         out.counts = self.counts.astype(out_dtype, copy=False) + other.counts.astype(
             out_dtype, copy=False
         )
@@ -93,7 +103,7 @@ class HistND:
         out_dtype = np.result_type(self.counts.dtype, other.counts.dtype)
         if self.counts.dtype != out_dtype:
             self.counts = self.counts.astype(out_dtype, copy=True)
-            self.dtype = np.dtype(out_dtype)
+            self.dtype = out_dtype
 
         self.counts += other.counts.astype(out_dtype, copy=False)
 
@@ -153,6 +163,7 @@ class HistND:
             flat += b_ok[k] * self._strides[k]
 
         # accumulate via bincount
+        add2 = None  # keep linter happy; only used when track_variance is True
         if w_ok is None:
             add = np.bincount(flat, minlength=self.size)
             if self.track_variance:
@@ -164,7 +175,7 @@ class HistND:
 
         add = add.reshape(self.nbins)
         self.counts += add.astype(self.counts.dtype, copy=False)
-        if self.track_variance:
+        if self.track_variance and add2 is not None:
             self.sumw2 += add2.reshape(self.nbins)
 
     def fill(self, *coords, mask=None, weights=None):
@@ -205,12 +216,45 @@ class HistND:
         return self.__iadd__(other)
 
     def normalized_copy(self, norm):
-        """Return a new histogram with counts divided by `norm` (sumw2 by norm^2)."""
-        out = HistND(self.edges, dtype=self.dtype, track_variance=self.track_variance)
-        out.counts = self.counts / float(norm)
+        """
+        Return a new histogram with counts divided by `norm` (sumw2 by norm^2).
+
+        The output dtype is promoted to at least float64.
+        """
+        norm = float(norm)
+        out_dtype = np.result_type(self.counts.dtype, np.float64)
+        edges_copy = [e.copy() for e in self.edges]
+        out = HistND(
+            edges_copy, dtype=out_dtype.type, track_variance=self.track_variance
+        )
+        out.counts = self.counts.astype(out_dtype, copy=False) / norm
         if self.track_variance:
-            out.sumw2 = self.sumw2 / (float(norm) ** 2)
+            out.sumw2 = self.sumw2 / (norm * norm)
         return out
+
+    def normalize_inplace(self, norm):
+        """
+        Normalize this histogram in-place by `norm`.
+
+        Counts are divided by `norm`, and sumw2 (if present) by norm^2.
+        The counts dtype is promoted to at least float64 to avoid
+        integer truncation.
+        """
+        norm = float(norm)
+        if norm == 0.0:
+            raise ValueError("norm must be non-zero")
+
+        # Promote to float for safe division
+        out_dtype = np.result_type(self.counts.dtype, np.float64)
+        if self.counts.dtype != out_dtype:
+            self.counts = self.counts.astype(out_dtype, copy=True)
+            self.dtype = out_dtype
+
+        self.counts /= norm
+        if self.track_variance:
+            self.sumw2 /= norm * norm
+
+        return self
 
     def errors(self):
         """Standard deviation per bin assuming uncorrelated weights: sqrt(sumw2)."""
@@ -234,6 +278,37 @@ class HistND:
         edges_kept = [self.edges[i] for i in axes_to_keep]
         return counts_proj, edges_kept
 
+    def project_hist(self, axes_to_keep):
+        """
+        Sum over all axes not in axes_to_keep and return a new HistND.
+
+        Parameters
+        ----------
+        axes_to_keep : iterable of int
+            Axes (0-based) to keep in the projected histogram.
+
+        Returns
+        -------
+        HistND
+            A new histogram with reduced dimensionality, with counts (and sumw2,
+            if enabled) summed over the dropped axes.
+        """
+        axes_to_keep = tuple(sorted(axes_to_keep))
+        axes_all = tuple(range(self.D))
+        axes_sum = tuple(i for i in axes_all if i not in axes_to_keep)
+
+        counts_proj = self.counts.sum(axis=axes_sum)
+        edges_kept = [self.edges[i] for i in axes_to_keep]
+
+        edges_copy = [e.copy() for e in edges_kept]
+        out = HistND(
+            edges_copy, dtype=self.dtype.type, track_variance=self.track_variance
+        )
+        out.counts = counts_proj
+        if self.track_variance:
+            out.sumw2 = self.sumw2.sum(axis=axes_sum)
+        return out
+
     def density(self):
         """
         Counts per unit hyper-volume (divide by product of bin widths).
@@ -248,7 +323,10 @@ class HistND:
 
     def copy(self):
         """Deep copy of the histogram structure and contents."""
-        out = HistND(self.edges, dtype=self.dtype, track_variance=self.track_variance)
+        edges_copy = [e.copy() for e in self.edges]
+        out = HistND(
+            edges_copy, dtype=self.dtype.type, track_variance=self.track_variance
+        )
         out.counts = self.counts.copy()
         if self.track_variance:
             out.sumw2 = self.sumw2.copy()
@@ -256,17 +334,28 @@ class HistND:
 
     def astype(self, dtype):
         """Return a new histogram with counts cast to `dtype` (sumw2 stays float)."""
-        out = HistND(self.edges, dtype=dtype, track_variance=self.track_variance)
-        out.counts = self.counts.astype(dtype, copy=True)
+        dt_norm = np.dtype(dtype)
+        edges_copy = [e.copy() for e in self.edges]
+        out = HistND(edges_copy, dtype=dt_norm.type, track_variance=self.track_variance)
+        out.counts = self.counts.astype(dt_norm, copy=True)
         if self.track_variance:
             out.sumw2 = self.sumw2.copy()
         return out
 
     def _check_compat(self, other):
-        if self.nbins.tolist() != other.nbins.tolist() or any(
-            not np.array_equal(a, b) for a, b in zip(self.edges, other.edges)
-        ):
-            raise ValueError("Histogram shapes/edges must match.")
+        """Ensure histograms have identical binning."""
+        if not isinstance(other, HistND):
+            raise TypeError("Can only combine HistND with HistND.")
+
+        if self.nbins.shape != other.nbins.shape:
+            raise ValueError("Histogram dimensionality mismatch.")
+
+        if not np.array_equal(self.nbins, other.nbins):
+            raise ValueError("Histogram bin counts differ.")
+
+        for a, b in zip(self.edges, other.edges):
+            if not np.array_equal(a, b):
+                raise ValueError("Histogram edges differ.")
 
     def __repr__(self):
         return (

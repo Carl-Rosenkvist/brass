@@ -23,46 +23,49 @@ class Analysis {
     std::string analysis_name;
 
    public:
-    explicit Analysis(const std::string &name) : analysis_name(name) {}
+    explicit Analysis(const std::string& name) : analysis_name(name) {}
     virtual ~Analysis() = default;
 
-    const std::string &name() const { return analysis_name; }
-    const MergeKeySet &get_merge_keys() const { return keys; }
+    const std::string& name() const { return analysis_name; }
+    const MergeKeySet& get_merge_keys() const { return keys; }
     void set_merge_keys(MergeKeySet k) { keys = std::move(k); }
 
     // Two analyses can combine iff they have the same analysis name AND same
     // merge keys
-    virtual bool can_combine(const Analysis &other) const {
+    virtual bool can_combine(const Analysis& other) const {
         if (analysis_name != other.analysis_name) return false;
         // If MergeKeySet has only operator<, equality = !(a<b) && !(b<a)
-        const auto &a = keys;
-        const auto &b = other.keys;
+        const auto& a = keys;
+        const auto& b = other.keys;
         return !(a < b) && !(b < a);
     }
 
-    virtual Analysis &operator+=(const Analysis &other) = 0;
+    virtual Analysis& operator+=(const Analysis& other) = 0;
 
-    void on_header(Header &header);
-    const std::string &get_smash_version() const { return smash_version; }
+    void on_header(Header& header);
+    const std::string& get_smash_version() const { return smash_version; }
 
-    virtual void analyze_particle_block(const ParticleBlock &block,const Accessor &accessor) {};
-    virtual void analyze_interaction_block(const InteractionBlock &block,const Accessor &accessor) {};
-    virtual void analyze_end_block(const EndBlock &block,const Accessor &accessor) {};
+    virtual void analyze_particle_block(const ParticleBlock& block,
+                                        const Accessor& accessor) {};
+    virtual void analyze_interaction_block(const InteractionBlock& block,
+                                           const Accessor& accessor) {};
+    virtual void analyze_end_block(const EndBlock& block,
+                                   const Accessor& accessor) {};
 
-
-
-    virtual void finalize() = 0;
-    virtual void save(const std::string &save_dir_path) = 0;
-    virtual void print_result_to(std::ostream &os) const {}
+    virtual void finalize() {};
+    virtual void save(const std::string& save_dir_path) {};
+    virtual void print_result_to(std::ostream& os) const {}
 };
 // ---------- Dispatcher ----------
 class DispatchingAccessor : public Accessor {
    public:
     void register_analysis(std::shared_ptr<Analysis> analysis);
-    void on_particle_block(const ParticleBlock &block) override;
-    void on_interaction_block(const InteractionBlock &block) override;
-    void on_end_block(const EndBlock &block) override;
-    void on_header(Header &header) override;
+    void on_particle_block(const ParticleBlock& block) override;
+    void on_interaction_block(const InteractionBlock& block) override;
+    void on_end_block(const EndBlock& block) override;
+    void on_header(Header& header) override;
+
+    void create_and_register_analysis(const std::string& analysis_name);
 
    private:
     std::vector<std::shared_ptr<Analysis>> analyses;
@@ -75,10 +78,9 @@ struct Entry {
 };
 
 void run_analysis(
-    const std::vector<std::pair<std::string, std::string>> &file_and_meta,
-    const std::vector<std::string> &analysis_names,
-    const std::vector<std::string> &quantities,
-    const std::string &output_folder = "."
-    );
+    const std::vector<std::pair<std::string, std::string>>& file_and_meta,
+    const std::vector<std::string>& analysis_names,
+    const std::vector<std::string>& quantities,
+    const std::string& output_folder = ".");
 
 #endif  // ANALYSIS_H
