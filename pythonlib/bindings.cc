@@ -42,23 +42,6 @@ class PythonAnalysis : public Analysis {
     PythonAnalysis(const std::string& name, py::object py_obj, py::dict opts)
         : Analysis(name), obj_(std::move(py_obj)), opts_(std::move(opts)) {}
 
-    Analysis& operator+=(const Analysis& other) override {
-        auto* o = dynamic_cast<const PythonAnalysis*>(&other);
-        if (!o) throw std::runtime_error("PythonAnalysis: merge mismatch");
-        py::gil_scoped_acquire gil;
-        if (py::hasattr(obj_, "merge_from")) {
-            obj_.attr("merge_from")(o->obj_, opts_);
-        } else if (py::hasattr(obj_, "__iadd__")) {
-            py::object r = obj_.attr("__iadd__")(o->obj_);
-            if (!r.is_none()) obj_ = std::move(r);
-        } else {
-            throw std::runtime_error(
-                "PythonAnalysis requires 'merge_from(other, opts)' or "
-                "'__iadd__(other)'");
-        }
-        return *this;
-    }
-
     void analyze_particle_block(const ParticleBlock& b,
                                 const Accessor& a) override {
         py::gil_scoped_acquire gil;
@@ -76,15 +59,13 @@ class PythonAnalysis : public Analysis {
         obj_.attr("on_interaction_block")(py::cast(b), py::cast(a), opts_);
     }
 
-    // ✔ NOW TAKES THE RESULTS DICT FROM PYTHON
-    py::object finalize_with_dict(py::object results) {
+    py::dict finalize(py::dict results, const std::string& out_dir) override {
         py::gil_scoped_acquire gil;
-        if (py::hasattr(obj_, "finalize"))
-            obj_.attr("finalize")(results);  // modifies results IN PLACE
-        return results;                      // return the same dict back
+        if (py::hasattr(obj_, "finalize")) obj_.attr("finalize")(results);
+        return results;
     }
 
-    void save_with_dict(py::object results, const std::string& out_dir) {
+    void save(py::dict results, const std::string& out_dir) override {
         py::gil_scoped_acquire gil;
         if (py::hasattr(obj_, "save_results")) {
             std::string file = out_dir + "/results.pkl";
@@ -92,12 +73,11 @@ class PythonAnalysis : public Analysis {
         }
     }
 
-    py::object to_state_dict() {
+    py::dict to_state_dict() const override {
         py::gil_scoped_acquire gil;
-        if (!py::hasattr(obj_, "to_state_dict")) {
+        if (!py::hasattr(obj_, "to_state_dict"))
             throw std::runtime_error("PythonAnalysis: missing to_state_dict()");
-        }
-        return obj_.attr("to_state_dict")();
+        return obj_.attr("to_state_dict")().cast<py::dict>();
     }
 
    private:
@@ -106,43 +86,24 @@ class PythonAnalysis : public Analysis {
 };
 
 PYBIND11_MODULE(_brass, m) {
-    m.def("run_analysis", &run_analysis, py::arg("file_and_meta"),
-          py::arg("analysis_names"), py::arg("quantities"),
-          py::arg("output_folder") = ".");
-
     m.def("list_analyses", &list_analyses);
     m.def("_clear_registry", [] { AnalysisRegistry::instance().clear(); });
 
     py::class_<Analysis, std::shared_ptr<Analysis>>(m, "Analysis")
         .def(
             "finalize",
-            [](Analysis& self, py::object results,
-               const std::string& /*out_dir*/) {
-                // out_dir is currently unused, but we accept it to match Python
-                if (auto* pa = dynamic_cast<PythonAnalysis*>(&self))
-                    return pa->finalize_with_dict(
-                        results);  // modifies and returns dict
-                return results;    // C++-only analyses: return unchanged
+            [](Analysis& self, py::dict results, const std::string& out_dir) {
+                return self.finalize(std::move(results), out_dir);
             },
             py::arg("results"), py::arg("output_dir"))
         .def(
             "save",
-            [](Analysis& self, py::object results, const std::string& out_dir) {
-                if (auto* pa = dynamic_cast<PythonAnalysis*>(&self)) {
-                    pa->save_with_dict(results, out_dir);
-                    return;
-                }
-                self.save(out_dir);
+            [](Analysis& self, py::dict results, const std::string& out_dir) {
+                self.save(std::move(results), out_dir);
             },
             py::arg("results"), py::arg("output_dir"))
         .def("to_state_dict",
-             [](Analysis& self) {
-                 auto* pa = dynamic_cast<PythonAnalysis*>(&self);
-                 if (!pa)
-                     throw std::runtime_error(
-                         "to_state_dict only valid for PythonAnalysis");
-                 return pa->to_state_dict();
-             })
+             [](Analysis& self) { return self.to_state_dict(); })
         .def("set_merge_keys_dict",
              [](Analysis& self, const std::map<std::string, std::string>& kv) {
                  MergeKeySet ks;

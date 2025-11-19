@@ -3,33 +3,38 @@ from collections.abc import Mapping
 import copy
 from typing import Any, Dict, List, Hashable, Iterable, Tuple
 import multiprocessing as mp
-
+import pickle
+import os
 import numpy as np
 import brass as br
 from brass import HistND
 
 
 def _merge_leaf(a: Any, b: Any, key: Hashable | None) -> Any:
+    # HistND: use builtin merge
     if isinstance(a, HistND) and isinstance(b, HistND):
         out = copy.deepcopy(a)
         out.merge_(b)
         return out
 
+    # numpy arrays: sum elementwise
     if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
-        if not np.array_equal(a, b):
-            raise ValueError(f"array mismatch at {key!r}")
-        return a
+        if a.shape != b.shape:
+            raise ValueError(f"array shape mismatch at {key!r}: {a.shape} vs {b.shape}")
+        return a + b
 
+    # lists: concatenate (append semantics)
+    if isinstance(a, list) and isinstance(b, list):
+        return a + b
+
+    # numeric scalars: sum
+    if isinstance(a, (int, float)) and isinstance(b, type(a)):
+        return a + b
+
+    # strings / tuples: require equality
     if isinstance(a, (str, tuple)) and isinstance(b, type(a)):
         if a != b:
             raise ValueError(f"value mismatch at {key!r}: {a!r} vs {b!r}")
-        return a
-
-    if isinstance(a, (int, float)) and isinstance(b, type(a)):
-        if key == "n_events":
-            return a + b
-        if a != b:
-            raise ValueError(f"numeric mismatch at {key!r}: {a} vs {b}")
         return a
 
     raise TypeError(
@@ -93,7 +98,6 @@ def run_analysis_one_file(
     reader.read()
 
     analysis_state = analysis.to_state_dict()
-
     return {meta: {analysis_name: analysis_state}}
 
 
@@ -130,8 +134,15 @@ def run_analysis_many(
     else:
         with mp.Pool(processes=nproc) as pool:
             states = pool.map(_worker_run, jobs)
-    results = merge_state_list(states)
+
+    results: Dict[str, Any] = merge_state_list(states)
+
     analysis = br.create_analysis(analysis_name)
     results = analysis.finalize(results, output_dir)
-    analysis.save(results, output_dir)
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_file = os.path.join(output_dir, f"{analysis_name}.pkl")
+    with open(out_file, "wb") as f:
+        pickle.dump(results, f)
+
     return results

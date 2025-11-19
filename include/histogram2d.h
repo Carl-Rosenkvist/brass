@@ -1,11 +1,13 @@
 #ifndef HISTOGRAM2D_H
 #define HISTOGRAM2D_H
 
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-
 class Histogram2D {
    public:
     Histogram2D(double x_min, double x_max, size_t x_bins, double y_min,
@@ -51,7 +53,7 @@ class Histogram2D {
     size_t num_x_bins() const { return x_bins_; }
     size_t num_y_bins() const { return y_bins_; }
 
-    void print(std::ostream &out = std::cout) const {
+    void print(std::ostream& out = std::cout) const {
         out << std::fixed << std::setprecision(4);
         for (size_t i = 0; i < x_bins_; ++i) {
             for (size_t j = 0; j < y_bins_; ++j) {
@@ -62,12 +64,12 @@ class Histogram2D {
     }
 
     void scale(double factor) {
-        for (double &count : counts_) {
+        for (double& count : counts_) {
             count *= factor;
         }
     }
 
-    Histogram2D &operator+=(const Histogram2D &other) {
+    Histogram2D& operator+=(const Histogram2D& other) {
         if (x_bins_ != other.x_bins_ || y_bins_ != other.y_bins_ ||
             x_min_ != other.x_min_ || x_max_ != other.x_max_ ||
             y_min_ != other.y_min_ || y_max_ != other.y_max_) {
@@ -89,35 +91,35 @@ class Histogram2D {
     double x_bin_width() const { return x_bin_width_; }
     double y_bin_width() const { return y_bin_width_; }
 
+    std::vector<double> x_edges() const {
+        std::vector<double> v(x_bins_ + 1);
+        for (size_t i = 0; i <= x_bins_; ++i) v[i] = x_min_ + i * x_bin_width_;
+        return v;
+    }
+
+    std::vector<double> y_edges() const {
+        std::vector<double> v(y_bins_ + 1);
+        for (size_t i = 0; i <= y_bins_; ++i) v[i] = y_min_ + i * y_bin_width_;
+        return v;
+    }
+
+    const std::vector<double>& counts_vector() const { return counts_; }
+
    private:
     double x_min_, x_max_, x_bin_width_;
     double y_min_, y_max_, y_bin_width_;
     size_t x_bins_, y_bins_;
-    std::vector<double> counts_;  // stored in row-major: [x][y]
+    std::vector<double> counts_;
 };
 
-inline void to_yaml(YAML::Emitter &out, const std::string &x_name,
-                    const std::string &y_name, const Histogram2D &h) {
-    out << YAML::BeginMap;
-
-    out << YAML::Key << x_name + "_range" << YAML::Value << YAML::Flow
-        << YAML::BeginSeq << h.x_min() << h.x_max() << YAML::EndSeq;
-    out << YAML::Key << y_name + "_range" << YAML::Value << YAML::Flow
-        << YAML::BeginSeq << h.y_min() << h.y_max() << YAML::EndSeq;
-
-    out << YAML::Key << x_name + "_bins" << YAML::Value << h.num_x_bins();
-    out << YAML::Key << y_name + "_bins" << YAML::Value << h.num_y_bins();
-
-    // flatten counts row-major: i over x, j over y
-    out << YAML::Key << "values" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (size_t i = 0; i < h.num_x_bins(); ++i) {
-        for (size_t j = 0; j < h.num_y_bins(); ++j) {
-            out << h.get_bin_count(i, j);
-        }
-    }
-    out << YAML::EndSeq;
-
-    out << YAML::EndMap;
+inline pybind11::dict hist2d_to_state_dict(const Histogram2D& h) {
+    pybind11::dict d;
+    d["x_edges"] = pybind11::cast(h.x_edges());
+    d["y_edges"] = pybind11::cast(h.y_edges());
+    d["counts"] = pybind11::cast(h.counts_vector());
+    d["x_bins"] = h.x_bins();
+    d["y_bins"] = h.y_bins();
+    return d;
 }
 
-#endif  // HISTOGRAM2D_H
+#endif
