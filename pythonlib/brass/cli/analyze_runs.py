@@ -272,7 +272,7 @@ def main(argv=None):
             print(f"[INFO] Running analysis: {name}")
         out_dir_for_analysis = results_dir
         os.makedirs(out_dir_for_analysis, exist_ok=True)
-        br.run_analysis_many(
+        br.run_analysis(
             file_and_meta=file_and_meta,
             analysis_name=name,
             quantities=first_quantities or [],

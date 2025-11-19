@@ -59,7 +59,7 @@ class PythonAnalysis : public Analysis {
         obj_.attr("on_interaction_block")(py::cast(b), py::cast(a), opts_);
     }
 
-    py::dict finalize(py::dict results, const std::string& out_dir) override {
+    py::dict finalize(py::dict results) override {
         py::gil_scoped_acquire gil;
         if (py::hasattr(obj_, "finalize")) obj_.attr("finalize")(results);
         return results;
@@ -92,10 +92,10 @@ PYBIND11_MODULE(_brass, m) {
     py::class_<Analysis, std::shared_ptr<Analysis>>(m, "Analysis")
         .def(
             "finalize",
-            [](Analysis& self, py::dict results, const std::string& out_dir) {
-                return self.finalize(std::move(results), out_dir);
+            [](Analysis& self, py::dict results) {
+                return self.finalize(std::move(results));
             },
-            py::arg("results"), py::arg("output_dir"))
+            py::arg("results"))
         .def(
             "save",
             [](Analysis& self, py::dict results, const std::string& out_dir) {

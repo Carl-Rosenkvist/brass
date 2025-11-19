@@ -65,7 +65,7 @@ class BulkObservables : public Analysis {
         }
     }
 
-    py::dict finalize(py::dict results, const std::string&) override {
+    py::dict finalize(py::dict results) override {
         for (auto item : results) {
             py::handle meta_key = item.first;
             py::dict meta_dict = py::cast<py::dict>(item.second);

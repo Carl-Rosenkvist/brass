@@ -112,7 +112,7 @@ def _worker_run(args) -> Dict[str, Any]:
     )
 
 
-def run_analysis_many(
+def run_analysis(
     file_and_meta: Iterable[Tuple[str, str]],
     analysis_name: str,
     quantities,

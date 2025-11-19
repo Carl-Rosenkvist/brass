@@ -34,7 +34,7 @@ class Analysis {
                                            const Accessor&) {}
     virtual void analyze_end_block(const EndBlock&, const Accessor&) {}
 
-    virtual py::dict finalize(py::dict results, const std::string& out_dir) {
+    virtual py::dict finalize(py::dict results) {
         return results;
     }
 
