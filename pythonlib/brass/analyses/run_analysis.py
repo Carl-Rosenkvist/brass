@@ -138,7 +138,7 @@ def run_analysis(
     results: Dict[str, Any] = merge_state_list(states)
 
     analysis = br.create_analysis(analysis_name)
-    results = analysis.finalize(results, output_dir)
+    results = analysis.finalize(results)
 
     os.makedirs(output_dir, exist_ok=True)
     out_file = os.path.join(output_dir, f"{analysis_name}.pkl")
