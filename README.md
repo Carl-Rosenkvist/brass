@@ -90,123 +90,131 @@ brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
 import numpy as np
 import brass as br
 from pathlib import Path
+from brass import HistND
+import pickle
 
-class Dndydpt:
-    def __init__(self, y_edges, pt_edges, track_pdgs=None):
-        self.y_edges  = np.asarray(y_edges)
-        self.pt_edges = np.asarray(pt_edges)
 
-        # 2D histogram over (pt, y), with variance tracking for errors
-        self.incl     = br.HistND([self.pt_edges, self.y_edges], track_variance=True)
-        self.per_pdg  = {}   # pdg -> HistND([pt, y], track_variance=True)
-        self.track    = set(track_pdgs or [])
+class Dndydmt:
+    def __init__(self, y_edges, mt_edges, track_pdgs=None):
+        self.y_edges = np.asarray(y_edges)
+        self.mt_edges = np.asarray(mt_edges)
+
+        # HistND expects a list of edges per dimension
+        self.incl = HistND([self.mt_edges, self.y_edges])
+        self.per_pdg: dict[int, HistND] = {}
+
+        self.track = set(track_pdgs or [])
         self.n_events = 0
+
+    def on_interaction_block(self, iblock, accessor, opts):
+        pass
+
+    def on_end_block(self, block, accessor, opts):
+        pass
 
     def on_particle_block(self, block, accessor, opts):
         self.n_events += 1
-        pairs = accessor.gather_block_arrays(block, ["p0","pz","px","py","pdg"])
-        cols  = {k: v for k, v in pairs}
+        pairs = accessor.gather_block_arrays(block)
+        cols = {k: v for k, v in pairs}
         E, pz, px, py, pdg = cols["p0"], cols["pz"], cols["px"], cols["py"], cols["pdg"]
 
-        m = (E > np.abs(pz))  # avoid invalid rapidity
-        if not m.any():
+        # avoid y NaN; clamp negative m^2
+        msk = E > np.abs(pz)
+        if not msk.any():
             return
-        E, pz, px, py, pdg = E[m], pz[m], px[m], py[m], pdg[m]
+        E, pz, px, py, pdg = E[msk], pz[msk], px[msk], py[msk], pdg[msk]
 
-        y  = 0.5*np.log((E + pz) / (E - pz))
         pt = np.hypot(px, py)
+        m2 = np.maximum(E * E - (px * px + py * py + pz * pz), 0.0)
+        m = np.sqrt(m2)
+        mt = np.hypot(pt, m)
+        y = 0.5 * np.log((E + pz) / (E - pz))
 
-        # inclusive fill
-        self.incl.fill(pt, y)
+        # inclusive histogram
+        self.incl.fill(mt, y)
 
-        # optional per-PDG fills
+        # tracked pdgs
         if self.track:
-            pdgs_here = np.intersect1d(np.unique(pdg), np.fromiter(self.track, dtype=int))
-            for val in pdgs_here:
-                sel = (pdg == val)
+            present_tracked = np.intersect1d(
+                np.unique(pdg), np.fromiter(self.track, dtype=int)
+            )
+            for val in present_tracked:
+                sel = pdg == val
                 H = self.per_pdg.setdefault(
-                    int(val), br.HistND([self.pt_edges, self.y_edges], track_variance=True)
+                    int(val), HistND([self.mt_edges, self.y_edges])
                 )
-                H.fill(pt, y, mask=sel)
+                H.fill(mt, y, mask=sel)
 
-    def merge_from(self, other, opts):
-        self.incl.merge_(other.incl)
-        for k, H in other.per_pdg.items():
-            self.per_pdg.setdefault(k, br.HistND([self.pt_edges, self.y_edges], track_variance=True))
-            self.per_pdg[k].merge_(H)
-        self.n_events += getattr(other, "n_events", 0)
 
-    def finalize(self, opts):
+    def to_state_dict(self):
+        """Return picklable state for this analysis instance.
+
+        brass will merge these dicts from different workers and pass
+        the merged structure into `finalize(results)`.
         """
-        Normalize to d^2N/(dy dpt) per event, and compute per-bin errors.
-        Error per bin = sqrt(variance), with variance propagated under normalization.
+        return {
+            "n_events": int(self.n_events),
+            "incl": self.incl,
+            "per_pdg": dict(self.per_pdg),
+        }
+
+    def finalize(self, results):
+        """Post-merge normalization.
+
+        `results` has the structure:
+        {
+          meta_key_1: {
+            "dndydmt": {
+               "n_events": ...,
+               "incl": HistND,
+               "per_pdg": {pdg: HistND, ...}
+            },
+            ...
+          },
+          meta_key_2: { ... },
+          ...
+        }
         """
-        dy  = np.diff(self.y_edges)   # (ny,)
-        dpt = np.diff(self.pt_edges)  # (npt,)
-        area = dpt[:, None] * dy[None, :]     # (npt, ny), supports non-uniform bins
-        n_ev = max(int(self.n_events), 1)
+        # bin widths (assumes uniform)
+        dy = np.diff(self.y_edges)[0]
+        dmt = np.diff(self.mt_edges)[0]
 
-        # Normalize counts -> per-event per (dy dpt)
-        self._normalize_hist2d_(self.incl, n_ev, area)
-        for H in self.per_pdg.values():
-            self._normalize_hist2d_(H, n_ev, area)
+        for meta_key, analyses in results.items():
+            d = analyses.get("dndydmt")
+            if d is None:
+                continue
 
-    @staticmethod
-    def _normalize_hist2d_(H, n_ev, area):
-        """
-        Counts and variance normalization:
-          value_norm = counts / (n_ev * area)
-          var_norm   = sumw2 / (n_ev^2 * area^2)   (since errors() = sqrt(sumw2))
-        """
-        H.counts[:] = H.counts / (n_ev * area)
-        if getattr(H, "sumw2", None) is not None:
-            H.sumw2[:] = H.sumw2 / ((n_ev * area) ** 2)
+            n_ev = max(int(d.get("n_events", 0)), 1)
+            norm = n_ev * dy * dmt
 
-    def _fmt_val(self, v):
-        return f"{round(v, 3):g}" if isinstance(v, float) else str(v)
+            H_incl = d.get("incl")
+            if isinstance(H_incl, HistND):
+                H_incl.counts /= norm
 
-    def _label_from_keys(self, keys: dict) -> str:
-        parts = [f"{k}-{self._fmt_val(keys[k])}" for k in sorted(keys)]
-        return "_".join(parts).replace("/", "-")
-
-    def save(self, out_dir, keys, opts):
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        tag = self._label_from_keys(keys)
-        path = out_dir / f"dndydpt_{tag}.npz"
-
-        # Build dict of per-PDG outputs: values + errors (if available)
-        pdg_arrays = {}
-        for k, H in self.per_pdg.items():
-            pdg_arrays[f"pdg_{k}"] = H.counts
-            if getattr(H, "sumw2", None) is not None:
-                pdg_arrays[f"pdg_{k}_err"] = np.sqrt(H.sumw2)
-
-        # Inclusive arrays: values + errors
-        extras = {}
-        if getattr(self.incl, "sumw2", None) is not None:
-            extras["H_inclusive_err"] = np.sqrt(self.incl.sumw2)
-
-        np.savez(
-            path,
-            H_inclusive=self.incl.counts,
-            y_edges=self.y_edges,
-            pt_edges=self.pt_edges,
-            n_events=int(self.n_events),
-            **pdg_arrays,
-            **extras,
-            keys=keys,
-            analysis_name=getattr(self, "name", "dndydpt_python"),
-            version=getattr(self, "smash_version", None),
-        )
-
-# Register
-edges_y  = np.linspace(-4, 4, 31)
-edges_pt = np.linspace(0.0, 3.0, 31)
+            for H in d.get("per_pdg", {}).values():
+                if isinstance(H, HistND):
+                    H.counts /= norm
+ 
+# --- Register analysis ---
+edges_y = np.linspace(-4, 4, 31)
+edges_mt = np.linspace(0.0, 3.5, 31)
 
 br.register_python_analysis(
-    "dndydpt_py",
-    lambda: Dndydpt(edges_y, edges_pt, track_pdgs=[2212, 211, -211]),
+    "dndydmt",
+    lambda: Dndydmt(
+        edges_y,
+        edges_mt,
+        [
+            2212, -2212,          # p, pbar
+            211, -211,            # pi+, pi-
+            321, -321,            # K+, K-
+            3122, -3122,          # Lambda
+            3212, -3212,          # Sigma0
+            3312, -3312,          # Xi-
+            3322, -3322,          # Xi0
+            3334, -3334,          # Omega-
+        ],
+    ),
     {},
 )
 ```
@@ -223,7 +231,7 @@ import argparse
 import brass as br
 import time
 # 1) import your python analysis module so it registers itself
-import dndydpt  
+import dndydmt  
 
 # 2) Quantities must EXACTLY match what the file contains
 QUANTITIES = [
@@ -248,7 +256,7 @@ def main():
     print(br.list_analyses())
     br.run_analysis(
         file_and_meta=[(binfile, "meta_key=1")],          
-        analysis_names=["dndydpt_py"],          
+        analysis_names=["dndydmt"],          
         quantities=QUANTITIES,
         output_folder=outdir,
     )
