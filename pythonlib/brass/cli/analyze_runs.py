@@ -1,4 +1,6 @@
 # brass/cli/analyze_runs.py
+from __future__ import annotations
+
 import os
 import sys
 import glob
@@ -7,13 +9,17 @@ import yaml
 import difflib
 import importlib
 import importlib.util
+import copy
+from collections.abc import Mapping
+from typing import Any, Dict, List, Hashable, Iterable, Tuple
+import multiprocessing as mp
 
+import numpy as np
 import brass as br
-from brass import MetaBuilder
+from brass import MetaBuilder, HistND
 
 
 def _import_any(target):
-    # if file path
     if os.path.isfile(target) and target.endswith(".py"):
         modname = os.path.splitext(os.path.basename(target))[0]
         spec = importlib.util.spec_from_file_location(modname, target)
@@ -23,11 +29,9 @@ def _import_any(target):
         spec.loader.exec_module(mod)
         return mod
     else:
-        # dotted name
         try:
             return importlib.import_module(target)
         except ImportError:
-            # fallback: if it's a relative path without .py
             if os.path.exists(target):
                 dirpath = os.path.dirname(os.path.abspath(target))
                 if dirpath not in sys.path:
@@ -65,9 +69,6 @@ def _dedupe_preserve_order(seq):
 
 
 def _find_binary_in_run(run_dir: str, candidates: str) -> str | None:
-    """
-    Return the first existing file for any name or glob in `candidates` inside run_dir, else None.
-    """
     pats = [p.strip() for p in (candidates or "").split(",") if p.strip()]
     if not pats:
         pats = ["particles_binary.bin"]
@@ -83,14 +84,13 @@ def _find_binary_in_run(run_dir: str, candidates: str) -> str | None:
             if os.path.isfile(full):
                 return full
 
-    # fallback: first .bin file if no candidates matched
     fallback = sorted(glob.glob(os.path.join(run_dir, "*.bin")))
     return fallback[0] if fallback else None
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Scan run dirs, build meta labels from keys, check Quantities, run brass.run_analysis."
+        description="Scan run dirs, build meta labels from keys, check Quantities, run brass analyses."
     )
     ap.add_argument(
         "--list-analyses", action="store_true", help="List registered analyses and exit"
@@ -137,15 +137,23 @@ def main(argv=None):
     ap.add_argument(
         "--binary-names",
         default="particles_binary.bin",
-        help="Comma-separated candidate filenames or glob patterns searched inside each run dir. "
-             "Example: 'collisions.bin,particles_binary.bin,*.bin'. Default: particles_binary.bin",
+        help=(
+            "Comma-separated candidate filenames or glob patterns searched inside each run dir. "
+            "Example: 'collisions.bin,particles_binary.bin,*.bin'. "
+            "Default: particles_binary.bin"
+        ),
+    )
+    ap.add_argument(
+        "--nproc",
+        type=int,
+        default=None,
+        help="Number of processes for multiprocessing (default: no multiprocessing).",
     )
 
     args = ap.parse_args(argv)
 
     _import_python_analyses(args.load)
 
-    # Handle --list-analyses early
     if args.list_analyses:
         analyses = br.list_analyses()
         if not analyses:
@@ -193,7 +201,7 @@ def main(argv=None):
         print(f"[ERROR] no runs match {args.pattern} under {out_top}", file=sys.stderr)
         return 2
 
-    file_and_meta = []
+    file_and_meta: list[tuple[str, str]] = []
     first_quantities = None
     mismatches = []
 
@@ -259,12 +267,19 @@ def main(argv=None):
         print(f"[INFO] Analyses: {requested}")
         print(f"[INFO] Results dir: {results_dir}")
 
-    br.run_analysis(
-        file_and_meta=file_and_meta,
-        analysis_names=requested,
-        quantities=first_quantities or [],
-        output_folder=results_dir,
-    )
+    for name in requested:
+        if args.verbose:
+            print(f"[INFO] Running analysis: {name}")
+        out_dir_for_analysis = results_dir
+        os.makedirs(out_dir_for_analysis, exist_ok=True)
+        br.run_analysis(
+            file_and_meta=file_and_meta,
+            analysis_name=name,
+            quantities=first_quantities or [],
+            output_dir=out_dir_for_analysis,
+            opts={},
+            nproc=args.nproc,
+        )
 
     if args.verbose:
         print("[DONE]")

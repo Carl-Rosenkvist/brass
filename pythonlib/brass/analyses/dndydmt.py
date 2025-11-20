@@ -3,15 +3,18 @@ import numpy as np
 import brass as br
 from pathlib import Path
 from brass import HistND
+import pickle
 
 
 class Dndydmt:
     def __init__(self, y_edges, mt_edges, track_pdgs=None):
         self.y_edges = np.asarray(y_edges)
         self.mt_edges = np.asarray(mt_edges)
+
         # HistND expects a list of edges per dimension
         self.incl = HistND([self.mt_edges, self.y_edges])
-        self.per_pdg = {}
+        self.per_pdg: dict[int, HistND] = {}
+
         self.track = set(track_pdgs or [])
         self.n_events = 0
 
@@ -54,50 +57,76 @@ class Dndydmt:
                 )
                 H.fill(mt, y, mask=sel)
 
-    def merge_from(self, other, opts):
-        self.incl.merge_(other.incl)
-        for k, H in other.per_pdg.items():
-            self.per_pdg.setdefault(k, HistND([self.mt_edges, self.y_edges]))
-            self.per_pdg[k].merge_(H)
-        self.n_events += getattr(other, "n_events", 0)
+    # --- New API: state export for brass merging ---
 
-    def finalize(self, opts):
+    def to_state_dict(self):
+        """Return picklable state for this analysis instance.
+
+        brass will merge these dicts from different workers and pass
+        the merged structure into `finalize(results)`.
+        """
+        return {
+            "n_events": int(self.n_events),
+            "incl": self.incl,
+            "per_pdg": dict(self.per_pdg),
+        }
+
+    def finalize(self, results):
+        """Post-merge normalization.
+
+        `results` has the structure:
+        {
+          meta_key_1: {
+            "dndydmt": {
+               "n_events": ...,
+               "incl": HistND,
+               "per_pdg": {pdg: HistND, ...}
+            },
+            ...
+          },
+          meta_key_2: { ... },
+          ...
+        }
+        """
+        # bin widths (assumes uniform)
         dy = np.diff(self.y_edges)[0]
         dmt = np.diff(self.mt_edges)[0]
-        n_ev = max(int(self.n_events), 1)
-        norm = n_ev * dy * dmt
-        self.incl.counts /= norm
-        for H in self.per_pdg.values():
-            H.counts /= norm
 
-    def _fmt_val(self, v):
-        return f"{round(v, 3):g}" if isinstance(v, float) else str(v)
+        for meta_key, analyses in results.items():
+            d = analyses.get("dndydmt")
+            if d is None:
+                continue
 
-    def _label_from_keys(self, keys: dict) -> str:
-        parts = [f"{k}-{self._fmt_val(keys[k])}" for k in sorted(keys)]
-        return "_".join(parts).replace("/", "-")
+            n_ev = max(int(d.get("n_events", 0)), 1)
+            norm = n_ev * dy * dmt
 
-    def save(self, out_dir, keys, opts):
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        tag = self._label_from_keys(keys)
-        path = out_dir / f"dndydmt_{tag}.npz"
+            H_incl = d.get("incl")
+            if isinstance(H_incl, HistND):
+                H_incl.counts /= norm
 
-        np.savez(
-            path,
-            H_inclusive=self.incl.counts,
-            y_edges=self.y_edges,
-            mt_edges=self.mt_edges,
-            n_events=int(self.n_events),
-            **{f"pdg_{k}": H.counts for k, H in self.per_pdg.items()},
-            keys=keys,
-            analysis_name=getattr(self, "name", "dndydmt"),
-            version=getattr(self, "smash_version", None),
-        )
-
-
+            for H in d.get("per_pdg", {}).values():
+                if isinstance(H, HistND):
+                    H.counts /= norm
+ 
 # --- Register analysis ---
 edges_y = np.linspace(-4, 4, 31)
 edges_mt = np.linspace(0.0, 3.5, 31)
 
-br.register_python_analysis("dndydmt", lambda: Dndydmt(edges_y, edges_mt), {})
+br.register_python_analysis(
+    "dndydmt",
+    lambda: Dndydmt(
+        edges_y,
+        edges_mt,
+        [
+            2212, -2212,          # p, pbar
+            211, -211,            # pi+, pi-
+            321, -321,            # K+, K-
+            3122, -3122,          # Lambda
+            3212, -3212,          # Sigma0
+            3312, -3312,          # Xi-
+            3322, -3322,          # Xi0
+            3334, -3334,          # Omega-
+        ],
+    ),
+    {},
+)

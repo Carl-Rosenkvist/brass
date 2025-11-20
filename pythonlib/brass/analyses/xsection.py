@@ -1,13 +1,11 @@
-import os
+# xsection.py (updated for new brass API)
+
 import numpy as np
 import math
-import csv
-import sys
 import brass as br
 
 NBINS_DEFAULT = 1000
 BMAX_DEFAULT  = 2.5
-CSV_DEFAULT   = "xsection.csv"
 
 QUANTITIES = ["t","x","y","z","p0","px","py","pz"]
 
@@ -28,18 +26,14 @@ def transverse_distance(pA, pB, xA, xB):
         val = xdx
     else:
         val = xdx - (xdp * xdp) / pdp
-    if val < 0.0:
-        val = 0.0
-    return math.sqrt(val)
+    return math.sqrt(max(val, 0.0))
 
 def sqrt_s_from(pA, pB):
     ptot = pA + pB
     E = ptot[0]
     p2 = float(np.dot(ptot[1:], ptot[1:]))
     s = E*E - p2
-    if s < 0.0:
-        s = 0.0
-    return math.sqrt(s)
+    return math.sqrt(max(s, 0.0))
 
 def energy_index(sqrts, ndigits=5):
     return round(float(sqrts), ndigits)
@@ -47,28 +41,49 @@ def energy_index(sqrts, ndigits=5):
 def calc_tot_xs(bins_scat, bins_tot, bmax, nbins):
     bins_scat = np.asarray(bins_scat, float)
     bins_tot  = np.asarray(bins_tot,  float)
+
     mask = bins_tot != 0
     if mask.sum() < 2:
         return 0.0, 0.0
+
     F = bins_scat[mask] / bins_tot[mask]
     if F.size < 2:
         return 0.0, 0.0
+
     bin_centers = (bmax/nbins) * (np.arange(F.size, dtype=float) + 1.0)
     dF = np.diff(F)
+
     xs   = -np.sum(bin_centers[:-1]**2 * dF) * math.pi * 10.0
-    xs_2 = -np.sum(bin_centers[:-1]**4 * dF) * (math.pi * 10.0)**2
-    varS = max(0.0, xs_2 - xs**2)
+    xs_2 = -np.sum(bin_centers[:-1]**4 * dF) * (math.pi*10.0)**2
+
+    varS = max(0.0, xs_2 - xs*xs)
     return xs, varS
 
+
+# ================================================================
+#                    UPDATED XSECTION ANALYSIS
+# ================================================================
 class Xsection:
-    def __init__(self, nbins=NBINS_DEFAULT, bmax=BMAX_DEFAULT, csv_path_default=CSV_DEFAULT):
+    """
+    Updated for new brass API:
+      - to_state_dict()
+      - finalize(results)
+      - no merge_from
+      - no save()
+    """
+
+    def __init__(self, nbins=NBINS_DEFAULT, bmax=BMAX_DEFAULT):
         self.nbins = int(nbins)
         self.bmax  = float(bmax)
-        self.csv_path_default = str(csv_path_default)
+
+        # by_energy[idx] = { tot, scat, events }
         self.by_energy = {}
-        self.n_events = 0
+
+        # needed to detect first interaction
         self.first_cols   = None
         self.initial_cols = None
+
+    # ------------------- Brass callbacks -------------------
 
     def on_particle_block(self, block, accessor, opts):
         if self.initial_cols is None:
@@ -82,7 +97,7 @@ class Xsection:
             if len(cols.get("p0", [])) >= 2:
                 self.first_cols = cols
 
-    def _ensure_energy_bin(self, idx):
+    def _ensure_bin(self, idx):
         if idx not in self.by_energy:
             self.by_energy[idx] = {
                 "tot":    np.zeros(self.nbins, dtype=int),
@@ -96,80 +111,77 @@ class Xsection:
             pA, pB, xA, xB = two_vecs(cols)
             R  = transverse_distance(pA, pB, xA, xB)
             sq = sqrt_s_from(pA, pB)
-            idx = energy_index(sq, ndigits=5)
-            self._ensure_energy_bin(idx)
-            self.by_energy[idx]["events"] += 1
+            idx = energy_index(sq)
+
+            self._ensure_bin(idx)
+            rec = self.by_energy[idx]
+            rec["events"] += 1
+
             if R <= self.bmax:
-                bin_index = int((R / self.bmax) * self.nbins)
-                bin_index = 0 if bin_index == 0 else bin_index - 1
-                if bin_index >= self.nbins:
-                    bin_index = self.nbins - 1
-                self.by_energy[idx]["tot"][bin_index]  += 1
+                bin_idx = int((R / self.bmax) * self.nbins) - 1
+                if bin_idx < 0:  bin_idx = 0
+                if bin_idx >= self.nbins: bin_idx = self.nbins - 1
+
+                rec["tot"][bin_idx] += 1
                 if self.first_cols is not None:
-                    self.by_energy[idx]["scat"][bin_index] += 1
-        self.n_events += 1
+                    rec["scat"][bin_idx] += 1
+
         self.first_cols = None
         self.initial_cols = None
 
-    def merge_from(self, other, opts):
-        if not isinstance(other, Xsection):
-            raise TypeError("merge_from expects Xsection")
-        if (other.nbins != self.nbins) or (other.bmax != self.bmax):
-            raise ValueError(f"Incompatible binning: "
-                             f"(nbins,bmax)=({self.nbins},{self.bmax}) vs ({other.nbins},{other.bmax})")
-        for idx, rec in other.by_energy.items():
-            self._ensure_energy_bin(idx)
-            self.by_energy[idx]["tot"]    += rec["tot"]
-            self.by_energy[idx]["scat"]   += rec["scat"]
-            self.by_energy[idx]["events"] += rec["events"]
-        self.n_events += other.n_events
-        return self
+    # ------------------- NEW brass API: Export state -------------------
 
-    def __iadd__(self, other):
-        return self.merge_from(other, opts={})
+    def to_state_dict(self):
+        return {
+            "nbins": self.nbins,
+            "bmax": self.bmax,
+            "by_energy": self.by_energy,
+        }
 
-    def _make_rows(self):
-        rows = []
-        for idx in sorted(self.by_energy.keys()):
-            rec = self.by_energy[idx]
-            xs, varS = calc_tot_xs(rec["scat"], rec["tot"], self.bmax, self.nbins)
-            err = math.sqrt(varS) if varS >= 0.0 else 0.0
-            rows.append({
-                "sqrt_s": idx,
-                "xsection_mb": xs,
-                "error_mb": err,
-                "variance_mb2": varS,
-                "tot_counts": int(rec["tot"].sum()),
-                "scat_counts": int(rec["scat"].sum()),
-                "events": rec["events"],
-                "nbins": self.nbins,
-                "bmax": self.bmax,
-            })
-        return rows
+    # ------------------- NEW brass API: Finalize merged results -------------------
 
-    def save(self, out_dir, keys, opts):
-        rows = self._make_rows()
-        if not rows:
-            print("[xsection] no data to save")
-            return
-        os.makedirs(out_dir, exist_ok=True)
-        csv_name = (opts.get("csv") if isinstance(opts, dict) and "csv" in opts
-                    else self.csv_path_default)
-        csv_path = os.path.join(out_dir, csv_name)
-        fieldnames = ["sqrt_s", "xsection_mb", "error_mb", "variance_mb2",
-                      "tot_counts", "scat_counts", "events", "nbins", "bmax"]
-        try:
-            with open(csv_path, "w", newline="") as f:
-                w = csv.DictWriter(f, fieldnames=fieldnames)
-                w.writeheader()
-                for r in rows:
-                    w.writerow(r)
-            print(f"[xsection] wrote {len(rows)} rows to {csv_path}")
-        except Exception as e:
-            print(f"[xsection] failed to write CSV: {e}", file=sys.stderr)
+    def finalize(self, results):
+        """
+        results:
+           {
+             meta_key: {
+                "xsection": {nbins, bmax, by_energy}
+             }
+           }
+        We compute xsection rows and store them under:
+           results[meta]["xsection_rows"] = [...]
+        The pipeline is responsible for writing CSV.
+        """
+        for meta, analyses in results.items():
+            d = analyses.get("xsection")
+            if d is None:
+                continue
 
+            nbins = d["nbins"]
+            bmax  = d["bmax"]
+            rows  = []
+
+            for idx, rec in d["by_energy"].items():
+                xs, varS = calc_tot_xs(rec["scat"], rec["tot"], bmax, nbins)
+                err = math.sqrt(varS) if varS > 0 else 0.0
+
+                rows.append({
+                    "sqrt_s": idx,
+                    "xsection_mb": xs,
+                    "error_mb": err,
+                    "variance_mb2": varS,
+                    "tot_counts": int(rec["tot"].sum()),
+                    "scat_counts": int(rec["scat"].sum()),
+                    "events": int(rec["events"]),
+                    "nbins": nbins,
+                    "bmax": bmax,
+                })
+
+            analyses["xsection_rows"] = rows   # pipeline will save these
+
+# Register updated
 br.register_python_analysis(
     "xsection",
-    lambda: Xsection(NBINS_DEFAULT, BMAX_DEFAULT, CSV_DEFAULT),
+    lambda: Xsection(NBINS_DEFAULT, BMAX_DEFAULT),
     {},
 )

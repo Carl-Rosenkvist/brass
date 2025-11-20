@@ -41,7 +41,6 @@ set(SRC_FILES
 
 set(ANALYSIS_FILES
     analyses/bulk.cc
-    analyses/midrap.cc
 )
 
 # Third-party: yaml-cpp (vendored)
