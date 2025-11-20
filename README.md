@@ -84,6 +84,8 @@ brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
 -v, --verbose
   Print detailed information.
 
+--nproc NPROC         Number of processes for multiprocessing (default: no multiprocessing).
+
 ## Writing Analyses
 
 ```python
