@@ -7,8 +7,6 @@ import glob
 import argparse
 import yaml
 import difflib
-import importlib
-import importlib.util
 import copy
 from collections.abc import Mapping
 from typing import Any, Dict, List, Hashable, Iterable, Tuple
@@ -17,36 +15,6 @@ import multiprocessing as mp
 import numpy as np
 import brass as br
 from brass import MetaBuilder, HistND
-
-
-def _import_any(target):
-    if os.path.isfile(target) and target.endswith(".py"):
-        modname = os.path.splitext(os.path.basename(target))[0]
-        spec = importlib.util.spec_from_file_location(modname, target)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Failed to load module from file {target}")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod
-    else:
-        try:
-            return importlib.import_module(target)
-        except ImportError:
-            if os.path.exists(target):
-                dirpath = os.path.dirname(os.path.abspath(target))
-                if dirpath not in sys.path:
-                    sys.path.insert(0, dirpath)
-                modname = os.path.splitext(os.path.basename(target))[0]
-                return importlib.import_module(modname)
-            raise
-
-
-def _import_python_analyses(targets):
-    for t in targets:
-        try:
-            _import_any(t)
-        except Exception as e:
-            print(f"[WARN] Failed to import {t}: {e}", file=sys.stderr)
 
 
 def get_by_path(d, dotted, default=None):
@@ -68,25 +36,32 @@ def _dedupe_preserve_order(seq):
     return out
 
 
-def _find_binary_in_run(run_dir: str, candidates: str) -> str | None:
+
+def _find_binary_in_run(run_dir: str, candidates: str) -> str:
     pats = [p.strip() for p in (candidates or "").split(",") if p.strip()]
     if not pats:
         pats = ["particles_binary.bin"]
 
+    # Try each pattern
     for pat in pats:
         full = os.path.join(run_dir, pat)
+
+        # Glob-pattern?
         if any(ch in pat for ch in ["*", "?", "["]):
             matches = sorted(glob.glob(full))
             for m in matches:
                 if os.path.isfile(m):
                     return m
+
+        # Exact filename
         else:
             if os.path.isfile(full):
                 return full
 
-    fallback = sorted(glob.glob(os.path.join(run_dir, "*.bin")))
-    return fallback[0] if fallback else None
-
+    # STRICT: nothing found -> throw
+    raise FileNotFoundError(
+        f"No binary file found in '{run_dir}' matching pattern(s): {', '.join(pats)}"
+    )
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
@@ -152,7 +127,7 @@ def main(argv=None):
 
     args = ap.parse_args(argv)
 
-    _import_python_analyses(args.load)
+    br.import_python_analyses(args.load)
 
     if args.list_analyses:
         analyses = br.list_analyses()
@@ -209,15 +184,23 @@ def main(argv=None):
         args.keys or [], missing="NA", expand_dicts=True, expand_lists=True
     )
 
+ 
     for rd in runs:
         binf = _find_binary_in_run(rd, args.binary_names)
+        try:
+            binf = _find_binary_in_run(rd, args.binary_names)
+        except FileNotFoundError as e:
+            print(f"[ERROR] {e}", file=sys.stderr)
+            return 2
+
         ymlf = os.path.join(rd, "config.yaml")
 
-        if not (binf and os.path.isfile(binf) and os.path.isfile(ymlf)):
-            if args.verbose:
-                miss = "binary" if not (binf and os.path.isfile(binf)) else "YAML"
-                print(f"[SKIP] {rd} (missing {miss})")
-            continue
+        if not os.path.isfile(ymlf):
+            print(f"[ERROR] Missing config YAML in {rd}: {ymlf}", file=sys.stderr)
+            return 2
+
+        if args.verbose:
+            print(f"[BIN] {rd}: using binary file '{binf}'")
 
         try:
             with open(ymlf, "r") as f:
@@ -279,6 +262,8 @@ def main(argv=None):
             output_dir=out_dir_for_analysis,
             opts={},
             nproc=args.nproc,
+            load = args.load
+
         )
 
     if args.verbose:

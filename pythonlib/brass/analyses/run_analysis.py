@@ -8,6 +8,40 @@ import os
 import numpy as np
 import brass as br
 from brass import HistND
+import sys
+import importlib
+import importlib.util
+
+
+
+def _import_any(target):
+    if os.path.isfile(target) and target.endswith(".py"):
+        modname = os.path.splitext(os.path.basename(target))[0]
+        spec = importlib.util.spec_from_file_location(modname, target)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Failed to load module from file {target}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    else:
+        try:
+            return importlib.import_module(target)
+        except ImportError:
+            if os.path.exists(target):
+                dirpath = os.path.dirname(os.path.abspath(target))
+                if dirpath not in sys.path:
+                    sys.path.insert(0, dirpath)
+                modname = os.path.splitext(os.path.basename(target))[0]
+                return importlib.import_module(modname)
+            raise
+
+
+def import_python_analyses(targets):
+    for t in targets:
+        try:
+            _import_any(t)
+        except Exception as e:
+            print(f"[WARN] Failed to import {t}: {e}", file=sys.stderr)
 
 
 def _merge_leaf(a: Any, b: Any, key: Hashable | None) -> Any:
@@ -88,8 +122,12 @@ def run_analysis_one_file(
     analysis_name: str,
     quantities,
     opts=None,
+    load=None
 ) -> Dict[str, Any]:
     opts = opts or {}
+
+    if(load):
+        import_python_analyses(load)
 
     analysis = br.create_analysis(analysis_name)
     dispatcher = br.DispatchingAccessor()
@@ -102,13 +140,14 @@ def run_analysis_one_file(
 
 
 def _worker_run(args) -> Dict[str, Any]:
-    filename, meta, analysis_name, quantities, opts = args
+    filename, meta, analysis_name, quantities, opts, load = args
     return run_analysis_one_file(
         filename=filename,
         meta=meta,
         analysis_name=analysis_name,
         quantities=quantities,
         opts=opts,
+        load=load
     )
 
 
@@ -119,10 +158,11 @@ def run_analysis(
     output_dir=".",
     opts=None,
     nproc: int | None = None,
+    load = None
 ) -> Dict[str, Any]:
     opts = opts or {}
     jobs = [
-        (fname, meta, analysis_name, quantities, opts)
+        (fname, meta, analysis_name, quantities, opts,load)
         for (fname, meta) in file_and_meta
     ]
 
