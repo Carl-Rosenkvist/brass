@@ -10,8 +10,6 @@
 
 using std::size_t;
 
-// ----------------------------- trivial wrappers -----------------------------
-
 int32_t Accessor::get_int(const std::string& name, const ParticleBlock& block,
                           size_t i) const {
     return quantity<int32_t>(name, block, i);
@@ -21,8 +19,6 @@ double Accessor::get_double(const std::string& name, const ParticleBlock& block,
                             size_t i) const {
     return quantity<double>(name, block, i);
 }
-
-// --------------------------- resolving & caching ----------------------------
 
 Accessor::QuantityHandle Accessor::resolve(const std::string& name) const {
     if (!layout) {
@@ -61,8 +57,6 @@ std::vector<Accessor::ResolvedField> Accessor::make_resolved_fields(
     }
     return out;
 }
-
-// ------------------------------ array gather --------------------------------
 
 py::list Accessor::gather_arrays_resolved(
     const char* base, size_t count, size_t stride,

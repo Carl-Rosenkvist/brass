@@ -11,15 +11,11 @@
 #include <type_traits>
 #include <vector>
 
-// ======================== Format (future-proof, defaulted now)
-// ========================
 struct Format {
     uint16_t version = 0;
     uint16_t variant = 0;
 };
 
-// ============================= Helpers (templates inline)
-// =============================
 inline std::vector<char> read_chunk(std::ifstream& f, size_t n) {
     std::vector<char> buf(n);
     if (n) {
@@ -57,8 +53,6 @@ inline size_t checked_mul(size_t a, size_t b, const char* what) {
     return a * b;
 }
 
-// ================================ Tag for block loop
-// ==================================
 enum class BlockTag : char { Particle = 'p', End = 'f', Interaction = 'i' };
 
 inline std::optional<BlockTag> read_tag(std::ifstream& f) {
@@ -76,8 +70,6 @@ inline std::optional<BlockTag> read_tag(std::ifstream& f) {
     }
 }
 
-// =================================== Header
-// ==========================================
 struct Header {
     std::array<char, 5> magic_number{{0, 0, 0, 0, 0}};  // includes NUL
     uint16_t format_version = 0;
@@ -89,8 +81,6 @@ struct Header {
     void print() const;
 };
 
-// ================================== EndBlock
-// =========================================
 struct EndBlock {
     uint32_t event_number = 0;
     uint32_t ensamble_number = 0;
@@ -101,8 +91,6 @@ struct EndBlock {
     static EndBlock read_from(std::ifstream& bfile, const Format& fmt = {});
 };
 
-// ================================= ParticleBlock
-// =====================================
 struct ParticleBlock {
     int32_t event_number = 0;
     int32_t ensamble_number = 0;
@@ -120,8 +108,6 @@ struct ParticleBlock {
     }
 };
 
-// =============================== InteractionBlock
-// ====================================
 struct InteractionBlock {
     int32_t n_in = 0;
     int32_t n_out = 0;

@@ -32,7 +32,6 @@ set(SRC_FILES
     src/analysis.cc
     src/analysisregister.cc
     src/binaryreader.cc
-    src/datatree.cc
     src/mergekey.cc
     src/quantities.cc 
     src/blocks.cc 

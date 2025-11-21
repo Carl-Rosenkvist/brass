@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-// =================================== Header
-// ==========================================
 Header Header::read_from(std::ifstream& bfile) {
     Header h;
     bfile.read(h.magic_number.data(), 4);
@@ -28,8 +26,6 @@ void Header::print() const {
               << "Smash Version:  " << smash_version << "\n";
 }
 
-// ================================== EndBlock
-// =========================================
 EndBlock EndBlock::read_from(std::ifstream& bfile, const Format& /*fmt*/) {
     EndBlock e;
     auto buf = read_chunk(bfile, EndBlock::SIZE);
@@ -42,8 +38,6 @@ EndBlock EndBlock::read_from(std::ifstream& bfile, const Format& /*fmt*/) {
     return e;
 }
 
-// ================================= ParticleBlock
-// =====================================
 ParticleBlock ParticleBlock::read_from(std::ifstream& bfile, size_t psize,
                                        const Format& /*fmt*/) {
     ParticleBlock p;
@@ -63,8 +57,6 @@ ParticleBlock ParticleBlock::read_from(std::ifstream& bfile, size_t psize,
     return p;
 }
 
-// =============================== InteractionBlock
-// ====================================
 InteractionBlock InteractionBlock::read_from(std::ifstream& bfile, size_t psize,
                                              const Format& fmt) {
     InteractionBlock ib;

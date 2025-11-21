@@ -23,6 +23,13 @@ const std::unordered_map<std::string, QuantityType> quantity_string_map = {
     {"pdg_mother2", QuantityType::Int32},
     {"baryon_number", QuantityType::Int32},
     {"strangeness", QuantityType::Int32},
+    {"tau", QuantityType::Double},
+    {"eta", QuantityType::Double},
+    {"eta_s", QuantityType::Double},
+    {"mt", QuantityType::Double},
+    {"Rap", QuantityType::Double},
+    {"y_rap", QuantityType::Double},
+    {"perturbative_weight", QuantityType::Double},
 };
 
 // --- Helpers ---
@@ -38,11 +45,11 @@ size_t type_size(QuantityType t) {
 }
 
 std::unordered_map<std::string, size_t> compute_quantity_layout(
-    const std::vector<std::string> &names) {
+    const std::vector<std::string>& names) {
     std::unordered_map<std::string, size_t> layout;
     size_t offset = 0;
 
-    for (const auto &name : names) {
+    for (const auto& name : names) {
         auto it = quantity_string_map.find(name);
         if (it == quantity_string_map.end())
             throw std::runtime_error("Unknown quantity: " + name);
