@@ -124,7 +124,6 @@ def main(argv=None):
         default=None,
         help="Number of processes for multiprocessing (default: no multiprocessing).",
     )
-
     ap.add_argument(
         "-q",
         "--quantities",
@@ -193,7 +192,6 @@ def main(argv=None):
     )
 
     for rd in runs:
-        binf = _find_binary_in_run(rd, args.binary_names)
         try:
             binf = _find_binary_in_run(rd, args.binary_names)
         except FileNotFoundError as e:
@@ -216,9 +214,6 @@ def main(argv=None):
             print(f"[WARN] bad YAML {ymlf}: {e}", file=sys.stderr)
             continue
 
-        q = get_by_path(cfg, "Output.Particles.Quantities", [])
-        q = list(q) if isinstance(q, list) else []
-
         if args.quantities is None:
             q = get_by_path(cfg, "Output.Particles.Quantities", [])
             q = list(q) if isinstance(q, list) else []
@@ -235,6 +230,7 @@ def main(argv=None):
     if not file_and_meta:
         print("[ERROR] no valid runs found.", file=sys.stderr)
         return 2
+
     if args.quantities is not None:
         quantities = list(args.quantities)
     else:
@@ -259,7 +255,7 @@ def main(argv=None):
 
     if args.verbose:
         print(f"[INFO] N files: {len(file_and_meta)}")
-        print(f"[INFO] Quantities: {first_quantities}")
+        print(f"[INFO] Quantities: {quantities}")
         print(f"[INFO] Analyses: {requested}")
         print(f"[INFO] Results dir: {results_dir}")
 
@@ -271,7 +267,7 @@ def main(argv=None):
         br.run_analysis(
             file_and_meta=file_and_meta,
             analysis_name=name,
-            quantities=first_quantities or [],
+            quantities=quantities,
             output_dir=out_dir_for_analysis,
             opts={},
             nproc=args.nproc,
@@ -281,7 +277,3 @@ def main(argv=None):
     if args.verbose:
         print("[DONE]")
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
