@@ -45,18 +45,15 @@ class DndydmtUnwounded:
         pairs = accessor.gather_block_arrays(block)
         cols = {k: v for k, v in pairs}
 
-        E    = cols["p0"]
-        pz   = cols["pz"]
-        pdg  = cols["pdg"]
+        E = cols["p0"]
+        pz = cols["pz"]
+        pdg = cols["pdg"]
         ncoll = cols["ncoll"]
 
         # -----------------------------------------------------------------
         # 1. Count UNWOUNDED nucleons
         # -----------------------------------------------------------------
-        unwounded = np.logical_and(
-            np.isin(pdg, list(self.NUCLEONS)),
-            ncoll == 0
-        ).sum()
+        unwounded = np.logical_and(np.isin(pdg, list(self.NUCLEONS)), ncoll == 0).sum()
         k = int(unwounded)
 
         # Ensure dictionary initialized
@@ -79,7 +76,7 @@ class DndydmtUnwounded:
         y = 0.5 * np.log((E + pz) / (E - pz))
 
         # mT from E and pz:
-        mt = np.sqrt(np.maximum(E*E - pz*pz, 0.0))
+        mt = np.sqrt(np.maximum(E * E - pz * pz, 0.0))
 
         # -----------------------------------------------------------------
         # 3. Fill PDG-specific histograms
@@ -88,13 +85,10 @@ class DndydmtUnwounded:
 
         for val in present:
             val = int(val)
-            sel = (pdg == val)
+            sel = pdg == val
 
             pdg_map = self.per_unwounded[k]["per_pdg"]
-            H = pdg_map.setdefault(
-                val,
-                HistND([self.mt_edges, self.y_edges])
-            )
+            H = pdg_map.setdefault(val, HistND([self.mt_edges, self.y_edges]))
             H.fill(mt, y, mask=sel)
 
     # ---------------------------------------------------------------------
@@ -102,9 +96,7 @@ class DndydmtUnwounded:
     # ---------------------------------------------------------------------
 
     def to_state_dict(self):
-        return {
-            "per_unwounded": self.per_unwounded
-        }
+        return {"per_unwounded": self.per_unwounded}
 
     def finalize(self, results):
         """
@@ -123,9 +115,22 @@ edges_y = np.linspace(-4, 4, 31)
 edges_mt = np.linspace(0.0, 3.5, 31)
 
 TRACK_PDGS = [
-    2212, -2212, 211, -211, 321, -321,
-    3122, -3122, 3212, -3212,
-    3312, -3312, 3322, -3322, 3334, -3334,
+    2212,
+    -2212,
+    211,
+    -211,
+    321,
+    -321,
+    3122,
+    -3122,
+    3212,
+    -3212,
+    3312,
+    -3312,
+    3322,
+    -3322,
+    3334,
+    -3334,
 ]
 
 br.register_python_analysis(
