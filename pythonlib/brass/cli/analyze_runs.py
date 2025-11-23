@@ -36,7 +36,6 @@ def _dedupe_preserve_order(seq):
     return out
 
 
-
 def _find_binary_in_run(run_dir: str, candidates: str) -> str:
     pats = [p.strip() for p in (candidates or "").split(",") if p.strip()]
     if not pats:
@@ -62,6 +61,7 @@ def _find_binary_in_run(run_dir: str, candidates: str) -> str:
     raise FileNotFoundError(
         f"No binary file found in '{run_dir}' matching pattern(s): {', '.join(pats)}"
     )
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
@@ -125,6 +125,14 @@ def main(argv=None):
         help="Number of processes for multiprocessing (default: no multiprocessing).",
     )
 
+    ap.add_argument(
+        "-q",
+        "--quantities",
+        nargs="+",
+        default=None,
+        help="Override Output.Particles.Quantities with this list of quantities.",
+    )
+
     args = ap.parse_args(argv)
 
     br.import_python_analyses(args.load)
@@ -184,7 +192,6 @@ def main(argv=None):
         args.keys or [], missing="NA", expand_dicts=True, expand_lists=True
     )
 
- 
     for rd in runs:
         binf = _find_binary_in_run(rd, args.binary_names)
         try:
@@ -212,10 +219,13 @@ def main(argv=None):
         q = get_by_path(cfg, "Output.Particles.Quantities", [])
         q = list(q) if isinstance(q, list) else []
 
-        if first_quantities is None:
-            first_quantities = q
-        elif q != first_quantities:
-            mismatches.append((rd, q))
+        if args.quantities is None:
+            q = get_by_path(cfg, "Output.Particles.Quantities", [])
+            q = list(q) if isinstance(q, list) else []
+            if first_quantities is None:
+                first_quantities = q
+            elif q != first_quantities:
+                mismatches.append((rd, q))
 
         meta, _ = meta_builder.build(cfg)
         file_and_meta.append((binf, meta))
@@ -225,21 +235,24 @@ def main(argv=None):
     if not file_and_meta:
         print("[ERROR] no valid runs found.", file=sys.stderr)
         return 2
-
-    if mismatches:
-        msg = [
-            (
-                "[ERROR] Quantities mismatch detected:"
-                if args.strict_quantities
-                else "[WARN] Quantities mismatch detected (using first set):"
-            )
-        ]
-        msg.append(f"  First: {first_quantities}")
-        for rd, q in mismatches:
-            msg.append(f"  {rd}: {q}")
-        print("\n".join(msg), file=sys.stderr)
-        if args.strict_quantities:
-            return 3
+    if args.quantities is not None:
+        quantities = list(args.quantities)
+    else:
+        quantities = first_quantities or []
+        if mismatches:
+            msg = [
+                (
+                    "[ERROR] Quantities mismatch detected:"
+                    if args.strict_quantities
+                    else "[WARN] Quantities mismatch detected (using first set):"
+                )
+            ]
+            msg.append(f"  First: {first_quantities}")
+            for rd, q in mismatches:
+                msg.append(f"  {rd}: {q}")
+            print("\n".join(msg), file=sys.stderr)
+            if args.strict_quantities:
+                return 3
 
     results_dir = os.path.join(out_top, args.results_subdir)
     os.makedirs(results_dir, exist_ok=True)
@@ -262,8 +275,7 @@ def main(argv=None):
             output_dir=out_dir_for_analysis,
             opts={},
             nproc=args.nproc,
-            load = args.load
-
+            load=args.load,
         )
 
     if args.verbose:
