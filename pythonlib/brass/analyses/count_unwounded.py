@@ -28,7 +28,7 @@ class CountUnwounded:
     def to_state_dict(self):
         return {
             "n_events": int(self.n_events),
-            "unwounded": np.asarray(self.unwounded, dtype=int),
+            "unwounded": self.unwounded,
         }
 
     def finalize(self, results):
