@@ -63,6 +63,44 @@ def _find_binary_in_run(run_dir: str, candidates: str) -> str:
     )
 
 
+def _find_binaries_in_run(run_dir: str, candidates: str) -> list[str]:
+    """
+    Find *all* matching binary files in a run directory.
+
+    `candidates` is a comma-separated list of names or glob patterns.
+    Example: 'particles_*.bin,collisions_*.bin'.
+    """
+    pats = [p.strip() for p in (candidates or "").split(",") if p.strip()]
+    if not pats:
+        pats = ["particles_binary.bin"]
+
+    found: list[str] = []
+
+    for pat in pats:
+        full = os.path.join(run_dir, pat)
+
+        # Glob-pattern?
+        if any(ch in pat for ch in ["*", "?", "["]):
+            matches = sorted(glob.glob(full))
+            for m in matches:
+                if os.path.isfile(m):
+                    found.append(m)
+        # Exact filename
+        else:
+            if os.path.isfile(full):
+                found.append(full)
+
+    # dedupe + sort for stability
+    found = sorted(set(found))
+
+    if not found:
+        raise FileNotFoundError(
+            f"No binary file found in '{run_dir}' matching pattern(s): {', '.join(pats)}"
+        )
+
+    return found
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Scan run dirs, build meta labels from keys, check Quantities, run brass analyses."
@@ -193,7 +231,7 @@ def main(argv=None):
 
     for rd in runs:
         try:
-            binf = _find_binary_in_run(rd, args.binary_names)
+            binfs = _find_binaries_in_run(rd, args.binary_names)
         except FileNotFoundError as e:
             print(f"[ERROR] {e}", file=sys.stderr)
             return 2
@@ -205,7 +243,8 @@ def main(argv=None):
             return 2
 
         if args.verbose:
-            print(f"[BIN] {rd}: using binary file '{binf}'")
+            for b in binfs:
+                print(f"[BIN] {rd}: using binary file '{b}'")
 
         try:
             with open(ymlf, "r") as f:
@@ -223,9 +262,13 @@ def main(argv=None):
                 mismatches.append((rd, q))
 
         meta, _ = meta_builder.build(cfg)
-        file_and_meta.append((binf, meta))
+
+        # add *all* binaries from this run dir, same meta for each
+        for binf in binfs:
+            file_and_meta.append((binf, meta))
+
         if args.verbose:
-            print(f"[OK] {rd} -> {meta}")
+            print(f"[OK] {rd} -> {meta} (n_bin_files={len(binfs)})")
 
     if not file_and_meta:
         print("[ERROR] no valid runs found.", file=sys.stderr)

@@ -39,6 +39,7 @@ Issues = "https://github.com/Carl-Rosenkvist/brass/issues"
 
 [project.scripts]
 brass-analyze = "brass.cli.analyze_runs:main"
+brass-run_cmds = "brass.cli.run_commands:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "build", "twine"]

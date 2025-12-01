@@ -13,7 +13,6 @@ import importlib
 import importlib.util
 
 
-
 def _import_any(target):
     if os.path.isfile(target) and target.endswith(".py"):
         modname = os.path.splitext(os.path.basename(target))[0]
@@ -117,16 +116,11 @@ def merge_state_list(states: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def run_analysis_one_file(
-    filename: str,
-    meta: str,
-    analysis_name: str,
-    quantities,
-    opts=None,
-    load=None
+    filename: str, meta: str, analysis_name: str, quantities, opts=None, load=None
 ) -> Dict[str, Any]:
     opts = opts or {}
 
-    if(load):
+    if load:
         import_python_analyses(load)
 
     analysis = br.create_analysis(analysis_name)
@@ -147,7 +141,7 @@ def _worker_run(args) -> Dict[str, Any]:
         analysis_name=analysis_name,
         quantities=quantities,
         opts=opts,
-        load=load
+        load=load,
     )
 
 
@@ -158,11 +152,11 @@ def run_analysis(
     output_dir=".",
     opts=None,
     nproc: int | None = None,
-    load = None
+    load=None,
 ) -> Dict[str, Any]:
     opts = opts or {}
     jobs = [
-        (fname, meta, analysis_name, quantities, opts,load)
+        (fname, meta, analysis_name, quantities, opts, load)
         for (fname, meta) in file_and_meta
     ]
 
@@ -178,7 +172,7 @@ def run_analysis(
     results: Dict[str, Any] = merge_state_list(states)
 
     analysis = br.create_analysis(analysis_name)
-    results = analysis.finalize(results)
+    analysis.finalize(results)
 
     os.makedirs(output_dir, exist_ok=True)
     out_file = os.path.join(output_dir, f"{analysis_name}.pkl")

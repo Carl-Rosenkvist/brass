@@ -2,6 +2,9 @@ from itertools import product
 from .template import smash_cmd
 
 
+import json
+
+
 class Scan:
     def __init__(self):
         # groups of small cfg patches; sweep = cartesian product of groups
@@ -11,7 +14,7 @@ class Scan:
     def set_param(self, key: str, values, *, events=None, max_events=None):
         """Add a param sweep.
         - Normal: set_param(key, [v1, v2, ...])
-        - Split (only for energy): set_param(key, [v1, v2], events=[e1, e2] or [e], max_events=M)
+        - Split (only for energy/impact): set_param(key, [v1, v2], events=[e1, e2] or [e], max_events=M)
           For each (vi, ei): repeats = M // ei; emit that many runs with General.Nevents=ei
         """
         if not isinstance(values, (list, tuple)):
@@ -22,7 +25,8 @@ class Scan:
             "Modi.Collider.Impact.Value",
         ):
             raise ValueError(
-                "events/max_events splitting is only allowed for Modi.Collider.Sqrtsnn or Modi.Collider.Impact.Value"
+                "events/max_events splitting is only allowed for "
+                "Modi.Collider.Sqrtsnn or Modi.Collider.Impact.Value"
             )
         if (events is not None or max_events is not None) and self._split_used:
             raise ValueError("Only one split parameter allowed in a scan")
@@ -72,6 +76,7 @@ class Scan:
         d[parts[-1]] = value
 
     def _deep_merge(self, base, upd):
+        """Recursively merge upd into base."""
         for k, v in upd.items():
             if isinstance(v, dict) and isinstance(base.get(k), dict):
                 self._deep_merge(base[k], v)
@@ -79,7 +84,8 @@ class Scan:
                 base[k] = v
 
     def _flatten(self, d, prefix="", out=None):
-        out = out or {}
+        """Flatten nested dict into dotted keys: {'A': {'B': 1}} -> {'A.B': 1}"""
+        out = {} if out is None else out
         for k, v in d.items():
             kk = f"{prefix}.{k}" if prefix else k
             if isinstance(v, dict):
@@ -88,17 +94,48 @@ class Scan:
                 out[kk] = v
         return out
 
+    def _dotted_to_nested(self, path, value):
+        """Convert 'A.B.C' and v into {'A': {'B': {'C': v}}}."""
+        parts = path.split(".")
+        root = {}
+        cur = root
+        for p in parts[:-1]:
+            cur[p] = {}
+            cur = cur[p]
+        cur[parts[-1]] = value
+        return root
+
     def sweep(self):
-        """Yield (combo_dict, cfg_dict) for all combinations."""
+        """Yield (combo_dict, cfg_dict) for all combinations.
+
+        combo_dict: flattened dict of the effective config (last one wins).
+        cfg_dict:   nested dict config.
+        """
         if not self._groups:
             return
+
         for picks in product(*self._groups):
             cfg = {}
             for patch in picks:
                 self._deep_merge(cfg, patch)
-            yield self._flatten(cfg), cfg
+
+            combo = self._flatten(cfg)
+            yield combo, cfg
 
     def sweep_cmds(self):
-        """Yield (combo_dict, smash_cmd_string)."""
+        """Yield (combo_dict, cmd_string).
+
+        cmd_string has one `-c '{...}'` per flattened key, with nested JSON
+        reconstructed from the dotted paths in combo. JSON is compact and
+        wrapped in single quotes to avoid shell splitting.
+        """
         for combo, cfg in self.sweep():
-            yield combo, smash_cmd(cfg)
+            parts = []
+            for dotted_key, val in combo.items():
+                nested = self._dotted_to_nested(dotted_key, val)
+                # compact JSON: no spaces, safer and shorter
+                json_cfg = json.dumps(nested, separators=(",", ":"))
+                # single-quote the JSON so bash treats it as one arg
+                parts.append(f"-c '{json_cfg}'")
+            cmd = " ".join(parts)
+            yield combo, cmd

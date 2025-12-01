@@ -136,7 +136,12 @@ PYBIND11_MODULE(_brass, m) {
         .def_readonly("event_number", &EndBlock::event_number)
         .def_readonly("impact_parameter", &EndBlock::impact_parameter);
     py::class_<InteractionBlock>(m, "InteractionBlock")
-        .def_readonly("process", &InteractionBlock::process);
+        .def_readonly("n_in", &InteractionBlock::n_in)
+        .def_readonly("n_out", &InteractionBlock::n_out)
+        .def_readonly("process", &InteractionBlock::process)
+        .def_readonly("rho", &InteractionBlock::rho)
+        .def_readonly("sigma", &InteractionBlock::sigma)
+        .def_readonly("sigma_p", &InteractionBlock::sigma_p);
 
     // IMPORTANT: bind Accessor BEFORE DispatchingAccessor
     py::class_<Accessor, PyAccessor, std::shared_ptr<Accessor>>(m, "Accessor")

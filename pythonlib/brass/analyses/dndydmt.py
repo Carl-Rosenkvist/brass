@@ -68,6 +68,7 @@ class Dndydmt:
             for H in d.get("per_pdg", {}).values():
                 if isinstance(H, HistND):
                     H.counts /= norm
+        return results
 
 
 edges_y = np.linspace(-4, 4, 31)
