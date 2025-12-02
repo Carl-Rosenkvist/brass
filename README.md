@@ -12,7 +12,7 @@ A simple and extensible C++/Python library for reading and analyzing binary part
 - Developed primarily for Binary format used by SMASH (see https://theory.gsi.de/~smash/userguide/current/doxypage_output_binary.html)
 
 ## Performance
-<img width="800" alt="performance plot" src="https://github.com/user-attachments/assets/c7598803-dcab-41c6-ac22-0a478d92e698" />
+<img width="800" alt="performance plot" src="https://github.com/user-attachments/assets/2f007470-0fb4-4a5a-a011-29535f780eaa" />
 
 Performance benchmark based on rapidity distribution analyses implemented using each method.
 NumPy and SPARXK read OSCAR files. Rivet reads a YODA file. BRASS reads a binary OSCAR2013-extended file.
