@@ -15,7 +15,7 @@ license: "MIT"
 
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.17426761"
+    value: "10.5281/zenodo.17783753"
     description: "Zenodo archive of BRASS"
 
 preferred-citation:
@@ -27,5 +27,5 @@ preferred-citation:
       affiliation: Frankfurt Institute for Advanced Studies
       orcid: "https://orcid.org/0009-0001-8384-2806"
   year: 2025        
-  doi: "10.5281/zenodo.17426761"
-  url: "https://doi.org/10.5281/zenodo.17426761"
+  doi: "10.5281/zenodo.17783753"
+  url: "https://doi.org/10.5281/zenodo.17783753"
