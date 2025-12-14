@@ -35,7 +35,8 @@ set(SRC_FILES
     src/mergekey.cc
     src/quantities.cc 
     src/blocks.cc 
-    src/accessor.cc 
+    src/accessor.cc
+    src/histogram.cc
 )
 
 set(ANALYSIS_FILES
@@ -71,13 +72,14 @@ if(BUILD_PYTHON)
 endif()
 
 # ---- Tests ----
-option(BUILD_TESTS "Build unit tests" OFF)
+option(BUILD_TESTS "Build unit tests" ON)
 if(BUILD_TESTS)
   enable_testing()
 
   set(TEST_SOURCES
       tests/main.cc
       tests/binaryreader.cc
+      tests/histogram.cc
   )
 
   add_executable(unit_tests
@@ -86,7 +88,12 @@ if(BUILD_TESTS)
       ${ANALYSIS_FILES}
   )
   target_include_directories(unit_tests PRIVATE tests include)
-  target_link_libraries(unit_tests PRIVATE yaml-cpp)
+  target_link_libraries(unit_tests
+    PRIVATE
+    yaml-cpp
+    Python::Python
+    pybind11::headers
+)
 
   add_test(NAME unit_tests COMMAND unit_tests)
 endif()
