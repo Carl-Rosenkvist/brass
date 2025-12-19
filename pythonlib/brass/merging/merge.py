@@ -40,17 +40,38 @@ def _merge_leaf(a: Any, b: Any, key: Hashable | None) -> Any:
 
 
 def _merge_any(a: Any, b: Any, key: Hashable | None) -> Any:
+    # ---- meta is IMMUTABLE at any depth ----
+    if key == "meta":
+        if a != b:
+            raise ValueError("metadata mismatch during merge")
+        return copy.deepcopy(a)
+
+    # ---- dict merge, but NEVER recurse into meta ----
     if isinstance(a, dict) and isinstance(b, dict):
         out: Dict[Any, Any] = {}
+
         all_keys = set(a.keys()) | set(b.keys())
         for k in all_keys:
+            if k == "meta":
+                if k in a and k in b:
+                    if a[k] != b[k]:
+                        raise ValueError("metadata mismatch during merge")
+                    out[k] = copy.deepcopy(a[k])
+                elif k in a:
+                    out[k] = copy.deepcopy(a[k])
+                else:
+                    out[k] = copy.deepcopy(b[k])
+                continue  # 🔥 DO NOT recurse
+
             if k in a and k in b:
                 out[k] = _merge_any(a[k], b[k], k)
             elif k in a:
                 out[k] = copy.deepcopy(a[k])
             else:
                 out[k] = copy.deepcopy(b[k])
+
         return out
+
     return _merge_leaf(a, b, key)
 
 

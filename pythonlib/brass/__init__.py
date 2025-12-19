@@ -6,7 +6,7 @@ from .scan.scan import Scan
 from .histNd import HistND
 from .meta.meta import MetaBuilder
 from .analyses.run_analysis import *
-
+from .merging.merge import *
 from . import analyses  # this will run analyses/__init__.py
 import atexit
 

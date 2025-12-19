@@ -1,12 +1,14 @@
 #ifndef HISTOGRAM1D_H
 #define HISTOGRAM1D_H
 
-#include <yaml-cpp/yaml.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+
 class Histogram1D {
    public:
     Histogram1D(double min, double max, size_t bins)
@@ -24,47 +26,32 @@ class Histogram1D {
         counts_[bin] += weight;
         return true;
     }
+
     double bin_center(size_t i) const {
         if (i >= bins_) throw std::out_of_range("Invalid bin index");
         return min_ + (i + 0.5) * bin_width_;
-    }
-
-    double get_bin_count(size_t i) const {
-        if (i >= bins_) throw std::out_of_range("Invalid bin index");
-        return counts_[i];
     }
 
     double bin_edge(size_t i) const {
         if (i > bins_) throw std::out_of_range("Invalid bin edge index");
         return min_ + i * bin_width_;
     }
+
     size_t num_bins() const { return bins_; }
-
-    void print(std::ostream &out = std::cout) const {
-        out << std::fixed << std::setprecision(4);
-        for (size_t i = 0; i < bins_; ++i) {
-            out << bin_center(i) << "\t" << counts_[i] << "\n";
-        }
-    }
-
     double bin_width() const { return bin_width_; }
 
-    void scale(double factor) {
-        for (double &count : counts_) {
-            count *= factor;
-        }
-    }
-
-    double raw_bin_content(size_t i) const {
-        return get_bin_count(i);  // just for naming consistency
-    }
-
     double bin_content(size_t i) const {
-        return get_bin_count(
-            i);  // you could add smoothing, etc., later if needed
+        if (i >= bins_) throw std::out_of_range("Invalid bin index");
+        return counts_[i];
     }
 
-    Histogram1D &operator+=(const Histogram1D &other) {
+    const std::vector<double>& counts() const { return counts_; }
+
+    void scale(double factor) {
+        for (double& c : counts_) c *= factor;
+    }
+
+    Histogram1D& operator+=(const Histogram1D& other) {
         if (bins_ != other.bins_ || min_ != other.min_ || max_ != other.max_) {
             throw std::runtime_error(
                 "Cannot add histograms with different binning.");
@@ -81,31 +68,45 @@ class Histogram1D {
     std::vector<double> counts_;
 };
 
-inline bool operator==(const Histogram1D &lhs, const Histogram1D &rhs) {
-    return false;
+inline bool operator==(const Histogram1D& a, const Histogram1D& b) {
+    if (a.num_bins() != b.num_bins()) return false;
+    for (size_t i = 0; i < a.num_bins(); ++i) {
+        if (a.bin_content(i) != b.bin_content(i)) return false;
+    }
+    return true;
 }
 
-inline bool operator!=(const Histogram1D &lhs, const Histogram1D &rhs) {
-    return !(lhs == rhs);
+inline bool operator!=(const Histogram1D& a, const Histogram1D& b) {
+    return !(a == b);
 }
 
-inline void to_yaml(YAML::Emitter &out, const Histogram1D &h) {
-    out << YAML::BeginMap;
+#include <pybind11/numpy.h>
 
-    out << YAML::Key << "values" << YAML::Value << YAML::Flow << YAML::BeginSeq;
-    for (size_t i = 0; i < h.num_bins(); ++i) {
-        out << h.raw_bin_content(i);
+inline pybind11::dict hist1d_to_state_dict(const Histogram1D& h) {
+    pybind11::dict d;
+
+    const size_t nbins = h.num_bins();
+
+    // ---- edges array ----
+    pybind11::array_t<double> edges(nbins + 1);
+    auto edges_buf = edges.mutable_unchecked<1>();
+
+    for (size_t i = 0; i <= nbins; ++i) {
+        edges_buf(i) = h.bin_edge(i);
     }
-    out << YAML::EndSeq;
 
-    out << YAML::Key << "centers" << YAML::Value << YAML::Flow
-        << YAML::BeginSeq;
-    for (size_t i = 0; i < h.num_bins(); ++i) {
-        out << h.bin_center(i);
+    // ---- counts array ----
+    const auto& counts_vec = h.counts();
+    pybind11::array_t<double> counts(counts_vec.size());
+    auto counts_buf = counts.mutable_unchecked<1>();
+
+    for (size_t i = 0; i < counts_vec.size(); ++i) {
+        counts_buf(i) = counts_vec[i];
     }
-    out << YAML::EndSeq;
 
-    out << YAML::EndMap;
+    d["counts"] = counts;
+
+    return d;
 }
 
 #endif  // HISTOGRAM1D_H

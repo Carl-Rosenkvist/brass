@@ -70,42 +70,49 @@ def test_bulk_distributions(tmp_path):
     assert "bulk" in state[meta_label]
     bulk_state = state[meta_label]["bulk"]
 
+    # --- number of events ---
     n_events = bulk_state["n_events"]
     assert n_events == len(events)
 
+    # --- metadata (bin edges) ---
+    meta = bulk_state["meta"]
+    pt_edges = np.array(meta["pt_edges"])
+    y_edges = np.array(meta["y_edges"])
+
+    dpt = pt_edges[1] - pt_edges[0]
+    dy = y_edges[1] - y_edges[0]
+
+    # --- spectrum for pdg 211 ---
     spectra = bulk_state["spectra"][211]
 
-    x_edges = np.array(spectra["x_edges"])
-    y_edges = np.array(spectra["y_edges"])
     x_bins = spectra["x_bins"]
     y_bins = spectra["y_bins"]
     counts = np.array(spectra["counts"]).reshape(x_bins, y_bins)
 
-    pt_edges = x_edges
-    y_edges_ = y_edges
-
-    dpt = pt_edges[1] - pt_edges[0]
-    dy = y_edges_[1] - y_edges_[0]
-
+    # --- projections ---
     N_y = counts.sum(axis=0)
     N_pt = counts.sum(axis=1)
 
     dn_dy_analysis = N_y / (n_events * dy)
     dn_dpt_analysis = N_pt / (n_events * dpt)
 
+    # --- truth ---
     all_parts = [p for ev in events for p in ev]
     px = np.array([p[2] for p in all_parts])
     py = np.array([p[3] for p in all_parts])
     pz = np.array([p[4] for p in all_parts])
     e = np.array([p[1] for p in all_parts])
+
     pt = np.sqrt(px**2 + py**2)
     y = 0.5 * np.log((e + pz) / (e - pz))
 
-    dn_dy_truth, _ = np.histogram(y, bins=y_edges_)
+    dn_dy_truth, _ = np.histogram(y, bins=y_edges)
     dn_dpt_truth, _ = np.histogram(pt, bins=pt_edges)
+
     dn_dy_truth = dn_dy_truth / (n_events * dy)
     dn_dpt_truth = dn_dpt_truth / (n_events * dpt)
 
+    # --- checks ---
     assert np.isclose(dn_dy_analysis.sum(), dn_dy_truth.sum(), rtol=1e-4)
     assert np.isclose(dn_dpt_analysis.sum(), dn_dpt_truth.sum(), rtol=1e-4)
 

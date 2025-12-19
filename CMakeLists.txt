@@ -40,10 +40,9 @@ set(SRC_FILES
 
 set(ANALYSIS_FILES
     analyses/bulk.cc
+    analyses/centrality.cc
 )
 
-# Third-party: yaml-cpp (vendored)
-add_subdirectory(external/yaml-cpp)
 
 option(BUILD_PYTHON "Build Python extension module" ON)
 
@@ -58,7 +57,6 @@ if(BUILD_PYTHON)
       ${ANALYSIS_FILES}
   )
   target_include_directories(_brass PRIVATE include)
-  target_link_libraries(_brass PRIVATE yaml-cpp)
 
   set_target_properties(_brass PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pythonlib/brass"
@@ -86,7 +84,6 @@ if(BUILD_TESTS)
       ${ANALYSIS_FILES}
   )
   target_include_directories(unit_tests PRIVATE tests include)
-  target_link_libraries(unit_tests PRIVATE yaml-cpp)
 
   add_test(NAME unit_tests COMMAND unit_tests)
 endif()
