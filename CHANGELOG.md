@@ -8,23 +8,30 @@ The version number follows **X.Y.Z**, where:
 - **Z** — bug fixes or small updates  
 
 
-## [0.2.1] – Unreleased  
+## [0.3.0] – Unreleased  
 Incremental improvements focused on usability and analysis utilities.
 
 ### Added
 - General **decay reconstruction utility** (`DecayReconstructor`) for building resonances from daughter particles.
 - Initial unit tests for reconstruction logic.
+- New CLI tool **`brass-scan`** for generating SMASH command-line scans directly from the terminal.
+- Support for intuitive parameter input via `--param KEY=val1,val2,...`.
 
 ### Improved
-- Better **scan command generation** in `brass.scan`
+- Simplified **scan interface** in `brass.scan`:
+  - Removed split-specific logic in favor of a unified job model.
+  - Clear separation between *parameter scan* and *job splitting* (`events_per_job`, `max_events`).
+- Cleaner command generation via `sweep_cmds(prefix=...)`.
 - Minor internal cleanups in analysis and merge handling.
 
 ### Changed
+- Scan workflow now defines **jobs per parameter point** using:
+  - `events_per_job`
+  - `max_events`
 - Removed direct dependency of `MergeKey` on YAML serialization (cleaner separation of concerns).
 
 ### Fixed
 - Various small fixes in CLI handling and module imports.
-
 
 ## [0.2.0] – 2025-12-02  
 Second public release: unified merging and multiprocessing.
