@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite the Zenodo record below."
 
 title: "BRASS (Binary Reader and Analysis Suite Software)"
-version: "0.2.0"
+version: "0.3.0"
 
 authors:
   - family-names: Rosenkvist
@@ -20,7 +20,7 @@ identifiers:
 
 preferred-citation:
   type: software
-  title: "BRASS-0.2.0"
+  title: "BRASS-0.3.0"
   authors:
     - family-names: Rosenkvist
       given-names: Carl B.
