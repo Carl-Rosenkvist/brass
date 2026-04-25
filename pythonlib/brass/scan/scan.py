@@ -125,17 +125,14 @@ class Scan:
     def sweep_cmds(self):
         """Yield (combo_dict, cmd_string).
 
-        cmd_string has one `-c '{...}'` per flattened key, with nested JSON
-        reconstructed from the dotted paths in combo. JSON is compact and
-        wrapped in single quotes to avoid shell splitting.
+        cmd_string has tokens like: -c {...} -c {...}
+        No shell quotes. JSON is compact so each {...} is one token.
         """
         for combo, cfg in self.sweep():
             parts = []
             for dotted_key, val in combo.items():
                 nested = self._dotted_to_nested(dotted_key, val)
-                # compact JSON: no spaces, safer and shorter
-                json_cfg = json.dumps(nested, separators=(",", ":"))
-                # single-quote the JSON so bash treats it as one arg
-                parts.append(f"-c '{json_cfg}'")
+                json_cfg = json.dumps(nested, separators=(",", ":"))  # no spaces
+                parts.append(f"-c {json_cfg}")
             cmd = " ".join(parts)
             yield combo, cmd

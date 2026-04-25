@@ -8,6 +8,7 @@ from .meta.meta import MetaBuilder
 from .analyses.run_analysis import *
 from .merging.merge import *
 from . import analyses  # this will run analyses/__init__.py
+from .physics.decayreconstruction import DecayReconstructor
 import atexit
 
 if hasattr(_brass, "_clear_registry"):

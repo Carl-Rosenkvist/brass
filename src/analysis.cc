@@ -1,6 +1,5 @@
 #include "analysis.h"
 
-#include <yaml-cpp/yaml.h>
 
 #include "analysisregister.h"
 

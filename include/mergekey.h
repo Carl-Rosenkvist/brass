@@ -1,7 +1,6 @@
 #ifndef MERGEKEY_H
 #define MERGEKEY_H
 
-#include <yaml-cpp/yaml.h>
 
 #include <string>
 #include <variant>
@@ -27,10 +26,6 @@ using MergeKeySet = std::vector<MergeKey>;
 bool operator<(MergeKeySet const &A, MergeKeySet const &B);
 bool operator==(MergeKeySet const &A, MergeKeySet const &B);
 
-// YAML emitters
-void to_yaml(YAML::Emitter &out, const MergeKeyValue &v);
-void to_yaml(YAML::Emitter &out, MergeKey const &mk);
-void to_yaml(YAML::Emitter &out, MergeKeySet const &set);
 
 MergeKeySet parse_merge_key(const std::string &meta);
 void sort_keyset(MergeKeySet &k);

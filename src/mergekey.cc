@@ -37,35 +37,6 @@ bool operator==(MergeKeySet const &A, MergeKeySet const &B) {
     return A.size() == B.size() && std::equal(A.begin(), A.end(), B.begin());
 }
 
-// ---- YAML emitters ----
-void to_yaml(YAML::Emitter &out, const MergeKeyValue &v) {
-    std::visit(
-        [&](auto const &x) {
-            using T = std::decay_t<decltype(x)>;
-            if constexpr (std::is_same_v<T, std::string>) {
-                out << YAML::DoubleQuoted << x;
-            } else {
-                out << x;
-            }
-        },
-        v);
-}
-
-void to_yaml(YAML::Emitter &out, MergeKey const &mk) {
-    out << YAML::BeginMap;
-    out << YAML::Key << mk.name << YAML::Value;
-    to_yaml(out, mk.value);
-    out << YAML::EndMap;
-}
-
-void to_yaml(YAML::Emitter &out, MergeKeySet const &set) {
-    out << YAML::BeginMap;
-    for (auto const &mk : set) {
-        out << YAML::Key << mk.name << YAML::Value;
-        to_yaml(out, mk.value);
-    }
-    out << YAML::EndMap;
-}
 
 MergeKeySet parse_merge_key(const std::string &meta) {
     MergeKeySet ks;

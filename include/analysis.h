@@ -1,7 +1,6 @@
 #ifndef ANALYSIS_H
 #define ANALYSIS_H
 
-#include <yaml-cpp/yaml.h>
 
 #include <memory>
 #include <string>
