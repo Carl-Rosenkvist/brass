@@ -8,7 +8,7 @@ The version number follows **X.Y.Z**, where:
 - **Z** — bug fixes or small updates  
 
 
-## [0.3.0] – Unreleased  
+## [0.3.0] – 2026-04-25  
 Incremental improvements focused on usability and analysis utilities.
 
 ### Added
