@@ -1,7 +1,6 @@
 # BRASS (Binary Reader and Analysis Suite Software) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17783753.svg)](https://doi.org/10.5281/zenodo.17783753)
 
 
-
 A simple and extensible C++/Python library for reading and analyzing binary particle output files.
 
 ## Features
@@ -41,6 +40,10 @@ from brass import BinaryReader, Accessor
 QUANTITIES = ["p0", "px", "py", "pz", "pdg"]
 
 class Example(Accessor):
+
+    def __init__(self):
+        super().__init__()
+
     def on_particle_block(self, block):
         arrays = dict(self.gather_block_arrays(block, QUANTITIES))
         E = arrays["p0"]
@@ -50,14 +53,22 @@ class Example(Accessor):
         pdg = arrays["pdg"]
         # do something with E, px, py, pz, pdg here
 
-reader = BinaryReader("events.bin", QUANTITIES, Example())
+example = Example()
+reader = BinaryReader("events.bin", QUANTITIES, example)
 reader.read()
 ```
 
 # brass-analyze
 
-Command-line tool for running registered analyses on multiple SMASH run directories.
+Command-line tool for running registered analyses on multiple SMASH run directories, for example:
 
+runs/
+  out-1/
+    config.yaml
+    particles_binary.bin
+  out-2/
+    config.yaml
+    particles_binary.bin
 ## Usage
 
 brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
@@ -74,7 +85,8 @@ brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
   Glob for run folders (default: out-*).
 
 --keys KEY1 KEY2 ...
-  Dotted keys from config for labeling runs (last segment used as name).
+  Dotted keys from config for labeling runs (last segment used as name). Used for
+  meta-data when merging results from diffrent binary files 
   Example:
     --keys Modi.Collider.Sqrtsnn General.Nevents
 
@@ -91,6 +103,18 @@ brass-analyze [OPTIONS] OUTPUT_DIR ANALYSIS_NAME
   Print detailed information.
 
 --nproc NPROC         Number of processes for multiprocessing (default: no multiprocessing).
+
+## Full example
+
+brass-analyze runs dndydmt phi-corr \
+  --pattern "out-*" \
+  --keys Sqrts=Modi.Collider.Sqrtsnn \
+  --binary-names "particles_binary.bin" \
+  --quantities pdg p0 px py pz proc_id_origin pdg_mother1 pdg_mother2 \
+  --results-subdir data \
+  --load analyses/phi_corr.py \
+  --nproc 8 \
+  --verbose
 
 ## Writing Analyses
 

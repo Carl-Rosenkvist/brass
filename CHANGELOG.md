@@ -7,8 +7,50 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
----
 
+## [0.2.1] – Unreleased  
+Incremental improvements focused on usability and analysis utilities.
+
+### Added
+- General **decay reconstruction utility** (`DecayReconstructor`) for building resonances from daughter particles.
+- Initial unit tests for reconstruction logic.
+
+### Improved
+- Better **scan command generation** in `brass.scan`
+- Minor internal cleanups in analysis and merge handling.
+
+### Changed
+- Removed direct dependency of `MergeKey` on YAML serialization (cleaner separation of concerns).
+
+### Fixed
+- Various small fixes in CLI handling and module imports.
+
+
+## [0.2.0] – 2025-12-02  
+Second public release: unified merging and multiprocessing.
+
+### Added
+- **Multiprocessing** support for analyses via `--nproc`.
+- Unified **dict-based result merging** for C++ and Python analyses.
+- Support for saving merged results to **pickle** using the shared dict representation.
+- Verbose diagnostics: in `--verbose` mode, `brass-analyze`
+  now prints which binary file is selected in each run directory.
+- Analysis hooks:
+  - Optional `finalize(results)` for post-processing the merged result.
+  - Required `to_state_dict()` implementation for serialization and merging.
+- New experimental command-line tool for running SMASH: brass-run_cmds
+
+### Changed
+- **Strict binary filename matching** in `brass-analyze`:  
+  the CLI now aborts with an error if no file matches the patterns given by `--binary-names`.
+- Unified state and merging model for both Python and C++ analyses.
+- Removed automatic fallback to `*.bin`; users must now specify consistent names via `--binary-names`.
+
+### Fixed
+- (No specific bug fixes recorded for this release.)
+
+### Removed
+- Legacy silent fallback that selected the first `*.bin` file when no explicit name matched.
 ## [0.1.0] – 2025-10-23  
 **First public release**
 
@@ -36,30 +78,4 @@ The version number follows **X.Y.Z**, where:
 ### Removed
 - (Not applicable — first release)
 
----
 
-## [0.2.0] – 2025-12-02  
-Second public release: unified merging and multiprocessing.
-
-### Added
-- **Multiprocessing** support for analyses via `--nproc`.
-- Unified **dict-based result merging** for C++ and Python analyses.
-- Support for saving merged results to **pickle** using the shared dict representation.
-- Verbose diagnostics: in `--verbose` mode, `brass-analyze`
-  now prints which binary file is selected in each run directory.
-- Analysis hooks:
-  - Optional `finalize(results)` for post-processing the merged result.
-  - Required `to_state_dict()` implementation for serialization and merging.
-- New experimental command-line tool for running SMASH: brass-run_cmds
-
-### Changed
-- **Strict binary filename matching** in `brass-analyze`:  
-  the CLI now aborts with an error if no file matches the patterns given by `--binary-names`.
-- Unified state and merging model for both Python and C++ analyses.
-- Removed automatic fallback to `*.bin`; users must now specify consistent names via `--binary-names`.
-
-### Fixed
-- (No specific bug fixes recorded for this release.)
-
-### Removed
-- Legacy silent fallback that selected the first `*.bin` file when no explicit name matched.
