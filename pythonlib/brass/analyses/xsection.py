@@ -5,16 +5,18 @@ import math
 import brass as br
 
 NBINS_DEFAULT = 1000
-BMAX_DEFAULT  = 2.5
+BMAX_DEFAULT = 2.5
 
-QUANTITIES = ["t","x","y","z","p0","px","py","pz"]
+QUANTITIES = ["t", "x", "y", "z", "p0", "px", "py", "pz"]
+
 
 def two_vecs(cols):
     pA = np.array([cols["p0"][0], cols["px"][0], cols["py"][0], cols["pz"][0]], float)
     pB = np.array([cols["p0"][1], cols["px"][1], cols["py"][1], cols["pz"][1]], float)
-    xA = np.array([cols["t"][0],  cols["x"][0],  cols["y"][0],  cols["z"][0]],  float)
-    xB = np.array([cols["t"][1],  cols["x"][1],  cols["y"][1],  cols["z"][1]],  float)
+    xA = np.array([cols["t"][0], cols["x"][0], cols["y"][0], cols["z"][0]], float)
+    xB = np.array([cols["t"][1], cols["x"][1], cols["y"][1], cols["z"][1]], float)
     return pA, pB, xA, xB
+
 
 def transverse_distance(pA, pB, xA, xB):
     p_diff = pA[1:] - pB[1:]
@@ -28,19 +30,22 @@ def transverse_distance(pA, pB, xA, xB):
         val = xdx - (xdp * xdp) / pdp
     return math.sqrt(max(val, 0.0))
 
+
 def sqrt_s_from(pA, pB):
     ptot = pA + pB
     E = ptot[0]
     p2 = float(np.dot(ptot[1:], ptot[1:]))
-    s = E*E - p2
+    s = E * E - p2
     return math.sqrt(max(s, 0.0))
+
 
 def energy_index(sqrts, ndigits=5):
     return round(float(sqrts), ndigits)
 
+
 def calc_tot_xs(bins_scat, bins_tot, bmax, nbins):
     bins_scat = np.asarray(bins_scat, float)
-    bins_tot  = np.asarray(bins_tot,  float)
+    bins_tot = np.asarray(bins_tot, float)
 
     mask = bins_tot != 0
     if mask.sum() < 2:
@@ -50,13 +55,13 @@ def calc_tot_xs(bins_scat, bins_tot, bmax, nbins):
     if F.size < 2:
         return 0.0, 0.0
 
-    bin_centers = (bmax/nbins) * (np.arange(F.size, dtype=float) + 1.0)
+    bin_centers = (bmax / nbins) * (np.arange(F.size, dtype=float) + 1.0)
     dF = np.diff(F)
 
-    xs   = -np.sum(bin_centers[:-1]**2 * dF) * math.pi * 10.0
-    xs_2 = -np.sum(bin_centers[:-1]**4 * dF) * (math.pi*10.0)**2
+    xs = -np.sum(bin_centers[:-1] ** 2 * dF) * math.pi * 10.0
+    xs_2 = -np.sum(bin_centers[:-1] ** 4 * dF) * (math.pi * 10.0) ** 2
 
-    varS = max(0.0, xs_2 - xs*xs)
+    varS = max(0.0, xs_2 - xs * xs)
     return xs, varS
 
 
@@ -74,13 +79,13 @@ class Xsection:
 
     def __init__(self, nbins=NBINS_DEFAULT, bmax=BMAX_DEFAULT):
         self.nbins = int(nbins)
-        self.bmax  = float(bmax)
+        self.bmax = float(bmax)
 
         # by_energy[idx] = { tot, scat, events }
         self.by_energy = {}
 
         # needed to detect first interaction
-        self.first_cols   = None
+        self.first_cols = None
         self.initial_cols = None
 
     # ------------------- Brass callbacks -------------------
@@ -100,16 +105,16 @@ class Xsection:
     def _ensure_bin(self, idx):
         if idx not in self.by_energy:
             self.by_energy[idx] = {
-                "tot":    np.zeros(self.nbins, dtype=int),
-                "scat":   np.zeros(self.nbins, dtype=int),
-                "events": 0
+                "tot": np.zeros(self.nbins, dtype=int),
+                "scat": np.zeros(self.nbins, dtype=int),
+                "events": 0,
             }
 
     def on_end_block(self, block, accessor, opts):
         cols = self.first_cols if (self.first_cols is not None) else self.initial_cols
         if cols is not None:
             pA, pB, xA, xB = two_vecs(cols)
-            R  = transverse_distance(pA, pB, xA, xB)
+            R = transverse_distance(pA, pB, xA, xB)
             sq = sqrt_s_from(pA, pB)
             idx = energy_index(sq)
 
@@ -119,8 +124,10 @@ class Xsection:
 
             if R <= self.bmax:
                 bin_idx = int((R / self.bmax) * self.nbins) - 1
-                if bin_idx < 0:  bin_idx = 0
-                if bin_idx >= self.nbins: bin_idx = self.nbins - 1
+                if bin_idx < 0:
+                    bin_idx = 0
+                if bin_idx >= self.nbins:
+                    bin_idx = self.nbins - 1
 
                 rec["tot"][bin_idx] += 1
                 if self.first_cols is not None:
@@ -158,26 +165,29 @@ class Xsection:
                 continue
 
             nbins = d["nbins"]
-            bmax  = d["bmax"]
-            rows  = []
+            bmax = d["bmax"]
+            rows = []
 
             for idx, rec in d["by_energy"].items():
                 xs, varS = calc_tot_xs(rec["scat"], rec["tot"], bmax, nbins)
                 err = math.sqrt(varS) if varS > 0 else 0.0
 
-                rows.append({
-                    "sqrt_s": idx,
-                    "xsection_mb": xs,
-                    "error_mb": err,
-                    "variance_mb2": varS,
-                    "tot_counts": int(rec["tot"].sum()),
-                    "scat_counts": int(rec["scat"].sum()),
-                    "events": int(rec["events"]),
-                    "nbins": nbins,
-                    "bmax": bmax,
-                })
+                rows.append(
+                    {
+                        "sqrt_s": idx,
+                        "xsection_mb": xs,
+                        "error_mb": err,
+                        "variance_mb2": varS,
+                        "tot_counts": int(rec["tot"].sum()),
+                        "scat_counts": int(rec["scat"].sum()),
+                        "events": int(rec["events"]),
+                        "nbins": nbins,
+                        "bmax": bmax,
+                    }
+                )
 
-            analyses["xsection_rows"] = rows   # pipeline will save these
+            analyses["xsection_rows"] = rows  # pipeline will save these
+
 
 # Register updated
 br.register_python_analysis(

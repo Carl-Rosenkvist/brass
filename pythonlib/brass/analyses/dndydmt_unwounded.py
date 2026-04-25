@@ -41,7 +41,6 @@ class DndydmtUnwounded:
         pass
 
     def on_particle_block(self, block, accessor, opts):
-
         pairs = accessor.gather_block_arrays(block)
         cols = {k: v for k, v in pairs}
 

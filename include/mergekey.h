@@ -1,7 +1,6 @@
 #ifndef MERGEKEY_H
 #define MERGEKEY_H
 
-
 #include <string>
 #include <variant>
 #include <vector>
@@ -25,7 +24,6 @@ using MergeKeySet = std::vector<MergeKey>;
 // Comparisons for MergeKeySet
 bool operator<(MergeKeySet const &A, MergeKeySet const &B);
 bool operator==(MergeKeySet const &A, MergeKeySet const &B);
-
 
 MergeKeySet parse_merge_key(const std::string &meta);
 void sort_keyset(MergeKeySet &k);

@@ -5,7 +5,6 @@ import brass as br
 
 
 def main(argv=None):
-
     parser = argparse.ArgumentParser(
         description="Merge a list of pickle files where leafs are added using + operator"
     )

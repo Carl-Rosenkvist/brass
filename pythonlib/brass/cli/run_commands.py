@@ -50,7 +50,6 @@ def run_one(executable: str, cmd: str, outdir: Path) -> None:
 
 
 def main(argv=None):
-
     parser = argparse.ArgumentParser(
         description="Run an executable with a list of commands"
     )
@@ -74,10 +73,7 @@ def main(argv=None):
     print("Starting running commands " + timestamp())
 
     bar_format = (
-        "{l_bar}{bar}| "
-        "{n_fmt}/{total_fmt} • "
-        "{elapsed}<{remaining} • "
-        "{rate_fmt}"
+        "{l_bar}{bar}| {n_fmt}/{total_fmt} • {elapsed}<{remaining} • {rate_fmt}"
     )
 
     # prepare one output dir per command

@@ -37,7 +37,6 @@ bool operator==(MergeKeySet const &A, MergeKeySet const &B) {
     return A.size() == B.size() && std::equal(A.begin(), A.end(), B.begin());
 }
 
-
 MergeKeySet parse_merge_key(const std::string &meta) {
     MergeKeySet ks;
     if (meta.empty()) return ks;

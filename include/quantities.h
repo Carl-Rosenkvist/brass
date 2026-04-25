@@ -17,15 +17,14 @@ size_t type_size(QuantityType t);
 extern const std::unordered_map<std::string, QuantityType> quantity_string_map;
 
 // name -> byte offset within a particle record (computed from names order)
-std::unordered_map<std::string, size_t>
-compute_quantity_layout(const std::vector<std::string>& names);
+std::unordered_map<std::string, size_t> compute_quantity_layout(
+    const std::vector<std::string>& names);
 
 // Read exactly `size` bytes from stream or throw
 std::vector<char> read_chunk(std::ifstream& bfile, size_t size);
 
 template <typename T>
-inline T get_quantity(std::span<const char> particle,
-                      const std::string& name,
+inline T get_quantity(std::span<const char> particle, const std::string& name,
                       const std::unordered_map<std::string, size_t>& layout) {
     auto it_info = quantity_string_map.find(name);
     if (it_info == quantity_string_map.end())
@@ -33,10 +32,12 @@ inline T get_quantity(std::span<const char> particle,
 
     if constexpr (std::is_same_v<T, double>) {
         if (it_info->second != QuantityType::Double)
-            throw std::runtime_error("Requested double, but quantity is not double: " + name);
+            throw std::runtime_error(
+                "Requested double, but quantity is not double: " + name);
     } else if constexpr (std::is_same_v<T, int32_t>) {
         if (it_info->second != QuantityType::Int32)
-            throw std::runtime_error("Requested int32, but quantity is not int32: " + name);
+            throw std::runtime_error(
+                "Requested int32, but quantity is not int32: " + name);
     } else {
         static_assert(!sizeof(T*), "Unsupported T in get_quantity");
     }

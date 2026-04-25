@@ -1,7 +1,6 @@
 #ifndef ANALYSIS_H
 #define ANALYSIS_H
 
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -33,9 +32,7 @@ class Analysis {
                                            const Accessor&) {}
     virtual void analyze_end_block(const EndBlock&, const Accessor&) {}
 
-    virtual py::dict finalize(py::dict results) {
-        return results;
-    }
+    virtual py::dict finalize(py::dict results) { return results; }
 
     virtual void save(py::dict results, const std::string& out_dir) {}
 

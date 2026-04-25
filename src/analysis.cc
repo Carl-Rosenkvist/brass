@@ -1,6 +1,5 @@
 #include "analysis.h"
 
-
 #include "analysisregister.h"
 
 void Analysis::on_header(Header& header) {

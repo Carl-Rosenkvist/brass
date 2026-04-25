@@ -1,22 +1,22 @@
 #pragma once
 
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
+
 #include <memory>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <stdexcept>
-
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 namespace py = pybind11;
 
-#include "quantities.h"         // QuantityType, quantity_string_map, get_quantity(...)
 #include "blocks.h"
+#include "quantities.h"  // QuantityType, quantity_string_map, get_quantity(...)
 
 class Accessor {
-public:
+   public:
     virtual ~Accessor() = default;
 
     virtual void on_particle_block(const ParticleBlock& block) {}
@@ -42,8 +42,10 @@ public:
         return get_quantity<T>(block.particle(particle_index), name, *layout);
     }
 
-    int32_t get_int(const std::string& name, const ParticleBlock& block, size_t i) const;
-    double  get_double(const std::string& name, const ParticleBlock& block, size_t i) const;
+    int32_t get_int(const std::string& name, const ParticleBlock& block,
+                    size_t i) const;
+    double get_double(const std::string& name, const ParticleBlock& block,
+                      size_t i) const;
 
     // Resolve-once handle for hot loops
     struct QuantityHandle {
@@ -63,27 +65,34 @@ public:
     void set_resolved_fields(const std::vector<std::string>& names);
 
     // Build and return a temporary resolved list (no storing)
-    std::vector<ResolvedField> make_resolved_fields(const std::vector<std::string>& names) const;
+    std::vector<ResolvedField> make_resolved_fields(
+        const std::vector<std::string>& names) const;
 
     // Core gather function: use any resolved fields vector
-    py::list gather_arrays_resolved(const char* base, size_t count, size_t stride,
-                                    const std::vector<ResolvedField>& fields) const;
+    py::list gather_arrays_resolved(
+        const char* base, size_t count, size_t stride,
+        const std::vector<ResolvedField>& fields) const;
 
     // Use the pre-stored resolved fields
-    py::list gather_arrays_default(const char* base, size_t count, size_t stride) const;
+    py::list gather_arrays_default(const char* base, size_t count,
+                                   size_t stride) const;
 
     // --- Low-level helpers (kept inline/hot) ---
-    inline double get_double_fast(const ParticleBlock& b, size_t off, size_t i) const noexcept {
+    inline double get_double_fast(const ParticleBlock& b, size_t off,
+                                  size_t i) const noexcept {
         const char* p = b.particles.data() + i * b.particle_size + off;
         return *reinterpret_cast<const double*>(p);
     }
 
-    inline int32_t get_int_fast(const ParticleBlock& b, size_t off, size_t i) const noexcept {
+    inline int32_t get_int_fast(const ParticleBlock& b, size_t off,
+                                size_t i) const noexcept {
         const char* p = b.particles.data() + i * b.particle_size + off;
         return *reinterpret_cast<const int32_t*>(p);
     }
 
-    inline double get_double_fast(const ParticleBlock& b, const QuantityHandle& h, size_t i) const noexcept {
+    inline double get_double_fast(const ParticleBlock& b,
+                                  const QuantityHandle& h,
+                                  size_t i) const noexcept {
 #ifndef NDEBUG
         if (h.type != QuantityType::Double)
             throw std::logic_error("get_double_fast: wrong type");
@@ -91,7 +100,8 @@ public:
         return get_double_fast(b, h.offset, i);
     }
 
-    inline int32_t get_int_fast(const ParticleBlock& b, const QuantityHandle& h, size_t i) const noexcept {
+    inline int32_t get_int_fast(const ParticleBlock& b, const QuantityHandle& h,
+                                size_t i) const noexcept {
 #ifndef NDEBUG
         if (h.type != QuantityType::Int32)
             throw std::logic_error("get_int_fast: wrong type");
@@ -99,7 +109,7 @@ public:
         return get_int_fast(b, h.offset, i);
     }
 
-protected:
+   protected:
     const std::unordered_map<std::string, size_t>* layout = nullptr;
     std::optional<Header> header = std::nullopt;
     std::vector<ResolvedField> resolved_fields;
