@@ -7,6 +7,20 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
+## [0.3.1] – UNRELEASED  
+Small cleanups and addition of the merge CLI tool.
+
+### Added
+- Exposed the existing merge CLI tool in the Python library.
+
+### Improved
+- Simplified `DecayReconstructor`, reducing unnecessary complexity and improving readability and runtime.
+
+### Changed
+- (None)
+
+### Fixed
+- Integrated previously unused merge CLI tool into the Python interface.
 
 ## [0.3.0] – 2026-04-25  
 Incremental improvements focused on usability and analysis utilities.
