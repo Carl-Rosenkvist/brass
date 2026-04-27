@@ -1,10 +1,5 @@
 import numpy as np
-
-from brass import DecayReconstructor
-
-
-import numpy as np
-
+import pytest
 from brass import DecayReconstructor
 
 
@@ -21,9 +16,11 @@ def reconstruct(
 
 
 def assert_daughters_equal(daughters, expected):
-    assert len(daughters) == len(expected)
-    for got, exp in zip(daughters, expected):
-        assert np.array_equal(got, np.array(exp))
+    idx1, idx2 = daughters
+    exp1, exp2 = expected
+
+    assert np.array_equal(idx1, np.array(exp1))
+    assert np.array_equal(idx2, np.array(exp2))
 
 
 def test_decay_reconstructor_phi_complete():
@@ -38,14 +35,15 @@ def test_decay_reconstructor_phi_complete():
 
 
 def test_decay_reconstructor_skips_incomplete_phi():
-    daughters = reconstruct(
+    idx1, idx2 = reconstruct(
         pdg=[321, 211],
         proc_id=[7, 0],
         pdg_mother1=[333, 0],
         pdg_mother2=[0, 0],
     )
 
-    assert daughters == []
+    assert len(idx1) == 0
+    assert len(idx2) == 0
 
 
 def test_decay_reconstructor_matches_by_proc_id():
@@ -56,31 +54,38 @@ def test_decay_reconstructor_matches_by_proc_id():
         pdg_mother2=[0, 0, 0, 0],
     )
 
-    kplus, kminus = daughters
-    assert list(zip([10, 20], [10, 20])) == [(10, 10), (20, 20)]
+    idx1, idx2 = daughters
+
+    assert np.array_equal(
+        proc_id := np.array([10, 20, 20, 10])[idx1], np.array([10, 20])
+    )
+    assert np.array_equal(proc_id, np.array([10, 20]))
+
     assert_daughters_equal(daughters, [[0, 1], [3, 2]])
 
 
 def test_decay_reconstructor_ignores_wrong_mother():
-    daughters = reconstruct(
+    idx1, idx2 = reconstruct(
         pdg=[321, -321],
         proc_id=[7, 7],
         pdg_mother1=[313, 333],
         pdg_mother2=[0, 0],
     )
 
-    assert daughters == []
+    assert len(idx1) == 0
+    assert len(idx2) == 0
 
 
 def test_decay_reconstructor_ignores_nonzero_second_mother():
-    daughters = reconstruct(
+    idx1, idx2 = reconstruct(
         pdg=[321, -321],
         proc_id=[7, 7],
         pdg_mother1=[333, 333],
         pdg_mother2=[0, 999],
     )
 
-    assert daughters == []
+    assert len(idx1) == 0
+    assert len(idx2) == 0
 
 
 def test_decay_reconstructor_ignores_unrelated_particles():
@@ -94,14 +99,6 @@ def test_decay_reconstructor_ignores_unrelated_particles():
     assert_daughters_equal(daughters, [[1], [3]])
 
 
-def test_decay_reconstructor_three_body_decay():
-    daughters = reconstruct(
-        pdg=[211, -211, 111, 321],
-        proc_id=[42, 42, 42, 0],
-        pdg_mother1=[999, 999, 999, 0],
-        pdg_mother2=[0, 0, 0, 0],
-        mother=999,
-        daughters=(211, -211, 111),
-    )
-
-    assert_daughters_equal(daughters, [[0], [1], [2]])
+def test_decay_reconstructor_rejects_three_body_decay():
+    with pytest.raises(AssertionError):
+        DecayReconstructor(999, (211, -211, 111))
