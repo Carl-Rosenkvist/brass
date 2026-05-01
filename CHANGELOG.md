@@ -7,11 +7,12 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
-## [0.3.1] – UNRELEASED  
+## [0.3.1] – 2026-05-01
 Small cleanups and addition of the merge CLI tool.
 
 ### Added
 - Exposed the existing merge CLI tool in the Python library.
+- Empty data field in ``EndBlock``is accessable now. 
 
 ### Improved
 - Simplified `DecayReconstructor`, reducing unnecessary complexity and improving readability and runtime.
