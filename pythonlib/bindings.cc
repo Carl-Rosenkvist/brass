@@ -131,10 +131,13 @@ PYBIND11_MODULE(_brass, m) {
         },
         py::arg("name"), py::arg("factory"), py::arg("opts") = py::dict{});
 
-    py::class_<ParticleBlock>(m, "ParticleBlock");
+    py::class_<ParticleBlock>(m, "ParticleBlock")
+        .def_readonly("event_number", &ParticleBlock::event_number);
     py::class_<EndBlock>(m, "EndBlock")
         .def_readonly("event_number", &EndBlock::event_number)
+        .def_readonly("empty", &EndBlock::empty)
         .def_readonly("impact_parameter", &EndBlock::impact_parameter);
+
     py::class_<InteractionBlock>(m, "InteractionBlock")
         .def_readonly("n_in", &InteractionBlock::n_in)
         .def_readonly("n_out", &InteractionBlock::n_out)
