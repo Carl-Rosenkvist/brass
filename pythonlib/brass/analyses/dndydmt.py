@@ -54,20 +54,7 @@ class Dndydmt:
         }
 
     def finalize(self, results):
-        dy = np.diff(self.y_edges)[0]
-        dmt = np.diff(self.mt_edges)[0]
 
-        for meta_key, analyses in results.items():
-            d = analyses.get("dndydmt")
-            if d is None:
-                continue
-
-            n_ev = max(int(d.get("n_events", 0)), 1)
-            norm = n_ev * dy * dmt
-
-            for H in d.get("per_pdg", {}).values():
-                if isinstance(H, HistND):
-                    H.counts /= norm
         return results
 
 
