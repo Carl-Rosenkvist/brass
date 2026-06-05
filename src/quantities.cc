@@ -12,6 +12,7 @@ const std::unordered_map<std::string, QuantityType> quantity_string_map = {
     {"pz", QuantityType::Double},
     {"pdg", QuantityType::Int32},
     {"id", QuantityType::Int32},
+    {"ID", QuantityType::Int32},
     {"charge", QuantityType::Int32},
     {"ncoll", QuantityType::Int32},
     {"form_time", QuantityType::Double},
