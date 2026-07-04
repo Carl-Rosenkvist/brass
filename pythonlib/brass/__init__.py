@@ -1,17 +1,34 @@
-from . import _brass  # bind the module object
-from ._brass import *  # re-export its names
+from ._brass import (
+    BinaryReader,
+    Header,
+    ParticleBlock,
+    EndBlock,
+    InteractionBlock,
+    Particles,
+    RegularAxis,
+    VariableAxis,
+    IntegerAxis,
+    HistogramResult,
+    histogram,
+    histograms_by,
+    particle_size_from_quantities,
+)
 
-from .scan.template import smash_cmd
-from .scan.scan import Scan
-from .histNd import HistND
-from .meta.meta import MetaBuilder
-from .analyses.run_analysis import *
-from .merging.merge import *
-from . import analyses  # this will run analyses/__init__.py
-from .physics.decayreconstruction import DecayReconstructor
-import atexit
+from .decays import DecayReconstructor
 
-if hasattr(_brass, "_clear_registry"):
-    atexit.register(_brass._clear_registry)
-
-__all__ = [name for name in dir() if not name.startswith("_")]
+__all__ = [
+    "BinaryReader",
+    "Header",
+    "ParticleBlock",
+    "EndBlock",
+    "InteractionBlock",
+    "Particles",
+    "RegularAxis",
+    "VariableAxis",
+    "IntegerAxis",
+    "HistogramResult",
+    "histogram",
+    "histograms_by",
+    "particle_size_from_quantities",
+    "DecayReconstructor",
+]

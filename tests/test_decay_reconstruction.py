@@ -1,17 +1,24 @@
 import numpy as np
 import pytest
+
 from brass import DecayReconstructor
 
 
 def reconstruct(
-    pdg, proc_id, pdg_mother1, pdg_mother2, mother=333, daughters=(321, -321)
+    pdg,
+    proc_id,
+    pdg_mother1,
+    pdg_mother2,
+    mother=333,
+    daughters=(321, -321),
 ):
     reco = DecayReconstructor(mother, daughters)
+
     return reco.reconstruct(
-        pdg=np.array(pdg),
-        proc_id=np.array(proc_id),
-        pdg_mother1=np.array(pdg_mother1),
-        pdg_mother2=np.array(pdg_mother2),
+        pdg=np.array(pdg, dtype=np.int32),
+        proc_id=np.array(proc_id, dtype=np.int32),
+        pdg_mother1=np.array(pdg_mother1, dtype=np.int32),
+        pdg_mother2=np.array(pdg_mother2, dtype=np.int32),
     )
 
 
@@ -56,11 +63,9 @@ def test_decay_reconstructor_matches_by_proc_id():
 
     idx1, idx2 = daughters
 
-    assert np.array_equal(
-        proc_id := np.array([10, 20, 20, 10])[idx1], np.array([10, 20])
-    )
-    assert np.array_equal(proc_id, np.array([10, 20]))
+    proc_id = np.array([10, 20, 20, 10], dtype=np.int32)[idx1]
 
+    assert np.array_equal(proc_id, np.array([10, 20], dtype=np.int32))
     assert_daughters_equal(daughters, [[0, 1], [3, 2]])
 
 
@@ -100,5 +105,5 @@ def test_decay_reconstructor_ignores_unrelated_particles():
 
 
 def test_decay_reconstructor_rejects_three_body_decay():
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="Only two-body decays supported"):
         DecayReconstructor(999, (211, -211, 111))

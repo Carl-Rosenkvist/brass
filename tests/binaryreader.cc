@@ -1,152 +1,129 @@
-// tests/binaryreader.cc
-#include "doctest.h"
-#include "binaryreader.h"   // adjust to "BinaryReader.h" if that's your actual filename
+#include "binaryreader.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <string>
-#include <vector>
 #include <stdexcept>
+#include <string>
+#include <variant>
+#include <vector>
+
+#include "doctest.h"
 
 namespace fs = std::filesystem;
 
-// ---------- tiny binary writer for the test (px + pdg only) ----------
-static void wr_bytes(std::ofstream& out, const void* p, size_t n) {
-    out.write(reinterpret_cast<const char*>(p), static_cast<std::streamsize>(n));
-    if (!out) throw std::runtime_error("write failed");
-}
-template <typename T>
-static void wr(std::ofstream& out, const T& v) { wr_bytes(out, &v, sizeof(T)); }
-
-static void writeHeader_min(std::ofstream& out) {
-    const char magic[4] = {'S','M','S','H'};
-    wr_bytes(out, magic, 4);
-    const uint16_t ver = 9, var = 1;
-    wr(out, ver);
-    wr(out, var);
-    const std::string sv = "SMASH-3.1";
-    const uint32_t len = static_cast<uint32_t>(sv.size());
-    wr(out, len);
-    wr_bytes(out, sv.data(), sv.size());
-}
-
-// Particle block layout your reader expects now:
-// 'p' + int32 event + int32 ensemble + uint32 npart + [ per particle: double px, int32 pdg ]
-static void writeParticleBlock_px_pdg(std::ofstream& out,
-                                      int32_t event, int32_t ensemble,
-                                      const std::vector<std::pair<double,int32_t>>& parts)
-{
-    const char tag = 'p';
-    wr(out, tag);
-    wr(out, event);
-    wr(out, ensemble);
-    const uint32_t npart = static_cast<uint32_t>(parts.size());
-    wr(out, npart);
-    for (auto& [px, pdg] : parts) { wr(out, px); wr(out, pdg); }
-}
-
-// End block your reader expects:
-// 'f' + uint32 event + int32 ensemble + double impact_parameter + char empty_flag
-static void writeEndBlock_min(std::ofstream& out,
-                              uint32_t event, int32_t ensemble,
-                              double b, char flag)
-{
-    const char tag = 'f';
-    wr(out, tag);
-    wr(out, event);
-    wr(out, ensemble);
-    wr(out, b);
-    wr(out, flag);
-}
-
-// Optional: write a trailing 'i' so your current check_next() sees a valid next tag
-static void writeInfoTag(std::ofstream& out) {
-    const char tag = 'i';
-    wr(out, tag);
-}
-
-// ---------- mock accessor to capture parsed data ----------
-struct MockAccessor : public Accessor {
-    bool saw_header = false;
-    uint16_t header_version = 0;
-    uint16_t header_variant = 0;
-    std::string header_smash_version;
-
-    std::vector<double> pxs;
-    std::vector<int32_t> pdgs;
-
-    uint32_t end_event = 0;
-    int32_t  end_ensemble = 0;
-    double   end_b = 0.0;
-    char     end_empty = 0;
-
-    void on_header(Header& h) override {
-        saw_header = true;
-        header_version = h.format_version;
-        header_variant = h.format_variant;
-        header_smash_version = h.smash_version;
+template <class T>
+static void write(std::ofstream& out, const T& value) {
+    out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+    if (!out) {
+        throw std::runtime_error("write failed");
     }
+}
 
-    void on_particle_block(const ParticleBlock& block) override {
-        for (size_t i = 0; i < block.npart; ++i) {
-            pxs.push_back(get_double("px", block, i));
-            pdgs.push_back(get_int("pdg", block, i));
-        }
+static void write_bytes(std::ofstream& out, const char* data,
+                        std::size_t size) {
+    out.write(data, static_cast<std::streamsize>(size));
+    if (!out) {
+        throw std::runtime_error("write failed");
     }
+}
 
-    void on_end_block(const EndBlock& e) override {
-        end_event    = e.event_number;
-        end_ensemble = e.ensamble_number; // keep your field spelling
-        end_b        = e.impact_parameter;
-        end_empty    = e.empty;
-    }
-};
+static void write_header(std::ofstream& out) {
+    write_bytes(out, "SMSH", 4);
 
-// ---------- the test ----------
-TEST_CASE("BinaryReader reads header, px/pdg particle block, and end block") {
+    write<uint16_t>(out, 9);
+    write<uint16_t>(out, 1);
+
+    const std::string version = "SMASH-3.1";
+
+    write<uint32_t>(out, static_cast<uint32_t>(version.size()));
+    write_bytes(out, version.data(), version.size());
+}
+
+static void write_particle_block(std::ofstream& out) {
+    write<char>(out, 'p');
+
+    write<int32_t>(out, 42);  // event
+    write<int32_t>(out, 7);   // ensemble
+    write<uint32_t>(out, 2);  // npart
+
+    // quantities = {"px", "pdg"}
+    write<double>(out, 1.25);
+    write<int32_t>(out, 211);
+
+    write<double>(out, -3.5);
+    write<int32_t>(out, -211);
+}
+
+static void write_end_block(std::ofstream& out) {
+    write<char>(out, 'f');
+
+    write<uint32_t>(out, 42);
+    write<int32_t>(out, 7);
+    write<double>(out, 1.5);
+    write<char>(out, 'x');
+}
+
+TEST_CASE("BinaryReader reads header, particle block, and end block") {
     const fs::path tmp = fs::temp_directory_path() / "br_test_px_pdg.bin";
+
     {
         std::ofstream out(tmp, std::ios::binary);
         REQUIRE(out.is_open());
-        writeHeader_min(out);
 
-        std::vector<std::pair<double,int32_t>> parts = {
-            {1.25,  211},
-            {-3.5, -211}
-        };
-        writeParticleBlock_px_pdg(out, /*event*/42, /*ensemble*/7, parts);
-        writeEndBlock_min(out, /*event*/42u, /*ensemble*/7, /*b*/1.5, /*flag*/'x');
-
-        // ensure your current check_next() returns true after 'f'
-        writeInfoTag(out);
+        write_header(out);
+        write_particle_block(out);
+        write_end_block(out);
     }
 
-    auto acc = std::make_shared<MockAccessor>();
-    // Selection order defines layout: double px (offset 0), int32 pdg (offset 8)
-    std::vector<std::string> selected = {"px", "pdg"};
-    BinaryReader reader(tmp.string(), selected, acc);
+    brass::BinaryReader reader(tmp.string(), {"px", "pdg"});
 
-    CHECK_NOTHROW(reader.read());
+    const auto& header = reader.header();
 
-    // header checks
-    CHECK(acc->saw_header);
-    CHECK(acc->header_version == 9);
-    CHECK(acc->header_variant == 1);
-    CHECK(acc->header_smash_version == std::string("SMASH-3.1"));
+    CHECK(header.format_version == 9);
+    CHECK(header.format_variant == 1);
+    CHECK(header.smash_version == "SMASH-3.1");
 
-    // particle values
-    REQUIRE(acc->pxs.size() == 2);
-    REQUIRE(acc->pdgs.size() == 2);
-    CHECK(acc->pxs[0] == doctest::Approx(1.25));
-    CHECK(acc->pdgs[0] == 211);
-    CHECK(acc->pxs[1] == doctest::Approx(-3.5));
-    CHECK(acc->pdgs[1] == -211);
+    auto first = reader.read();
 
-    // end block values
-    CHECK(acc->end_event    == 42u);
-    CHECK(acc->end_ensemble == 7);
-    CHECK(acc->end_b        == doctest::Approx(1.5));
-    CHECK(acc->end_empty);
+    REQUIRE(first.has_value());
+    REQUIRE(std::holds_alternative<brass::ParticleBlock>(*first));
+
+    const auto& block = std::get<brass::ParticleBlock>(*first);
+    const auto& particles = block.particles;
+
+    CHECK(block.event_number == 42);
+    CHECK(block.ensemble_number == 7);
+
+    CHECK(particles.size() == 2);
+    CHECK_FALSE(particles.empty());
+    CHECK(particles.particle_size() == sizeof(double) + sizeof(int32_t));
+
+    const auto& px = particles.column<double>("px");
+    const auto& pdg = particles.column<int32_t>("pdg");
+
+    REQUIRE(px.size() == 2);
+    REQUIRE(pdg.size() == 2);
+
+    CHECK(px[0] == doctest::Approx(1.25));
+    CHECK(px[1] == doctest::Approx(-3.5));
+
+    CHECK(pdg[0] == 211);
+    CHECK(pdg[1] == -211);
+
+    auto second = reader.read();
+
+    REQUIRE(second.has_value());
+    REQUIRE(std::holds_alternative<brass::EndBlock>(*second));
+
+    const auto& end = std::get<brass::EndBlock>(*second);
+
+    CHECK(end.event_number == 42u);
+    CHECK(end.ensemble_number == 7);
+    CHECK(end.impact_parameter == doctest::Approx(1.5));
+    CHECK(end.empty);
+
+    CHECK_FALSE(reader.read().has_value());
 
     fs::remove(tmp);
 }
