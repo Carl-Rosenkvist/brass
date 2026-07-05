@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "binaryreader.h"
@@ -23,28 +24,43 @@ py::object block_to_python(brass::Block&& block) {
 }
 
 py::array particle_column_to_numpy(const brass::Particles& particles,
-                                   const std::string& name) {
+                                   const std::string& name, py::object owner) {
     const auto& q = particles.quantity(name);
 
     if (q.size == sizeof(double)) {
         const auto& values = particles.column<double>(name);
 
-        return py::array_t<double>(values.size(), values.data(),
-                                   py::cast(&particles));
+        return py::array_t<double>(values.size(), values.data(), owner);
     }
 
     if (q.size == sizeof(int32_t)) {
         const auto& values = particles.column<int32_t>(name);
 
-        return py::array_t<int32_t>(values.size(), values.data(),
-                                    py::cast(&particles));
+        return py::array_t<int32_t>(values.size(), values.data(), owner);
     }
 
     throw std::runtime_error("unsupported quantity size: " + name);
 }
 
+py::object histogram_result_to_python(brass::HistogramRunResult&& result) {
+    return std::visit(
+        [](auto&& value) -> py::object { return py::cast(std::move(value)); },
+        std::move(result));
+}
+
+py::list histogram_batch_result_to_python(
+    brass::HistogramBatchResult&& results) {
+    py::list out;
+
+    for (auto& result : results) {
+        out.append(histogram_result_to_python(std::move(result)));
+    }
+
+    return out;
+}
+
 py::array_t<double> histogram_values_to_numpy(
-    const brass::HistogramResult& result) {
+    const brass::HistogramResult& result, py::object owner) {
     std::vector<py::ssize_t> shape;
     shape.reserve(result.shape.size());
 
@@ -62,8 +78,7 @@ py::array_t<double> histogram_values_to_numpy(
         }
     }
 
-    return py::array_t<double>(shape, strides, result.values.data(),
-                               py::cast(&result));
+    return py::array_t<double>(shape, strides, result.values.data(), owner);
 }
 
 }  // namespace
@@ -81,15 +96,18 @@ PYBIND11_MODULE(_brass, m) {
         .def("particle_size", &brass::Particles::particle_size)
         .def("empty", &brass::Particles::empty)
         .def("column",
-             [](const brass::Particles& particles, const std::string& name) {
-                 return particle_column_to_numpy(particles, name);
+             [](py::object self, const std::string& name) {
+                 const auto& particles = self.cast<const brass::Particles&>();
+                 return particle_column_to_numpy(particles, name, self);
              })
-        .def("columns", [](const brass::Particles& particles) {
+        .def("columns", [](py::object self) {
+            const auto& particles = self.cast<const brass::Particles&>();
+
             py::dict out;
 
             for (const auto& q : particles.layout().offsets) {
                 out[py::str(q.name)] =
-                    particle_column_to_numpy(particles, q.name);
+                    particle_column_to_numpy(particles, q.name, self);
             }
 
             return out;
@@ -121,10 +139,10 @@ PYBIND11_MODULE(_brass, m) {
 
     m.def("particle_size_from_quantities",
           &brass::particle_size_from_quantities, py::arg("quantities"));
-
     py::class_<brass::BinaryReader>(m, "BinaryReader")
-        .def(py::init<const std::string&, std::vector<std::string>>(),
-             py::arg("filename"), py::arg("quantities"))
+        .def(py::init<const std::string&, std::vector<std::string>, bool>(),
+             py::arg("filename"), py::arg("quantities"),
+             py::arg("skip_elastic") = false)
         .def_property_readonly(
             "header",
             [](const brass::BinaryReader& reader) -> const brass::Header& {
@@ -137,7 +155,6 @@ PYBIND11_MODULE(_brass, m) {
                                &brass::BinaryReader::end_blocks_read)
         .def_property_readonly("interaction_blocks_read",
                                &brass::BinaryReader::interaction_blocks_read)
-
         .def("read", [](brass::BinaryReader& reader) -> py::object {
             auto block = reader.read();
 
@@ -165,24 +182,61 @@ PYBIND11_MODULE(_brass, m) {
         .def_readwrite("upper", &brass::IntegerAxis::upper);
 
     py::class_<brass::HistogramResult>(m, "HistogramResult")
-        .def_property_readonly("values",
-                               [](const brass::HistogramResult& result) {
-                                   return histogram_values_to_numpy(result);
-                               })
+        .def_property_readonly(
+            "values",
+            [](py::object self) {
+                const auto& result = self.cast<const brass::HistogramResult&>();
+                return histogram_values_to_numpy(result, self);
+            })
         .def_readonly("edges", &brass::HistogramResult::edges)
         .def_readonly("shape", &brass::HistogramResult::shape);
 
-    m.def("histogram", &brass::histogram_reader, py::arg("reader"),
-          py::arg("histogram_quantities"), py::arg("axes"));
+    py::class_<brass::HistogramGroupBy>(m, "HistogramGroupBy")
+        .def(py::init<>())
+        .def(py::init<std::string, std::vector<int32_t>>(), py::arg("quantity"),
+             py::arg("values"))
+        .def_readwrite("quantity", &brass::HistogramGroupBy::quantity)
+        .def_readwrite("values", &brass::HistogramGroupBy::values);
 
-    m.def("histogram", &brass::histogram_particles, py::arg("particles"),
-          py::arg("histogram_quantities"), py::arg("axes"));
+    py::class_<brass::HistogramRequest>(m, "HistogramRequest")
+        .def(py::init<>())
+        .def_readwrite("quantities", &brass::HistogramRequest::quantities)
+        .def_readwrite("axes", &brass::HistogramRequest::axes)
+        .def_readwrite("group_by", &brass::HistogramRequest::group_by);
 
-    m.def("histograms_by", &brass::histograms_by_reader, py::arg("reader"),
-          py::arg("histogram_quantities"), py::arg("axes"), py::arg("by"),
-          py::arg("group_values"));
+    m.def(
+        "histogram",
+        [](const brass::Particles& particles,
+           const brass::HistogramRequest& request) {
+            return histogram_result_to_python(
+                brass::histogram(particles, request));
+        },
+        py::arg("particles"), py::arg("request"));
 
-    m.def("histograms_by", &brass::histograms_by_particles,
-          py::arg("particles"), py::arg("histogram_quantities"),
-          py::arg("axes"), py::arg("by"), py::arg("group_values"));
+    m.def(
+        "histogram",
+        [](brass::BinaryReader& reader,
+           const brass::HistogramRequest& request) {
+            return histogram_result_to_python(
+                brass::histogram(reader, request));
+        },
+        py::arg("reader"), py::arg("request"));
+
+    m.def(
+        "histograms",
+        [](const brass::Particles& particles,
+           const std::vector<brass::HistogramRequest>& requests) {
+            return histogram_batch_result_to_python(
+                brass::histograms(particles, requests));
+        },
+        py::arg("particles"), py::arg("requests"));
+
+    m.def(
+        "histograms",
+        [](brass::BinaryReader& reader,
+           const std::vector<brass::HistogramRequest>& requests) {
+            return histogram_batch_result_to_python(
+                brass::histograms(reader, requests));
+        },
+        py::arg("reader"), py::arg("requests"));
 }

@@ -9,8 +9,10 @@ from ._brass import (
     VariableAxis,
     IntegerAxis,
     HistogramResult,
+    HistogramRequest,
+    HistogramGroupBy,
     histogram,
-    histograms_by,
+    histograms,
     particle_size_from_quantities,
 )
 
@@ -27,8 +29,10 @@ __all__ = [
     "VariableAxis",
     "IntegerAxis",
     "HistogramResult",
+    "HistogramRequest",
+    "HistogramGroupBy",
     "histogram",
-    "histograms_by",
+    "histograms",
     "particle_size_from_quantities",
     "DecayReconstructor",
 ]

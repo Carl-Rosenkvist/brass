@@ -8,23 +8,42 @@ It provides:
 
 - a fast C++ binary reader
 - zero-copy NumPy access to particle columns
-- C++ histogramming
+- C++ histogramming powered by Boost.Histogram: https://github.com/boostorg/histogram
+- one-dimensional, two-dimensional, and N-dimensional histograms
+- multiple independent histograms in one file pass
 - grouped histograms, for example one histogram per PDG code
-- computed quantities such as `pt`, `mt`, and `y_rap`
+- computed quantities such as `pt`, `p`, `mt`, and `y_rap`
+- optional skipping of elastic two-particle events
 
 ## Installation
+
+For development:
 
 ```bash
 pip install -e .
 ```
 
-or:
+Or from PyPI:
 
 ```bash
 pip install pybrass
 ```
 
 After rebuilding the C++ extension, restart your Python kernel.
+
+## Examples
+
+The `examples/` directory contains:
+
+```text
+examples/
+  1dhist.py
+  2dhist.py
+```
+
+`1dhist.py` creates grouped 1D histograms for rapidity and transverse mass in one file pass.
+
+`2dhist.py` creates a grouped 2D histogram in `(y_rap, mT)` and projects it to `dN/dy` and `dN/dmT`.
 
 ## Quantity order matters
 
@@ -71,9 +90,23 @@ while True:
         print(particles.size(), pdg[:5])
 ```
 
-Columns are NumPy arrays.
+Columns are NumPy arrays backed by C++ memory.
+
+## Skip elastic two-particle events
+
+```python
+reader = brass.BinaryReader(
+    "particles_binary.bin",
+    QUANTITIES,
+    skip_elastic=True,
+)
+```
+
+This skips particle blocks with exactly two particles.
 
 ## Histogram rapidity
+
+Histograms are configured with `HistogramRequest`.
 
 ```python
 import brass
@@ -82,17 +115,19 @@ QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
 
 reader = brass.BinaryReader("particles_binary.bin", QUANTITIES)
 
-hist = brass.histogram(
-    reader,
-    ["y_rap"],
-    [brass.RegularAxis(80, -5.0, 5.0)],
-)
+request = brass.HistogramRequest()
+request.quantities = ["y_rap"]
+request.axes = [brass.RegularAxis(80, -5.0, 5.0)]
+
+hist = brass.histogram(reader, request)
 
 print(hist.values)
 print(hist.edges)
 ```
 
-## Histogram by PDG
+## Grouped histogram
+
+Grouped histograms use `HistogramGroupBy`.
 
 ```python
 import brass
@@ -101,62 +136,20 @@ QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
 
 reader = brass.BinaryReader("particles_binary.bin", QUANTITIES)
 
-hists = brass.histograms_by(
-    reader,
-    ["y_rap"],
-    [brass.RegularAxis(80, -5.0, 5.0)],
-    by="pdg",
-    group_values=[2212, -2212],
-)
+request = brass.HistogramRequest()
+request.quantities = ["y_rap"]
+request.axes = [brass.RegularAxis(80, -5.0, 5.0)]
+request.group_by = brass.HistogramGroupBy("pdg", [2212, -2212])
+
+hists = brass.histogram(reader, request)
 
 proton = hists[2212]
 anti_proton = hists[-2212]
-
-print(proton.values.sum())
-print(anti_proton.values.sum())
 ```
 
-## Plot `dN/dy`
+## Multiple histograms in one file pass
 
-```python
-import matplotlib.pyplot as plt
-import brass
-
-QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
-
-reader = brass.BinaryReader("particles_binary.bin", QUANTITIES)
-
-hists = brass.histograms_by(
-    reader,
-    ["y_rap"],
-    [brass.RegularAxis(80, -5.0, 5.0)],
-    by="pdg",
-    group_values=[2212, -2212],
-)
-
-n_events = reader.particle_blocks_read
-
-proton = hists[2212]
-anti_proton = hists[-2212]
-
-edges = proton.edges[0]
-centers = [(lo + hi) / 2.0 for lo, hi in zip(edges[:-1], edges[1:])]
-dy = edges[1] - edges[0]
-
-dn_dy_proton = proton.values / (dy * n_events)
-dn_dy_anti_proton = anti_proton.values / (dy * n_events)
-
-plt.step(centers, dn_dy_proton, where="mid", label=r"$p$")
-plt.step(centers, dn_dy_anti_proton, where="mid", label=r"$\bar{p}$")
-
-plt.xlabel("Rapidity y")
-plt.ylabel(r"$dN/dy$")
-plt.legend()
-plt.tight_layout()
-plt.show()
-```
-
-## Histogram a particle block
+Use `brass.histograms(...)` to fill several independent histograms while reading the file only once.
 
 ```python
 import brass
@@ -165,47 +158,111 @@ QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
 
 reader = brass.BinaryReader("particles_binary.bin", QUANTITIES)
 
-block = reader.read()
+y_request = brass.HistogramRequest()
+y_request.quantities = ["y_rap"]
+y_request.axes = [brass.RegularAxis(80, -5.0, 5.0)]
 
-hist = brass.histogram(
-    block.particles,
-    ["y_rap"],
-    [brass.RegularAxis(80, -5.0, 5.0)],
-)
+mt_request = brass.HistogramRequest()
+mt_request.quantities = ["mt"]
+mt_request.axes = [brass.RegularAxis(80, 0.0, 3.0)]
 
-print(hist.values.sum())
+hist_y, hist_mt = brass.histograms(reader, [y_request, mt_request])
 ```
 
-For production use, prefer passing the `BinaryReader` directly to `histogram` or `histograms_by`.
+Each request creates one histogram. A request can be 1D, 2D, 3D, grouped, or ungrouped.
 
-## API
+## Two-dimensional histogram
+
+```python
+import brass
+
+QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
+
+reader = brass.BinaryReader("particles_binary.bin", QUANTITIES)
+
+request = brass.HistogramRequest()
+request.quantities = ["y_rap", "mt"]
+request.axes = [
+    brass.RegularAxis(100, -5.0, 5.0),
+    brass.RegularAxis(100, 0.0, 3.0),
+]
+
+hist = brass.histogram(reader, request)
+
+print(hist.shape)
+print(hist.values.shape)
+print(hist.edges)
+```
+
+## Grouped two-dimensional histogram
+
+```python
+import brass
+
+QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
+
+reader = brass.BinaryReader(
+    "particles_binary.bin",
+    QUANTITIES,
+    skip_elastic=True,
+)
+
+request = brass.HistogramRequest()
+request.quantities = ["y_rap", "mt"]
+request.axes = [
+    brass.RegularAxis(100, -5.0, 5.0),
+    brass.RegularAxis(100, 0.0, 3.0),
+]
+request.group_by = brass.HistogramGroupBy(
+    "pdg",
+    [211, -211, 321, -321, 2212, -2212],
+)
+
+hists = brass.histogram(reader, request)
+
+pion_plus_hist = hists[211]
+proton_hist = hists[2212]
+```
+
+## Computed quantities
+
+BRASS can compute derived quantities from the columns loaded by `BinaryReader`.
+
+```text
+pt:    px, py
+p:     px, py, pz
+m:     p0, px, py, pz
+mt:    p0, px, py, pz
+y_rap: p0, pz
+```
+
+The required input columns must be included in the `BinaryReader` quantity list.
+
+## API summary
 
 ```python
 reader = brass.BinaryReader(filename, quantities)
+reader = brass.BinaryReader(filename, quantities, skip_elastic=True)
 
 block = reader.read()
 
 particles.column("px")
 particles.columns()
 
-hist = brass.histogram(reader, histogram_quantities, axes)
-hist = brass.histogram(particles, histogram_quantities, axes)
+request = brass.HistogramRequest()
+request.quantities = ["y_rap"]
+request.axes = [brass.RegularAxis(80, -5.0, 5.0)]
 
-hists = brass.histograms_by(
-    reader,
-    histogram_quantities,
-    axes,
-    by="pdg",
-    group_values=[211, -211],
-)
+hist = brass.histogram(reader, request)
+hist = brass.histogram(particles, request)
 
-hists = brass.histograms_by(
-    particles,
-    histogram_quantities,
-    axes,
-    by="pdg",
-    group_values=[211, -211],
-)
+request.group_by = brass.HistogramGroupBy("pdg", [211, -211])
+
+hists = brass.histogram(reader, request)
+hists = brass.histogram(particles, request)
+
+hist_y, hist_mt = brass.histograms(reader, [y_request, mt_request])
+hist_y, hist_mt = brass.histograms(particles, [y_request, mt_request])
 ```
 
 ## Development

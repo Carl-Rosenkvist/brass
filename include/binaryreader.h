@@ -48,7 +48,8 @@ using Block = std::variant<ParticleBlock, EndBlock, InteractionBlock>;
 class BinaryReader {
    public:
     explicit BinaryReader(const std::string& filename,
-                          std::vector<std::string> quantities);
+                          std::vector<std::string> quantities,
+                          bool skip_elastic = false);
 
     const Header& header() const { return header_; }
     std::optional<Block> read();
@@ -65,6 +66,8 @@ class BinaryReader {
     std::size_t end_blocks_read_ = 0;
     std::size_t interaction_blocks_read_ = 0;
     std::vector<std::string> quantities_;
+    const bool skip_elastic_;
+
     std::shared_ptr<const ParticleLayout> layout_;
     Header read_header();
     template <class T>

@@ -3,8 +3,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "binaryreader.h"
@@ -19,25 +21,35 @@ struct HistogramResult {
     std::vector<std::size_t> shape;
 };
 
-HistogramResult histogram_particles(
-    const Particles& particles,
-    const std::vector<std::string>& histogram_quantities,
-    const std::vector<AxisConfig>& axes);
+using GroupedHistogramResult = std::unordered_map<int32_t, HistogramResult>;
 
-HistogramResult histogram_reader(
-    BinaryReader& reader, const std::vector<std::string>& histogram_quantities,
-    const std::vector<AxisConfig>& axes);
+using HistogramRunResult =
+    std::variant<HistogramResult, GroupedHistogramResult>;
 
-std::unordered_map<int32_t, HistogramResult> histograms_by_particles(
-    const Particles& particles,
-    const std::vector<std::string>& histogram_quantities,
-    const std::vector<AxisConfig>& axes, const std::string& by,
-    const std::vector<int32_t>& group_values);
+using HistogramBatchResult = std::vector<HistogramRunResult>;
 
-std::unordered_map<int32_t, HistogramResult> histograms_by_reader(
-    BinaryReader& reader, const std::vector<std::string>& histogram_quantities,
-    const std::vector<AxisConfig>& axes, const std::string& by,
-    const std::vector<int32_t>& group_values);
+struct HistogramGroupBy {
+    std::string quantity;
+    std::vector<int32_t> values;
+};
+
+struct HistogramRequest {
+    std::vector<std::string> quantities;
+    std::vector<AxisConfig> axes;
+    std::optional<HistogramGroupBy> group_by;
+};
+
+HistogramRunResult histogram(const Particles& particles,
+                             const HistogramRequest& request);
+
+HistogramRunResult histogram(BinaryReader& reader,
+                             const HistogramRequest& request);
+
+HistogramBatchResult histograms(const Particles& particles,
+                                const std::vector<HistogramRequest>& requests);
+
+HistogramBatchResult histograms(BinaryReader& reader,
+                                const std::vector<HistogramRequest>& requests);
 
 }  // namespace brass
 

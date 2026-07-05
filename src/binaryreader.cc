@@ -4,10 +4,12 @@
 
 namespace brass {
 BinaryReader::BinaryReader(const std::string& filename,
-                           std::vector<std::string> quantities)
+                           std::vector<std::string> quantities,
+                           bool skip_elastic)
     : file_(filename, std::ios::binary),
       layout_(std::make_shared<ParticleLayout>(
-          particle_layout_from_quantities(quantities))) {
+          particle_layout_from_quantities(quantities))),
+      skip_elastic_(skip_elastic) {
     if (!file_) {
         throw std::runtime_error("BinaryReader: could not open file");
     }
@@ -59,47 +61,54 @@ std::vector<std::byte> BinaryReader::read_chunk(std::size_t size) {
     return buf;
 }
 std::optional<Block> BinaryReader::read() {
-    char tag{};
-    if (!file_.read(&tag, 1)) {
-        return std::nullopt;
-    }
-
-    switch (tag) {
-        case 'p': {
-            ParticleBlock block;
-            block.event_number = read_pod<int32_t>();
-            block.ensemble_number = read_pod<int32_t>();
-
-            const uint32_t npart = read_pod<uint32_t>();
-
-            auto bytes = read_chunk(static_cast<std::size_t>(npart) *
-                                    layout_->particle_size);
-            block.particles = Particles(std::move(bytes), layout_);
-
-            ++particle_blocks_read_;
-            return block;
+    while (true) {
+        char tag{};
+        if (!file_.read(&tag, 1)) {
+            return std::nullopt;
         }
 
-        case 'f': {
-            EndBlock block;
-            block.event_number = read_pod<uint32_t>();
-            block.ensemble_number = read_pod<int32_t>();
-            block.impact_parameter = read_pod<double>();
+        switch (tag) {
+            case 'p': {
+                ParticleBlock block;
+                block.event_number = read_pod<int32_t>();
+                block.ensemble_number = read_pod<int32_t>();
 
-            const char empty = read_pod<char>();
-            block.empty = empty != 0;
+                const uint32_t npart = read_pod<uint32_t>();
 
-            ++end_blocks_read_;
-            return block;
+                auto bytes = read_chunk(static_cast<std::size_t>(npart) *
+                                        layout_->particle_size);
+
+                if (skip_elastic_ && npart == 2) {
+                    continue;
+                }
+
+                block.particles = Particles(std::move(bytes), layout_);
+
+                ++particle_blocks_read_;
+                return block;
+            }
+
+            case 'f': {
+                EndBlock block;
+                block.event_number = read_pod<uint32_t>();
+                block.ensemble_number = read_pod<int32_t>();
+                block.impact_parameter = read_pod<double>();
+
+                const char empty = read_pod<char>();
+                block.empty = empty != 0;
+
+                ++end_blocks_read_;
+                return block;
+            }
+
+            case 'i': {
+                throw std::runtime_error(
+                    "InteractionBlock reading not implemented yet");
+            }
+
+            default:
+                throw std::runtime_error("BinaryReader: unknown block tag");
         }
-
-        case 'i': {
-            throw std::runtime_error(
-                "InteractionBlock reading not implemented yet");
-        }
-
-        default:
-            throw std::runtime_error("BinaryReader: unknown block tag");
     }
 }
 
