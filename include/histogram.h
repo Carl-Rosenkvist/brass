@@ -56,7 +56,19 @@ class Histogram {
 
         hist_(std::forward<Args>(args)...);
     }
-    void fill_values(const std::vector<double>& values);
+
+    template <class... Args>
+    void fill_weighted(double weight, Args&&... args) {
+        if (sizeof...(Args) != rank()) {
+            throw std::runtime_error("Histogram: fill dimension mismatch");
+        }
+
+        hist_(std::forward<Args>(args)...,
+              histogram_detail::bh::weight(weight));
+    }
+
+    void fill_values(const std::vector<double>& values, double weight = 1.0);
+
     std::size_t rank() const;
     std::size_t size() const;
 

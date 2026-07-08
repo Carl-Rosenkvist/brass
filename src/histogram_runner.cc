@@ -1,224 +1,88 @@
 #include "histogram_runner.h"
 
-#include <algorithm>
-#include <cmath>
 #include <cstddef>
-#include <cstdint>
-#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
-#include "binaryreader.h"
-#include "histogram.h"
-#include "particles.h"
-
 namespace brass {
 
-namespace {
-
-enum class ParticleQuantityKind {
-    Column,
-    Pt,
-    P,
-    Mass,
-    Mt,
-    Rapidity,
-};
-
-ParticleQuantityKind quantity_kind_from_name(const std::string& name) {
-    if (name == "pt") {
-        return ParticleQuantityKind::Pt;
+void fill_histogram(
+    const Particles& particles, const std::vector<std::string>& quantities,
+    Histogram& hist,
+    const std::optional<std::string>& particle_weight_quantity = std::nullopt,
+    double block_weight = 1.0) {
+    if (quantities.size() != hist.rank()) {
+        throw std::runtime_error("histogram: quantity/axis dimension mismatch");
     }
 
-    if (name == "p") {
-        return ParticleQuantityKind::P;
-    }
+    std::vector<double> values(quantities.size());
 
-    if (name == "m" || name == "mass_from_momentum") {
-        return ParticleQuantityKind::Mass;
-    }
+    for (std::size_t i = 0; i < particles.size(); ++i) {
+        const auto row = particles.row(i);
 
-    if (name == "mt") {
-        return ParticleQuantityKind::Mt;
-    }
-
-    if (name == "y" || name == "y_rap" || name == "rapidity") {
-        return ParticleQuantityKind::Rapidity;
-    }
-
-    return ParticleQuantityKind::Column;
-}
-
-class ParticleQuantity {
-   public:
-    ParticleQuantity(const ParticleLayout& layout, std::string name)
-        : name_(std::move(name)), kind_(quantity_kind_from_name(name_)) {
-        switch (kind_) {
-            case ParticleQuantityKind::Column:
-                inputs_.push_back(layout.quantity(name_));
-                break;
-
-            case ParticleQuantityKind::Pt:
-                inputs_.push_back(layout.quantity("px"));
-                inputs_.push_back(layout.quantity("py"));
-                break;
-
-            case ParticleQuantityKind::P:
-                inputs_.push_back(layout.quantity("px"));
-                inputs_.push_back(layout.quantity("py"));
-                inputs_.push_back(layout.quantity("pz"));
-                break;
-
-            case ParticleQuantityKind::Mass:
-            case ParticleQuantityKind::Mt:
-                inputs_.push_back(layout.quantity("p0"));
-                inputs_.push_back(layout.quantity("px"));
-                inputs_.push_back(layout.quantity("py"));
-                inputs_.push_back(layout.quantity("pz"));
-                break;
-
-            case ParticleQuantityKind::Rapidity:
-                inputs_.push_back(layout.quantity("p0"));
-                inputs_.push_back(layout.quantity("pz"));
-                break;
+        for (std::size_t d = 0; d < quantities.size(); ++d) {
+            values[d] = particles.value(row, quantities[d]);
         }
 
-        validate_inputs();
-    }
+        double weight = block_weight;
 
-    double value(const ParticleRow& row) const {
-        switch (kind_) {
-            case ParticleQuantityKind::Column:
-                return row.get_double(inputs_[0]);
-
-            case ParticleQuantityKind::Pt: {
-                const double px = row.get_double(inputs_[0]);
-                const double py = row.get_double(inputs_[1]);
-                return std::hypot(px, py);
-            }
-
-            case ParticleQuantityKind::P: {
-                const double px = row.get_double(inputs_[0]);
-                const double py = row.get_double(inputs_[1]);
-                const double pz = row.get_double(inputs_[2]);
-                return std::hypot(std::hypot(px, py), pz);
-            }
-
-            case ParticleQuantityKind::Mass: {
-                const double p0 = row.get_double(inputs_[0]);
-                const double px = row.get_double(inputs_[1]);
-                const double py = row.get_double(inputs_[2]);
-                const double pz = row.get_double(inputs_[3]);
-
-                const double m2 = p0 * p0 - px * px - py * py - pz * pz;
-                return std::sqrt(std::max(m2, 0.0));
-            }
-
-            case ParticleQuantityKind::Mt: {
-                const double p0 = row.get_double(inputs_[0]);
-                const double px = row.get_double(inputs_[1]);
-                const double py = row.get_double(inputs_[2]);
-                const double pz = row.get_double(inputs_[3]);
-
-                const double pt = std::hypot(px, py);
-                const double m2 = p0 * p0 - px * px - py * py - pz * pz;
-                const double mass = std::sqrt(std::max(m2, 0.0));
-
-                return std::hypot(pt, mass);
-            }
-
-            case ParticleQuantityKind::Rapidity: {
-                const double p0 = row.get_double(inputs_[0]);
-                const double pz = row.get_double(inputs_[1]);
-
-                if (p0 <= std::abs(pz)) {
-                    return std::numeric_limits<double>::quiet_NaN();
-                }
-
-                return 0.5 * std::log((p0 + pz) / (p0 - pz));
-            }
+        if (particle_weight_quantity) {
+            weight *= particles.value(row, *particle_weight_quantity);
         }
 
-        throw std::runtime_error("unknown particle quantity: " + name_);
-    }
-
-   private:
-    void validate_inputs() const {
-        if (kind_ == ParticleQuantityKind::Column) {
-            return;
-        }
-
-        for (const auto& q : inputs_) {
-            if (q.size != sizeof(double)) {
-                throw std::runtime_error("quantity is not double: " + q.name);
-            }
-        }
-    }
-
-    std::string name_;
-    ParticleQuantityKind kind_ = ParticleQuantityKind::Column;
-    std::vector<QuantityOffset> inputs_;
-};
-
-using ParticleQuantities = std::vector<ParticleQuantity>;
-
-void check_histogram_request(const HistogramRequest& request,
-                             const std::string& caller) {
-    if (request.quantities.empty()) {
-        throw std::runtime_error(caller + ": no histogram quantities given");
-    }
-
-    if (request.quantities.size() != request.axes.size()) {
-        throw std::runtime_error(
-            caller +
-            ": number of histogram quantities must match number of axes");
+        hist.fill_values(values, weight);
     }
 }
 
-ParticleQuantities make_particle_quantities(
-    const ParticleLayout& layout, const std::vector<std::string>& names) {
-    ParticleQuantities quantities;
-    quantities.reserve(names.size());
-
-    for (const auto& name : names) {
-        quantities.emplace_back(layout, name);
+void fill_grouped_histogram(
+    const Particles& particles, const std::vector<std::string>& quantities,
+    const HistogramGroupBy& group_by,
+    std::unordered_map<int32_t, Histogram>& hists,
+    const std::optional<std::string>& particle_weight_quantity = std::nullopt,
+    double block_weight = 1.0) {
+    if (hists.empty()) {
+        return;
     }
 
-    return quantities;
-}
+    const auto rank = hists.begin()->second.rank();
 
-bool evaluate_particle_values(const ParticleRow& row,
-                              const ParticleQuantities& quantities,
-                              std::vector<double>& values) {
-    for (std::size_t d = 0; d < quantities.size(); ++d) {
-        values[d] = quantities[d].value(row);
+    if (quantities.size() != rank) {
+        throw std::runtime_error("histogram: quantity/axis dimension mismatch");
+    }
 
-        if (!std::isfinite(values[d])) {
-            return false;
+    const auto& group_quantity = particles.quantity(group_by.quantity);
+
+    std::vector<double> values(quantities.size());
+
+    for (std::size_t i = 0; i < particles.size(); ++i) {
+        const auto row = particles.row(i);
+        const auto group_value = row.get_int32(group_quantity);
+
+        const auto it = hists.find(group_value);
+        if (it == hists.end()) {
+            continue;
         }
-    }
 
-    return true;
+        for (std::size_t d = 0; d < quantities.size(); ++d) {
+            values[d] = particles.value(row, quantities[d]);
+        }
+
+        double weight = block_weight;
+
+        if (particle_weight_quantity) {
+            weight *= particles.value(row, *particle_weight_quantity);
+        }
+
+        it->second.fill_values(values, weight);
+    }
 }
 
-std::unordered_map<int32_t, Histogram> make_grouped_histograms(
-    const std::vector<AxisConfig>& axes,
-    const std::vector<int32_t>& group_values) {
-    std::unordered_map<int32_t, Histogram> histograms;
-    histograms.reserve(group_values.size());
-
-    for (const auto value : group_values) {
-        histograms.emplace(value, Histogram(axes));
-    }
-
-    return histograms;
-}
-
-HistogramResult make_result(const Histogram& hist) {
+HistogramResult histogram_to_result(const Histogram& hist) {
     return HistogramResult{
         .values = hist.values(),
         .edges = hist.edges(),
@@ -226,184 +90,192 @@ HistogramResult make_result(const Histogram& hist) {
     };
 }
 
-GroupedHistogramResult make_grouped_result(
-    const std::unordered_map<int32_t, Histogram>& histograms) {
-    GroupedHistogramResult out;
-    out.reserve(histograms.size());
+GroupedHistogramResult grouped_histogram_to_result(
+    const std::unordered_map<int32_t, Histogram>& hists) {
+    GroupedHistogramResult results;
 
-    for (const auto& [key, hist] : histograms) {
-        out.emplace(key, make_result(hist));
-    }
-
-    return out;
-}
-
-struct HistogramRunState {
-    HistogramRequest request;
-    ParticleQuantities quantities;
-    std::optional<QuantityOffset> group_quantity;
-    std::variant<Histogram, std::unordered_map<int32_t, Histogram>> histograms;
-};
-
-HistogramRunState make_histogram_state(const ParticleLayout& layout,
-                                       const HistogramRequest& request) {
-    check_histogram_request(request, "histogram");
-
-    HistogramRunState state{
-        .request = request,
-        .quantities = make_particle_quantities(layout, request.quantities),
-        .group_quantity = std::nullopt,
-        .histograms = Histogram(request.axes),
-    };
-
-    if (request.group_by.has_value()) {
-        const auto& group_quantity =
-            layout.quantity(request.group_by->quantity);
-
-        if (group_quantity.size != sizeof(int32_t)) {
-            throw std::runtime_error("quantity is not int32: " +
-                                     request.group_by->quantity);
-        }
-
-        state.group_quantity = group_quantity;
-        state.histograms =
-            make_grouped_histograms(request.axes, request.group_by->values);
-    }
-
-    return state;
-}
-
-void fill_state_from_row(HistogramRunState& state, const ParticleRow& row,
-                         std::vector<double>& values) {
-    values.resize(state.quantities.size());
-
-    if (!evaluate_particle_values(row, state.quantities, values)) {
-        return;
-    }
-
-    if (state.request.group_by.has_value()) {
-        const auto group = row.get_int32(*state.group_quantity);
-
-        auto& histograms =
-            std::get<std::unordered_map<int32_t, Histogram>>(state.histograms);
-
-        const auto it = histograms.find(group);
-        if (it == histograms.end()) {
-            return;
-        }
-
-        it->second.fill_values(values);
-        return;
-    }
-
-    auto& hist = std::get<Histogram>(state.histograms);
-    hist.fill_values(values);
-}
-
-void fill_states_from_particles(std::vector<HistogramRunState>& states,
-                                const Particles& particles) {
-    std::vector<std::vector<double>> values(states.size());
-
-    for (std::size_t i = 0; i < particles.size(); ++i) {
-        const auto row = particles.row(i);
-
-        for (std::size_t s = 0; s < states.size(); ++s) {
-            fill_state_from_row(states[s], row, values[s]);
-        }
-    }
-}
-
-HistogramRunResult make_result(const HistogramRunState& state) {
-    if (std::holds_alternative<Histogram>(state.histograms)) {
-        return make_result(std::get<Histogram>(state.histograms));
-    }
-
-    return make_grouped_result(
-        std::get<std::unordered_map<int32_t, Histogram>>(state.histograms));
-}
-
-std::vector<HistogramRunState> make_histogram_states(
-    const ParticleLayout& layout,
-    const std::vector<HistogramRequest>& requests) {
-    std::vector<HistogramRunState> states;
-    states.reserve(requests.size());
-
-    for (const auto& request : requests) {
-        states.push_back(make_histogram_state(layout, request));
-    }
-
-    return states;
-}
-
-HistogramBatchResult make_batch_result(
-    const std::vector<HistogramRunState>& states) {
-    HistogramBatchResult results;
-    results.reserve(states.size());
-
-    for (const auto& state : states) {
-        results.push_back(make_result(state));
+    for (const auto& [group, hist] : hists) {
+        results.emplace(group, histogram_to_result(hist));
     }
 
     return results;
 }
 
-}  // namespace
+std::unordered_map<int32_t, Histogram> make_grouped_histograms(
+    const std::vector<AxisConfig>& axes, const std::vector<int32_t>& groups) {
+    std::unordered_map<int32_t, Histogram> hists;
 
-HistogramRunResult histogram(const Particles& particles,
-                             const HistogramRequest& request) {
-    return histograms(particles, std::vector<HistogramRequest>{request}).at(0);
-}
-
-HistogramRunResult histogram(BinaryReader& reader,
-                             const HistogramRequest& request) {
-    return histograms(reader, std::vector<HistogramRequest>{request}).at(0);
-}
-
-HistogramBatchResult histograms(const Particles& particles,
-                                const std::vector<HistogramRequest>& requests) {
-    if (requests.empty()) {
-        return {};
+    for (const auto group : groups) {
+        hists.emplace(group, Histogram(axes));
     }
 
-    auto states = make_histogram_states(particles.layout(), requests);
-    fill_states_from_particles(states, particles);
-
-    return make_batch_result(states);
+    return hists;
 }
 
-HistogramBatchResult histograms(BinaryReader& reader,
-                                const std::vector<HistogramRequest>& requests) {
-    if (requests.empty()) {
-        return {};
+HistogramRun make_run(HistogramRequest request) {
+    const auto axes = request.axes;
+
+    if (request.group_by) {
+        auto hists = make_grouped_histograms(axes, request.group_by->values);
+
+        return HistogramRun{
+            .request = std::move(request),
+            .histograms = std::move(hists),
+        };
     }
 
-    std::optional<std::vector<HistogramRunState>> states;
+    return HistogramRun{
+        .request = std::move(request),
+        .histograms = Histogram(axes),
+    };
+}
 
-    while (true) {
-        auto block = reader.read();
+HistogramRunner::HistogramRunner(BinaryReader& reader,
+                                 std::vector<HistogramRequest> requests)
+    : reader_(reader) {
+    runs_.reserve(requests.size());
 
-        if (!block.has_value()) {
-            break;
-        }
+    for (auto& request : requests) {
+        runs_.push_back(make_run(std::move(request)));
+    }
+}
 
-        if (!std::holds_alternative<ParticleBlock>(*block)) {
+void HistogramRunner::fill(const Particles& particles) {
+    for (auto& run : runs_) {
+        if (run.request.target != HistogramTarget::Particles) {
             continue;
         }
 
-        const auto& particles = std::get<ParticleBlock>(*block).particles;
+        if (run.request.group_by) {
+            auto& hists = std::get<std::unordered_map<int32_t, Histogram>>(
+                run.histograms);
 
-        if (!states.has_value()) {
-            states = make_histogram_states(particles.layout(), requests);
+            fill_grouped_histogram(particles, run.request.quantities,
+                                   *run.request.group_by, hists,
+                                   run.request.weight_quantity);
+        } else {
+            auto& hist = std::get<Histogram>(run.histograms);
+
+            fill_histogram(particles, run.request.quantities, hist,
+                           run.request.weight_quantity);
+        }
+    }
+}
+
+void HistogramRunner::fill(const Block& block) {
+    std::visit(
+        [this](const auto& b) {
+            using T = std::decay_t<decltype(b)>;
+
+            if constexpr (std::is_same_v<T, ParticleBlock>) {
+                for (auto& run : runs_) {
+                    if (run.request.target != HistogramTarget::Particles) {
+                        continue;
+                    }
+
+                    if (run.request.group_by) {
+                        auto& hists =
+                            std::get<std::unordered_map<int32_t, Histogram>>(
+                                run.histograms);
+
+                        fill_grouped_histogram(b.particles,
+                                               run.request.quantities,
+                                               *run.request.group_by, hists,
+                                               run.request.weight_quantity);
+                    } else {
+                        auto& hist = std::get<Histogram>(run.histograms);
+
+                        fill_histogram(b.particles, run.request.quantities,
+                                       hist, run.request.weight_quantity);
+                    }
+                }
+            }
+
+            if constexpr (std::is_same_v<T, EndBlock>) {
+                fill_block_histograms(runs_, HistogramTarget::EndBlock, b,
+                                      end_block_value);
+            }
+
+            if constexpr (std::is_same_v<T, InteractionBlock>) {
+                fill_block_histograms(runs_, HistogramTarget::Interaction, b,
+                                      interaction_value);
+
+                for (auto& run : runs_) {
+                    if (run.request.target != HistogramTarget::Incoming &&
+                        run.request.target != HistogramTarget::Outgoing) {
+                        continue;
+                    }
+
+                    const Particles& particles =
+                        run.request.target == HistogramTarget::Incoming
+                            ? b.incoming
+                            : b.outgoing;
+
+                    double block_weight = 1.0;
+                    std::optional<std::string> particle_weight_quantity;
+
+                    if (run.request.weight_quantity) {
+                        const auto& weight_quantity =
+                            *run.request.weight_quantity;
+
+                        if (is_interaction_quantity(weight_quantity)) {
+                            block_weight =
+                                interaction_value(b, weight_quantity);
+                        } else {
+                            particle_weight_quantity = weight_quantity;
+                        }
+                    }
+
+                    if (run.request.group_by) {
+                        auto& hists =
+                            std::get<std::unordered_map<int32_t, Histogram>>(
+                                run.histograms);
+
+                        fill_grouped_histogram(
+                            particles, run.request.quantities,
+                            *run.request.group_by, hists,
+                            particle_weight_quantity, block_weight);
+                    } else {
+                        auto& hist = std::get<Histogram>(run.histograms);
+
+                        fill_histogram(particles, run.request.quantities, hist,
+                                       particle_weight_quantity, block_weight);
+                    }
+                }
+            }
+        },
+        block);
+}
+
+void HistogramRunner::run() {
+    while (true) {
+        auto block = reader_.read();
+
+        if (!block) {
+            break;
         }
 
-        fill_states_from_particles(*states, particles);
+        fill(*block);
+    }
+}
+
+HistogramBatchResult HistogramRunner::result() const {
+    HistogramBatchResult results;
+    results.reserve(runs_.size());
+
+    for (const auto& run : runs_) {
+        if (const auto* hist = std::get_if<Histogram>(&run.histograms)) {
+            results.push_back(histogram_to_result(*hist));
+        } else {
+            const auto& hists =
+                std::get<std::unordered_map<int32_t, Histogram>>(
+                    run.histograms);
+
+            results.push_back(grouped_histogram_to_result(hists));
+        }
     }
 
-    if (!states.has_value()) {
-        return {};
-    }
-
-    return make_batch_result(*states);
+    return results;
 }
 
 }  // namespace brass

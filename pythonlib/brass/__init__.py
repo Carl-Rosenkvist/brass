@@ -11,12 +11,23 @@ from ._brass import (
     HistogramResult,
     HistogramRequest,
     HistogramGroupBy,
-    histogram,
-    histograms,
+    HistogramTarget,
+    HistogramRunner,
     particle_size_from_quantities,
 )
 
 from .decays import DecayReconstructor
+
+
+def histograms(reader, requests):
+    runner = HistogramRunner(reader, requests)
+    runner.run()
+    return runner.result()
+
+
+def histogram(reader, request):
+    return histograms(reader, [request])[0]
+
 
 __all__ = [
     "BinaryReader",
@@ -31,6 +42,8 @@ __all__ = [
     "HistogramResult",
     "HistogramRequest",
     "HistogramGroupBy",
+    "HistogramTarget",
+    "HistogramRunner",
     "histogram",
     "histograms",
     "particle_size_from_quantities",

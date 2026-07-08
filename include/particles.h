@@ -5,11 +5,9 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -34,21 +32,9 @@ class ParticleRow {
         return value;
     }
 
-    double get_double(const QuantityOffset& q) const {
-        if (q.size != sizeof(double)) {
-            throw std::runtime_error("quantity is not double: " + q.name);
-        }
-
-        return get_value<double>(q.offset);
-    }
-
-    int32_t get_int32(const QuantityOffset& q) const {
-        if (q.size != sizeof(int32_t)) {
-            throw std::runtime_error("quantity is not int32: " + q.name);
-        }
-
-        return get_value<int32_t>(q.offset);
-    }
+    double get_double(const QuantityOffset& q) const;
+    int32_t get_int32(const QuantityOffset& q) const;
+    double get_as_double(const QuantityOffset& q) const;
 
    private:
     const std::byte* row_;
@@ -59,78 +45,36 @@ class Particles {
     Particles() = default;
 
     Particles(std::vector<std::byte> bytes,
-              std::shared_ptr<const ParticleLayout> layout)
-        : bytes_(std::move(bytes)), layout_(std::move(layout)) {
-        const auto psize = particle_size();
+              std::shared_ptr<const ParticleLayout> layout);
 
-        if (psize == 0) {
-            size_ = 0;
-            return;
-        }
-
-        if (bytes_.size() % psize != 0) {
-            throw std::runtime_error(
-                "Particles: byte size is not divisible by particle size");
-        }
-
-        size_ = bytes_.size() / psize;
-    }
-
-    std::size_t particle_size() const {
-        return layout_ ? layout_->particle_size : 0;
-    }
-
+    std::size_t particle_size() const;
     std::size_t size() const { return size_; }
-
     bool empty() const { return size_ == 0; }
 
     const std::byte* data() const { return bytes_.data(); }
-
     std::size_t bytes_size() const { return bytes_.size(); }
 
-    const ParticleLayout& layout() const {
-        if (!layout_) {
-            throw std::runtime_error("Particles: no layout");
-        }
+    const ParticleLayout& layout() const;
 
-        return *layout_;
-    }
+    const QuantityOffset& quantity(const std::string& name) const;
+    const QuantityOffset* find_quantity(const std::string& name) const;
 
-    const QuantityOffset& quantity(const std::string& name) const {
-        return layout().quantity(name);
-    }
+    ParticleRow row(std::size_t i) const;
 
-    ParticleRow row(std::size_t i) const {
-        if (i >= size_) {
-            throw std::runtime_error("particle row index out of range");
-        }
+    double stored_value(const ParticleRow& row, const std::string& name) const;
 
-        return ParticleRow(bytes_.data() + i * particle_size());
-    }
+    double value(const ParticleRow& row, const std::string& name) const;
 
-    const Column& column_variant(const std::string& name) const {
-        const auto it = columns_.find(name);
+    double value(std::size_t i, const std::string& name) const;
 
-        if (it != columns_.end()) {
-            return it->second;
-        }
-
-        make_column(name);
-
-        const auto inserted = columns_.find(name);
-        if (inserted == columns_.end()) {
-            throw std::runtime_error("unknown particle quantity: " + name);
-        }
-
-        return inserted->second;
-    }
+    const Column& column_variant(const std::string& name) const;
 
     template <class T>
     const std::vector<T>& column(const std::string& name) const {
         const auto& col = column_variant(name);
 
         const auto* ptr = std::get_if<std::vector<T>>(&col);
-        if (!ptr) {
+        if (ptr == nullptr) {
             throw std::runtime_error("wrong type for particle quantity: " +
                                      name);
         }
@@ -139,35 +83,19 @@ class Particles {
     }
 
    private:
-    void make_column(const std::string& name) const {
-        const auto& q = quantity(name);
-        const auto psize = particle_size();
+    void make_column(const std::string& name) const;
 
-        if (q.size == sizeof(double)) {
-            std::vector<double> values(size_);
+    template <class T>
+    void make_column(const QuantityOffset& q) const {
+        std::vector<T> values(size_);
+        const auto size = particle_size();
 
-            for (std::size_t i = 0; i < size_; ++i) {
-                std::memcpy(&values[i], bytes_.data() + i * psize + q.offset,
-                            sizeof(double));
-            }
-
-            columns_.emplace(q.name, std::move(values));
-            return;
+        for (std::size_t i = 0; i < size_; ++i) {
+            std::memcpy(&values[i], bytes_.data() + i * size + q.offset,
+                        sizeof(T));
         }
 
-        if (q.size == sizeof(int32_t)) {
-            std::vector<int32_t> values(size_);
-
-            for (std::size_t i = 0; i < size_; ++i) {
-                std::memcpy(&values[i], bytes_.data() + i * psize + q.offset,
-                            sizeof(int32_t));
-            }
-
-            columns_.emplace(q.name, std::move(values));
-            return;
-        }
-
-        throw std::runtime_error("unsupported quantity size: " + q.name);
+        columns_.emplace(q.name, std::move(values));
     }
 
     std::vector<std::byte> bytes_;

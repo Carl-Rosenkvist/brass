@@ -12,7 +12,8 @@ set(SRC_FILES
     src/binaryreader.cc
     src/histogram.cc
     src/histogram_runner.cc
-)
+    src/particles.cc
+  )
 set(BOOST_HEADER_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/histogram/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/assert/include

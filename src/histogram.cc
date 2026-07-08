@@ -1,12 +1,10 @@
 #include "histogram.h"
 
-#include <boost/histogram.hpp>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace brass {
-
-namespace bh = boost::histogram;
 
 Histogram::Histogram(std::vector<AxisConfig> axes) : hist_(make_axes(axes)) {}
 
@@ -27,7 +25,8 @@ histogram_detail::BoostAxis Histogram::make_axis(const AxisConfig& axis) {
                         "upper");
                 }
 
-                return bh::axis::regular<>(cfg.bins, cfg.lower, cfg.upper);
+                return histogram_detail::bh::axis::regular<>(
+                    cfg.bins, cfg.lower, cfg.upper);
             }
 
             else if constexpr (std::is_same_v<T, VariableAxis>) {
@@ -36,7 +35,7 @@ histogram_detail::BoostAxis Histogram::make_axis(const AxisConfig& axis) {
                         "Histogram: variable axis needs at least two edges");
                 }
 
-                return bh::axis::variable<>(cfg.edges);
+                return histogram_detail::bh::axis::variable<>(cfg.edges);
             }
 
             else if constexpr (std::is_same_v<T, IntegerAxis>) {
@@ -46,7 +45,8 @@ histogram_detail::BoostAxis Histogram::make_axis(const AxisConfig& axis) {
                         "upper");
                 }
 
-                return bh::axis::integer<>(cfg.lower, cfg.upper);
+                return histogram_detail::bh::axis::integer<>(cfg.lower,
+                                                             cfg.upper);
             }
         },
         axis);
@@ -76,7 +76,7 @@ std::vector<double> Histogram::values() const {
     std::vector<double> out;
     out.reserve(hist_.size());
 
-    for (auto&& cell : bh::indexed(hist_)) {
+    for (auto&& cell : histogram_detail::bh::indexed(hist_)) {
         out.push_back(static_cast<double>(*cell));
     }
 
@@ -117,26 +117,29 @@ std::vector<std::vector<double>> Histogram::edges() const {
 
     return out;
 }
-void Histogram::fill_values(const std::vector<double>& values) {
+
+void Histogram::fill_values(const std::vector<double>& values, double weight) {
     if (values.size() != rank()) {
         throw std::runtime_error("Histogram: fill dimension mismatch");
     }
 
+    const auto w = histogram_detail::bh::weight(weight);
+
     switch (values.size()) {
         case 1:
-            hist_(values[0]);
+            hist_(values[0], w);
             return;
 
         case 2:
-            hist_(values[0], values[1]);
+            hist_(values[0], values[1], w);
             return;
 
         case 3:
-            hist_(values[0], values[1], values[2]);
+            hist_(values[0], values[1], values[2], w);
             return;
 
         case 4:
-            hist_(values[0], values[1], values[2], values[3]);
+            hist_(values[0], values[1], values[2], values[3], w);
             return;
 
         default:

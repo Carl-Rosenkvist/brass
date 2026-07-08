@@ -54,9 +54,68 @@ TEST_CASE("Histogram fills two-dimensional regular axes") {
     CHECK(total == 2.0);
 }
 
+TEST_CASE("Histogram fills one-dimensional axis with variadic weight") {
+    brass::Histogram h(
+        brass::RegularAxis{.bins = 5, .lower = 0.0, .upper = 1.0});
+
+    h.fill_weighted(2.5, 0.1);
+    h.fill_weighted(0.5, 0.2);
+    h.fill_weighted(4.0, 0.9);
+
+    const auto values = h.values();
+
+    REQUIRE(values.size() == 5);
+    CHECK(values[0] == 2.5);
+    CHECK(values[1] == 0.5);
+    CHECK(values[2] == 0.0);
+    CHECK(values[3] == 0.0);
+    CHECK(values[4] == 4.0);
+}
+
+TEST_CASE("Histogram fills one-dimensional axis with vector weight") {
+    brass::Histogram h(
+        brass::RegularAxis{.bins = 5, .lower = 0.0, .upper = 1.0});
+
+    h.fill_values({0.1}, 2.5);
+    h.fill_values({0.2}, 0.5);
+    h.fill_values({0.9}, 4.0);
+
+    const auto values = h.values();
+
+    REQUIRE(values.size() == 5);
+    CHECK(values[0] == 2.5);
+    CHECK(values[1] == 0.5);
+    CHECK(values[2] == 0.0);
+    CHECK(values[3] == 0.0);
+    CHECK(values[4] == 4.0);
+}
+
+TEST_CASE("Histogram fills two-dimensional axis with vector weight") {
+    brass::Histogram h(
+        brass::RegularAxis{.bins = 2, .lower = 0.0, .upper = 1.0},
+        brass::RegularAxis{.bins = 2, .lower = -1.0, .upper = 1.0});
+
+    h.fill_values({0.25, -0.5}, 2.0);
+    h.fill_values({0.75, 0.5}, 3.0);
+
+    const auto values = h.values();
+
+    REQUIRE(values.size() == 4);
+
+    double total = 0.0;
+    for (const double value : values) {
+        total += value;
+    }
+
+    CHECK(total == 5.0);
+}
+
 TEST_CASE("Histogram rejects fill dimension mismatch") {
     brass::Histogram h(
         brass::RegularAxis{.bins = 5, .lower = 0.0, .upper = 1.0});
 
     CHECK_THROWS_AS(h.fill(0.1, 0.2), std::runtime_error);
+    CHECK_THROWS_AS(h.fill_weighted(1.0, 0.1, 0.2), std::runtime_error);
+    CHECK_THROWS_AS(h.fill_values({0.1, 0.2}), std::runtime_error);
+    CHECK_THROWS_AS(h.fill_values({0.1, 0.2}, 1.0), std::runtime_error);
 }

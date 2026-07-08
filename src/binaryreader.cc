@@ -69,11 +69,19 @@ std::optional<Block> BinaryReader::read() {
 
         switch (tag) {
             case 'p': {
-                ParticleBlock block;
-                block.event_number = read_pod<int32_t>();
-                block.ensemble_number = read_pod<int32_t>();
+                constexpr std::size_t HDR =
+                    sizeof(int32_t) + sizeof(int32_t) + sizeof(uint32_t);
 
-                const uint32_t npart = read_pod<uint32_t>();
+                auto header = read_chunk(HDR);
+                std::size_t off = 0;
+
+                ParticleBlock block;
+                block.event_number = extract_and_advance<int32_t>(header, off);
+                block.ensemble_number =
+                    extract_and_advance<int32_t>(header, off);
+
+                const uint32_t npart =
+                    extract_and_advance<uint32_t>(header, off);
 
                 auto bytes = read_chunk(static_cast<std::size_t>(npart) *
                                         layout_->particle_size);
@@ -89,12 +97,20 @@ std::optional<Block> BinaryReader::read() {
             }
 
             case 'f': {
-                EndBlock block;
-                block.event_number = read_pod<uint32_t>();
-                block.ensemble_number = read_pod<int32_t>();
-                block.impact_parameter = read_pod<double>();
+                constexpr std::size_t HDR = sizeof(uint32_t) + sizeof(int32_t) +
+                                            sizeof(double) + sizeof(char);
 
-                const char empty = read_pod<char>();
+                auto header = read_chunk(HDR);
+                std::size_t off = 0;
+
+                EndBlock block;
+                block.event_number = extract_and_advance<uint32_t>(header, off);
+                block.ensemble_number =
+                    extract_and_advance<int32_t>(header, off);
+                block.impact_parameter =
+                    extract_and_advance<double>(header, off);
+
+                const char empty = extract_and_advance<char>(header, off);
                 block.empty = empty != 0;
 
                 ++end_blocks_read_;
@@ -102,8 +118,37 @@ std::optional<Block> BinaryReader::read() {
             }
 
             case 'i': {
-                throw std::runtime_error(
-                    "InteractionBlock reading not implemented yet");
+                constexpr std::size_t HDR = sizeof(int32_t) + sizeof(int32_t) +
+                                            3 * sizeof(double) +
+                                            sizeof(int32_t);
+
+                auto header = read_chunk(HDR);
+                std::size_t off = 0;
+
+                InteractionBlock block;
+                block.n_in = extract_and_advance<int32_t>(header, off);
+                block.n_out = extract_and_advance<int32_t>(header, off);
+                block.rho = extract_and_advance<double>(header, off);
+                block.sigma = extract_and_advance<double>(header, off);
+                block.sigma_p = extract_and_advance<double>(header, off);
+                block.process = extract_and_advance<int32_t>(header, off);
+                const auto n_in = static_cast<std::size_t>(block.n_in);
+                const auto n_out = static_cast<std::size_t>(block.n_out);
+
+                auto bytes =
+                    read_chunk((n_in + n_out) * layout_->particle_size);
+
+                const auto incoming_size = n_in * layout_->particle_size;
+
+                auto split = bytes.begin() + incoming_size;
+
+                std::vector<std::byte> incoming_bytes(bytes.begin(), split);
+                std::vector<std::byte> outgoing_bytes(split, bytes.end());
+                block.incoming = Particles(std::move(incoming_bytes), layout_);
+                block.outgoing = Particles(std::move(outgoing_bytes), layout_);
+
+                ++interaction_blocks_read_;
+                return block;
             }
 
             default:
@@ -111,5 +156,4 @@ std::optional<Block> BinaryReader::read() {
         }
     }
 }
-
 }  // namespace brass

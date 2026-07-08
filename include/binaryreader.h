@@ -7,43 +7,22 @@
 #include <string>
 #include <variant>
 
+#include "block.h"
 #include "particles.h"
 #include "quantities.h"
 namespace brass {
 
-struct Header {
-    std::array<char, 5> magic_number{{0, 0, 0, 0, 0}};  // includes NUL
-    uint16_t format_version = 0;
-    uint16_t format_variant = 0;
-    std::string smash_version;
-};
-
-struct ParticleBlock {
-    int32_t event_number = 0;
-    int32_t ensemble_number = 0;
-    Particles particles;
-};
-
-struct EndBlock {
-    uint32_t event_number = 0;
-    int32_t ensemble_number = 0;
-    double impact_parameter = 0.0;
-    bool empty = false;
-};
-
-struct InteractionBlock {
-    int32_t n_in = 0;
-    int32_t n_out = 0;
-    double rho = 0.0;
-    double sigma = 0.0;
-    double sigma_p = 0.0;
-    int32_t process = 0;
-
-    Particles incoming;
-    Particles outgoing;
-};
-
-using Block = std::variant<ParticleBlock, EndBlock, InteractionBlock>;
+template <class T>
+inline T extract_and_advance(const std::vector<std::byte>& buf, size_t& off) {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "extract: T must be trivially copyable");
+    if (off + sizeof(T) > buf.size())
+        throw std::runtime_error("extract: out of bounds");
+    T v;
+    std::memcpy(&v, buf.data() + off, sizeof(T));
+    off += sizeof(T);
+    return v;
+}
 
 class BinaryReader {
    public:
@@ -83,6 +62,7 @@ class BinaryReader {
 
         return value;
     }
+
     std::vector<std::byte> read_chunk(std::size_t n);
 };
 }  // namespace brass
