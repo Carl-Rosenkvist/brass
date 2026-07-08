@@ -13,6 +13,7 @@ set(SRC_FILES
     src/histogram.cc
     src/histogram_runner.cc
     src/particles.cc
+    src/dilepton_histogrammer.cc
   )
 set(BOOST_HEADER_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/external/boost/histogram/include

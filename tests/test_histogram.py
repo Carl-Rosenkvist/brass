@@ -8,6 +8,7 @@ import brass
 
 Q = ["px", "py", "pz", "pdg"]
 P4 = ["p0", "px", "py", "pz"]
+P4_PDG = ["p0", "px", "py", "pz", "pdg"]
 
 TYPE = {
     "p0": "<d",
@@ -19,18 +20,23 @@ TYPE = {
 
 DEFAULT_EVENT_NUMBER = 1
 DEFAULT_ENSEMBLE_NUMBER = 0
-DEFAULT_END_IMPACT_PARAMETER = 0.0
-DEFAULT_END_EMPTY = False
-
-INTERACTION_QUANTITIES = ["n_in", "n_out", "rho", "sigma", "sigma_p", "process"]
 
 
-def request(names, axes, *, target=None, group_by=None, weight_quantity=None):
+def request(
+    names,
+    axes,
+    *,
+    target=None,
+    group_by=None,
+    weight_quantity=None,
+    decay_channel=None,
+):
     r = brass.HistogramRequest()
     r.quantities = names
     r.axes = axes
     r.group_by = group_by
     r.weight_quantity = weight_quantity
+    r.decay_channel = decay_channel
 
     if target is not None:
         r.target = target
@@ -60,21 +66,14 @@ def write_header(f, version=b"SMASH-3.1", format_version=9, format_variant=1):
     f.write(version)
 
 
-def write_end(
-    f,
-    *,
-    event_number=DEFAULT_EVENT_NUMBER,
-    ensemble_number=DEFAULT_ENSEMBLE_NUMBER,
-    impact_parameter=DEFAULT_END_IMPACT_PARAMETER,
-    empty=DEFAULT_END_EMPTY,
-):
+def write_end(f, event_number=1, ensemble_number=0, impact_parameter=0.0, empty=False):
     f.write(b"f")
     f.write(
         struct.pack("<Iid?", event_number, ensemble_number, impact_parameter, empty)
     )
 
 
-def write_particle_rows(f, rows_, quantities):
+def write_rows(f, rows_, quantities):
     for row in rows_:
         for value, quantity in zip(row, quantities):
             f.write(struct.pack(TYPE[quantity], value))
@@ -84,13 +83,12 @@ def write_particles(
     f,
     rows_,
     quantities=Q,
-    *,
     event_number=DEFAULT_EVENT_NUMBER,
     ensemble_number=DEFAULT_ENSEMBLE_NUMBER,
 ):
     f.write(b"p")
     f.write(struct.pack("<iiI", event_number, ensemble_number, len(rows_)))
-    write_particle_rows(f, rows_, quantities)
+    write_rows(f, rows_, quantities)
 
 
 def write_particle_file(path, rows_, quantities=Q):
@@ -100,79 +98,77 @@ def write_particle_file(path, rows_, quantities=Q):
         write_end(f)
 
 
-def interaction(incoming, outgoing, *, rho, sigma, sigma_p=0.0, process=0):
+def interaction(
+    incoming,
+    outgoing,
+    *,
+    density=0.0,
+    weight=1.0,
+    partial_weight=0.0,
+    process_type=0,
+):
     return {
         "incoming": rows(incoming),
         "outgoing": rows(outgoing),
-        "rho": rho,
-        "sigma": sigma,
-        "sigma_p": sigma_p,
-        "process": process,
+        "rho": density,
+        "sigma": weight,
+        "sigma_p": partial_weight,
+        "process": process_type,
     }
 
 
-def interaction_value(interaction_, name):
+def interaction_value(data, name):
+    aliases = {
+        "density": "rho",
+        "weight": "sigma",
+        "partial_weight": "sigma_p",
+        "process_type": "process",
+    }
+
+    name = aliases.get(name, name)
+
     if name == "n_in":
-        return len(interaction_["incoming"])
+        return len(data["incoming"])
 
     if name == "n_out":
-        return len(interaction_["outgoing"])
+        return len(data["outgoing"])
 
-    return interaction_[name]
+    return data[name]
 
 
 def interaction_table(interactions, names):
     return np.array(
-        [
-            [interaction_value(interaction_, name) for name in names]
-            for interaction_ in interactions
-        ],
+        [[interaction_value(x, name) for name in names] for x in interactions],
         dtype=float,
     )
 
 
-def particle_table_from_interactions(interactions, which):
-    return np.vstack([interaction_[which] for interaction_ in interactions])
-
-
-def repeated_interaction_weights(interactions, which, weight_quantity):
-    return np.concatenate(
-        [
-            np.full(
-                len(interaction_[which]),
-                interaction_value(interaction_, weight_quantity),
-            )
-            for interaction_ in interactions
-        ]
-    )
-
-
-def write_interaction(f, interaction_, quantities=Q):
-    incoming = interaction_["incoming"]
-    outgoing = interaction_["outgoing"]
+def write_interaction(f, data, quantities=Q):
+    incoming = data["incoming"]
+    outgoing = data["outgoing"]
 
     f.write(b"i")
     f.write(struct.pack("<ii", len(incoming), len(outgoing)))
     f.write(
         struct.pack(
             "<dddi",
-            interaction_["rho"],
-            interaction_["sigma"],
-            interaction_["sigma_p"],
-            interaction_["process"],
+            interaction_value(data, "rho"),
+            interaction_value(data, "sigma"),
+            interaction_value(data, "sigma_p"),
+            int(interaction_value(data, "process")),
         )
     )
 
-    write_particle_rows(f, incoming, quantities)
-    write_particle_rows(f, outgoing, quantities)
+    write_rows(f, incoming, quantities)
+    write_rows(f, outgoing, quantities)
 
 
 def write_interaction_file(path, interactions, quantities=Q):
     with open(path, "wb") as f:
         write_header(f)
 
-        for interaction_ in interactions:
-            write_interaction(f, interaction_, quantities)
+        for data in interactions:
+            write_interaction(f, data, quantities)
 
         write_end(f)
 
@@ -193,6 +189,7 @@ def hist(
     target=None,
     group_by=None,
     weight_quantity=None,
+    decay_channel=None,
 ):
     return run(
         path,
@@ -203,6 +200,7 @@ def hist(
                 target=target,
                 group_by=group_by,
                 weight_quantity=weight_quantity,
+                decay_channel=decay_channel,
             )
         ],
         read,
@@ -235,6 +233,12 @@ def values(rows_, read, names):
     return np.column_stack([value(name) for name in names])
 
 
+def pair_values(outgoing, read, names):
+    pair = values(outgoing, read, ["p0", "px", "py", "pz"]).sum(axis=0)
+    pair_rows = np.array([pair], dtype=float)
+    return values(pair_rows, P4, names)
+
+
 def expected(rows_, read, names, edges, weight_quantity=None, weights=None):
     if weights is None and weight_quantity is not None:
         weights = values(rows_, read, [weight_quantity])[:, 0]
@@ -257,6 +261,32 @@ def expected_interaction(interactions, names, edges, weight_quantity=None):
         bins=edges,
         weights=weights,
     )[0]
+
+
+def expected_decay(interaction_, read, names, edges, weight_quantity=None):
+    weights = None
+
+    if weight_quantity is not None:
+        weights = np.array([interaction_value(interaction_, weight_quantity)])
+
+    return np.histogramdd(
+        pair_values(interaction_["outgoing"], read, names),
+        bins=edges,
+        weights=weights,
+    )[0]
+
+
+def particle_table(interactions, which):
+    return np.vstack([x[which] for x in interactions])
+
+
+def repeated_weights(interactions, which, weight_quantity):
+    return np.concatenate(
+        [
+            np.full(len(x[which]), interaction_value(x, weight_quantity))
+            for x in interactions
+        ]
+    )
 
 
 def check(result, expected_values):
@@ -293,30 +323,47 @@ def grouped_particle_rows():
 def interaction_rows():
     return [
         interaction(
-            incoming=[
-                [0.1, 0.1, 0.1, 211],
-            ],
-            outgoing=[
-                [0.1, 0.1, 0.1, 211],
-                [0.6, 0.1, 0.1, -211],
-            ],
-            rho=0.25,
-            sigma=2.0,
-            sigma_p=0.1,
-            process=1,
+            incoming=[[0.1, 0.1, 0.1, 211]],
+            outgoing=[[0.1, 0.1, 0.1, 211], [0.6, 0.1, 0.1, -211]],
+            density=0.25,
+            weight=2.0,
+            partial_weight=0.1,
+            process_type=1,
         ),
         interaction(
-            incoming=[
-                [0.3, 0.3, 0.3, 211],
-            ],
+            incoming=[[0.3, 0.3, 0.3, 211]],
+            outgoing=[[0.2, 0.1, 0.1, 211], [0.8, 0.1, 0.1, -211]],
+            density=0.75,
+            weight=3.0,
+            partial_weight=0.2,
+            process_type=2,
+        ),
+    ]
+
+
+def decay_rows():
+    return [
+        interaction(
+            incoming=[[1.02, 0.0, 0.0, 0.0, 333]],
             outgoing=[
-                [0.2, 0.1, 0.1, 211],
-                [0.8, 0.1, 0.1, -211],
+                [0.51, 0.1, 0.0, 0.2, -13],
+                [0.51, -0.1, 0.0, -0.2, 13],
             ],
-            rho=0.75,
-            sigma=3.0,
-            sigma_p=0.2,
-            process=2,
+            density=0.25,
+            weight=2.0,
+            partial_weight=0.1,
+            process_type=1,
+        ),
+        interaction(
+            incoming=[[0.78, 0.0, 0.0, 0.0, 221]],
+            outgoing=[
+                [0.39, 0.1, 0.0, 0.1, -11],
+                [0.39, -0.1, 0.0, -0.1, 11],
+            ],
+            density=0.30,
+            weight=5.0,
+            partial_weight=0.2,
+            process_type=2,
         ),
     ]
 
@@ -334,10 +381,7 @@ def test_particle_histograms(tmp_path):
     ]
 
     for names, axes, edges in cases:
-        check(
-            hist(path, names, axes),
-            expected(data, Q, names, edges),
-        )
+        check(hist(path, names, axes), expected(data, Q, names, edges))
 
 
 def test_weighted_particle_histogram(tmp_path):
@@ -369,10 +413,7 @@ def test_p4_histograms(tmp_path):
     axes = [brass.RegularAxis(3, 0.0, 3.0), brass.RegularAxis(2, -1.0, 1.0)]
     edges = [bins(3, 0.0, 3.0), bins(2, -1.0, 1.0)]
 
-    check(
-        hist(path, names, axes, read=P4),
-        expected(data, P4, names, edges),
-    )
+    check(hist(path, names, axes, read=P4), expected(data, P4, names, edges))
 
 
 def test_group_by(tmp_path):
@@ -381,7 +422,6 @@ def test_group_by(tmp_path):
     write_particle_file(path, data)
 
     groups = [211, -211, 321]
-
     result = hist(
         path,
         ["px", "py"],
@@ -391,10 +431,7 @@ def test_group_by(tmp_path):
 
     for pdg in groups:
         mask = data[:, Q.index("pdg")] == pdg
-        check(
-            result[pdg],
-            expected(data[mask], Q, ["px", "py"], [bins(), bins()]),
-        )
+        check(result[pdg], expected(data[mask], Q, ["px", "py"], [bins(), bins()]))
 
 
 def test_weighted_group_by(tmp_path):
@@ -403,7 +440,6 @@ def test_weighted_group_by(tmp_path):
     write_particle_file(path, data)
 
     groups = [211, -211, 321]
-
     result = hist(
         path,
         ["px", "py"],
@@ -414,7 +450,6 @@ def test_weighted_group_by(tmp_path):
 
     for pdg in groups:
         mask = data[:, Q.index("pdg")] == pdg
-
         check(
             result[pdg],
             expected(
@@ -454,8 +489,8 @@ def test_outgoing_particle_histogram_with_interaction_weight(tmp_path):
     path = tmp_path / "interactions.bin"
     write_interaction_file(path, interactions)
 
-    particle_data = particle_table_from_interactions(interactions, "outgoing")
-    weights = repeated_interaction_weights(interactions, "outgoing", "sigma")
+    outgoing = particle_table(interactions, "outgoing")
+    weights = repeated_weights(interactions, "outgoing", "sigma")
 
     check(
         hist(
@@ -465,13 +500,7 @@ def test_outgoing_particle_histogram_with_interaction_weight(tmp_path):
             target=brass.HistogramTarget.Outgoing,
             weight_quantity="sigma",
         ),
-        expected(
-            particle_data,
-            Q,
-            ["px"],
-            [bins()],
-            weights=weights,
-        ),
+        expected(outgoing, Q, ["px"], [bins()], weights=weights),
     )
 
 
@@ -480,8 +509,8 @@ def test_grouped_outgoing_particle_histogram_with_interaction_weight(tmp_path):
     path = tmp_path / "interactions.bin"
     write_interaction_file(path, interactions)
 
-    particle_data = particle_table_from_interactions(interactions, "outgoing")
-    weights = repeated_interaction_weights(interactions, "outgoing", "sigma")
+    outgoing = particle_table(interactions, "outgoing")
+    weights = repeated_weights(interactions, "outgoing", "sigma")
     groups = [211, -211]
 
     result = hist(
@@ -494,18 +523,36 @@ def test_grouped_outgoing_particle_histogram_with_interaction_weight(tmp_path):
     )
 
     for pdg in groups:
-        mask = particle_data[:, Q.index("pdg")] == pdg
-
+        mask = outgoing[:, Q.index("pdg")] == pdg
         check(
             result[pdg],
-            expected(
-                particle_data[mask],
-                Q,
-                ["px"],
-                [bins()],
-                weights=weights[mask],
-            ),
+            expected(outgoing[mask], Q, ["px"], [bins()], weights=weights[mask]),
         )
+
+
+def test_interaction_decay_phi_to_mumu(tmp_path):
+    interactions = decay_rows()
+    path = tmp_path / "dileptons.bin"
+    write_interaction_file(path, interactions, P4_PDG)
+
+    check(
+        hist(
+            path,
+            ["mass"],
+            [brass.RegularAxis(20, 0.0, 2.0)],
+            read=P4_PDG,
+            target=brass.HistogramTarget.InteractionDecay,
+            weight_quantity="weight",
+            decay_channel=brass.DecayChannel(333, [-13, 13]),
+        ),
+        expected_decay(
+            interactions[0],
+            P4_PDG,
+            ["mass"],
+            [bins(20, 0.0, 2.0)],
+            weight_quantity="weight",
+        ),
+    )
 
 
 def test_multiple_histograms_one_pass(tmp_path):
@@ -534,17 +581,7 @@ def test_rejections(tmp_path):
         hist(path, ["px", "py"], [axis()])
 
     with pytest.raises(RuntimeError, match="quantity is not int32: px"):
-        hist(
-            path,
-            ["px"],
-            [axis()],
-            group_by=group_by("px", [0]),
-        )
+        hist(path, ["px"], [axis()], group_by=group_by("px", [0]))
 
     with pytest.raises(RuntimeError):
-        hist(
-            path,
-            ["px"],
-            [axis()],
-            weight_quantity="does_not_exist",
-        )
+        hist(path, ["px"], [axis()], weight_quantity="does_not_exist")

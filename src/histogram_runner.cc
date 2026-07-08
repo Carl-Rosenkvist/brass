@@ -161,7 +161,6 @@ void HistogramRunner::fill(const Particles& particles) {
         }
     }
 }
-
 void HistogramRunner::fill(const Block& block) {
     std::visit(
         [this](const auto& b) {
@@ -246,7 +245,6 @@ void HistogramRunner::fill(const Block& block) {
         },
         block);
 }
-
 void HistogramRunner::run() {
     while (true) {
         auto block = reader_.read();

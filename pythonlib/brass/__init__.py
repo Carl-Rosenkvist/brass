@@ -13,6 +13,7 @@ from ._brass import (
     HistogramGroupBy,
     HistogramTarget,
     HistogramRunner,
+    DileptonHistogrammer,
     particle_size_from_quantities,
 )
 
@@ -44,6 +45,7 @@ __all__ = [
     "HistogramGroupBy",
     "HistogramTarget",
     "HistogramRunner",
+    "DileptonHistogrammer",
     "histogram",
     "histograms",
     "particle_size_from_quantities",

@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "binaryreader.h"
+#include "dilepton_histogrammer.h"
 #include "histogram_runner.h"
-
 namespace py = pybind11;
 
 namespace {
@@ -197,7 +197,6 @@ PYBIND11_MODULE(_brass, m) {
             })
         .def_readonly("edges", &brass::HistogramResult::edges)
         .def_readonly("shape", &brass::HistogramResult::shape);
-
     py::enum_<brass::HistogramTarget>(m, "HistogramTarget")
         .value("Particles", brass::HistogramTarget::Particles)
         .value("Incoming", brass::HistogramTarget::Incoming)
@@ -205,7 +204,6 @@ PYBIND11_MODULE(_brass, m) {
         .value("Header", brass::HistogramTarget::Header)
         .value("EndBlock", brass::HistogramTarget::EndBlock)
         .value("Interaction", brass::HistogramTarget::Interaction);
-
     py::class_<brass::HistogramRequest>(m, "HistogramRequest")
         .def(py::init<>())
         .def_readwrite("quantities", &brass::HistogramRequest::quantities)
@@ -214,7 +212,6 @@ PYBIND11_MODULE(_brass, m) {
         .def_readwrite("weight_quantity",
                        &brass::HistogramRequest::weight_quantity)
         .def_readwrite("target", &brass::HistogramRequest::target);
-
     py::class_<brass::HistogramRunner>(m, "HistogramRunner")
         .def(py::init<brass::BinaryReader&,
                       std::vector<brass::HistogramRequest>>(),
@@ -223,4 +220,17 @@ PYBIND11_MODULE(_brass, m) {
         .def("result", [](const brass::HistogramRunner& runner) {
             return histogram_batch_result_to_python(runner.result());
         });
+    py::class_<brass::DileptonHistogrammer>(m, "DileptonHistogrammer")
+        .def(py::init<std::vector<std::string>, std::vector<brass::AxisConfig>,
+                      std::pair<int32_t, int32_t>, std::string>(),
+             py::arg("quantities"), py::arg("axes"),
+             py::arg("pair_pdgs") = std::pair<int32_t, int32_t>{-11, 11},
+             py::arg("weight_quantity") = "weight")
+        .def("fill", py::overload_cast<const brass::InteractionBlock&>(
+                         &brass::DileptonHistogrammer::fill))
+        .def("fill", py::overload_cast<const brass::Block&>(
+                         &brass::DileptonHistogrammer::fill))
+        .def("fill", py::overload_cast<brass::BinaryReader&>(
+                         &brass::DileptonHistogrammer::fill))
+        .def("result", &brass::DileptonHistogrammer::result);
 }
