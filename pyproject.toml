@@ -28,7 +28,10 @@ classifiers = [
 ]
 keywords = ["binary", "reader", "physics", "heavy-ion", "SMASH", "pybind11"]
 
-dependencies = []
+dependencies = [
+  "numpy",
+  "PyYAML",
+]
 
 [project.urls]
 Homepage = "https://github.com/Carl-Rosenkvist/brass"
@@ -53,6 +56,9 @@ sdist.include = [
   "README.md",
   "LICENSE"
 ]
+[project.scripts]
+brass = "brass.cli:main"
+brass-scan = "brass.scan.cli:main"
 
 [tool.scikit-build.metadata]
 version.provider = "scikit_build_core.metadata.setuptools_scm"
@@ -66,3 +72,5 @@ build = "cp3?-*"
 skip = "pp* *-musllinux_*"
 test-requires = ["pytest"]
 environment = { CMAKE_BUILD_PARALLEL_LEVEL = "1" }
+
+
