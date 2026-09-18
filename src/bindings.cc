@@ -1,4 +1,5 @@
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -196,7 +197,25 @@ PYBIND11_MODULE(_brass, m) {
                 return histogram_values_to_numpy(result, self);
             })
         .def_readonly("edges", &brass::HistogramResult::edges)
-        .def_readonly("shape", &brass::HistogramResult::shape);
+        .def_readonly("shape", &brass::HistogramResult::shape)
+        .def(py::self += py::self)
+        .def(py::pickle(
+            [](const brass::HistogramResult& result) {
+                return py::make_tuple(result.values, result.edges,
+                                      result.shape);
+            },
+            [](py::tuple state) {
+                if (state.size() != 3) {
+                    throw std::runtime_error(
+                        "Invalid HistogramResult pickle state");
+                }
+
+                return brass::HistogramResult{
+                    state[0].cast<std::vector<double>>(),
+                    state[1].cast<std::vector<std::vector<double>>>(),
+                    state[2].cast<std::vector<std::size_t>>(),
+                };
+            }));
     py::enum_<brass::HistogramTarget>(m, "HistogramTarget")
         .value("Particles", brass::HistogramTarget::Particles)
         .value("Incoming", brass::HistogramTarget::Incoming)

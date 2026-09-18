@@ -2,9 +2,8 @@ import os
 import struct
 import tempfile
 
-import pytest
-
 import brass
+import pytest
 
 
 def write_header(f):

@@ -1,67 +1,75 @@
-#!/usr/bin/env python3
 import argparse
 import json
 
-import brass as br
+from .scan import Scan, command, jobs
 
 
-def parse_value(s):
+def parse_value(value):
     try:
-        return json.loads(s)
+        return json.loads(value)
     except json.JSONDecodeError:
-        return s
+        return value
 
 
-def parse_assignment(arg):
-    if "=" not in arg:
+def parse_param(value):
+    try:
+        key, values = value.split("=", 1)
+    except ValueError:
         raise argparse.ArgumentTypeError(
-            f"Expected KEY=VALUE1,VALUE2,... but got: {arg}"
+            "parameter must have the form KEY=VALUE[,VALUE...]"
         )
 
-    key, raw_values = arg.split("=", 1)
-    values = [parse_value(v) for v in raw_values.split(",")]
-
-    return key, values
+    return key, [parse_value(item) for item in values.split(",")]
 
 
-def parse_args():
-    p = argparse.ArgumentParser(
-        description="Generate SMASH command-line arguments from a parameter scan."
-    )
-
-    p.add_argument("-i", "--config", required=True)
-    p.add_argument("-o", "--output", required=True)
-
-    p.add_argument("--events-per-job", type=int, required=True)
-    p.add_argument("--max-events", type=int, required=True)
-
-    p.add_argument(
+def add_arguments(parser):
+    parser.add_argument(
         "--param",
         action="append",
-        type=parse_assignment,
+        type=parse_param,
         required=True,
-        help="Parameter scan, e.g. Modi.Collider.Sqrtsnn=3.0,4.5,7.7",
+        metavar="KEY=VALUES",
+        help=("Parameter to scan, e.g. Modi.Collider.Sqrtsnn=3.0,4.5,7.7"),
     )
 
-    return p.parse_args()
+    parser.add_argument(
+        "--events-per-job",
+        type=int,
+    )
+
+    parser.add_argument(
+        "--max-events",
+        type=int,
+    )
+
+    parser.add_argument(
+        "--prefix",
+        default="",
+        help="Command prepended to each generated configuration.",
+    )
+
+
+def run(args):
+    scan = Scan()
+
+    for key, values in args.param:
+        scan.add(key, values)
+
+    for point in jobs(
+        scan,
+        events_per_job=args.events_per_job,
+        max_events=args.max_events,
+    ):
+        print(command(point, args.prefix))
 
 
 def main():
-    args = parse_args()
+    parser = argparse.ArgumentParser(description="Generate parameter scan commands.")
 
-    scan = br.Scan()
+    add_arguments(parser)
 
-    for key, values in args.param:
-        scan.set_param(key, values)
-
-    scan.set_jobs(
-        events_per_job=args.events_per_job,
-        max_events=args.max_events,
-    )
-
-    with open(args.output, "w") as f:
-        for _, cmd in scan.sweep_cmds(prefix=f"-i {args.config}"):
-            f.write(cmd + "\n")
+    args = parser.parse_args()
+    run(args)
 
 
 if __name__ == "__main__":

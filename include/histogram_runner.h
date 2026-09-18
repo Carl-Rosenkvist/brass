@@ -20,8 +20,25 @@ struct HistogramResult {
     std::vector<double> values;
     std::vector<std::vector<double>> edges;
     std::vector<std::size_t> shape;
-};
 
+    HistogramResult& operator+=(const HistogramResult& other) {
+        if (shape != other.shape || edges != other.edges) {
+            throw std::invalid_argument(
+                "cannot add histograms with different binning");
+        }
+
+        if (values.size() != other.values.size()) {
+            throw std::invalid_argument(
+                "cannot add histograms with different sizes");
+        }
+
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            values[i] += other.values[i];
+        }
+
+        return *this;
+    }
+};
 using GroupedHistogramResult = std::unordered_map<int32_t, HistogramResult>;
 
 using HistogramRunResult =

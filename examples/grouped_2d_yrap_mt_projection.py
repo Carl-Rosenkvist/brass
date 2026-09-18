@@ -1,8 +1,6 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
 import brass
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 filename = "/Users/carl/Phd/baryon_stopping/default/out-1/particles_binary.bin"
 
