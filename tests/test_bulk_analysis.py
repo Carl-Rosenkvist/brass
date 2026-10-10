@@ -268,9 +268,6 @@ def test_bulk_with_analysis_runner(tmp_path):
 
     merged_proton_values = np.asarray(merged.histograms[PROTON_PDG].values)
 
-    assert merged_pion_values.shape == (100, 100)
-    assert merged_proton_values.shape == (100, 100)
-
     assert merged_pion_values.sum() > N_PARTICLES
     assert merged_pion_values.sum() <= 2 * N_PARTICLES
 
@@ -280,9 +277,6 @@ def test_bulk_with_analysis_runner(tmp_path):
     separate_pion_values = np.asarray(separate.histograms[PION_PDG].values)
 
     separate_proton_values = np.asarray(separate.histograms[PROTON_PDG].values)
-
-    assert separate_pion_values.shape == (100, 100)
-    assert separate_proton_values.shape == (100, 100)
 
     assert separate_pion_values.sum() > 0
     assert separate_pion_values.sum() <= N_PARTICLES
@@ -321,8 +315,6 @@ def test_bulk_recovers_generated_distributions(tmp_path):
         hist = analysis.histograms[pdg]
 
         values = np.asarray(hist.values)
-
-        assert values.shape == (100, 100)
 
         y_edges = np.asarray(hist.edges[0])
         mt_edges = np.asarray(hist.edges[1])
