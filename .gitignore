@@ -70,4 +70,3 @@ Makefile
 *.xcodeproj/
 *.swp
 
-external/
