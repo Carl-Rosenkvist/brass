@@ -1,0 +1,18 @@
+# observable: dndy
+# pdg: 2212
+# energy: ecm200
+# system: AuAu
+# centrality: 0-5
+# source: PRL 93, 102301 (2004)
+# shortref: Bearden:2003hx
+# comment: Data seems to be very different from plot in source.
+# columns: y dndy dndy_err
+-0.05   17.487  0.23718
+0.05   17.822  0.39262
+0.45    16.75  0.42277
+0.55   17.085  0.40937
+0.8   16.549  0.27671
+0.9   16.348  0.33835
+1.85   15.343   0.6231
+2.2   16.482   0.9782
+2.9   11.323  0.19765

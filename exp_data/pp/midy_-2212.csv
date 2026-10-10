@@ -1,0 +1,18 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+# pp-> p-
+"# ecm,	dndy|y_cm err"
+# na61/shine
+"# CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+"# ALICE collaboration \cite{ALICE:2019hno}, Table 4 from https://arxiv.org/pdf/1910.07678.pdf"
+"# Mean pT of antiproton at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"
+# sqrt(s) [GeV/c] <pT> error(stat. and sys.)
+sqrtsnn,dndy,stat_err,sys_err
+7.62,0.00357,0.00047,0.00019
+8.8,0.00435,0.00042,0.00015
+12.3,0.01028,0.00069,0.00055
+17.3,0.01880,0.00073,0.000725
+900,0.101,0.002,0.003
+2700,0.133,0.002,0.003
+7000,0.179,0.001,0.003
+5020,0.117,0.01,

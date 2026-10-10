@@ -1,0 +1,7 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+# pp-> L
+"# ecm,   dndy|y_cm err"
+sqrtsnn,dndy,stat_err,sys_err
+17.4,1.7e-2,0.0,
+200,0.0385,0.0035,

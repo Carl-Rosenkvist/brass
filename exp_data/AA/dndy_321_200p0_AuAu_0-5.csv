@@ -1,0 +1,21 @@
+# observable: dndy
+# pdg: 321
+# energy: ecm200
+# system: AuAu
+# centrality: 0-5
+# source: Phys. Rev. Lett. 94, 162301 (2005)
+# shortref: Bearden:2004yx
+# comment: Data seems to roughly agree with plot from source.
+# columns: y dndy dndy_err
+-0.05   47.56   0.94
+0.05   46.79   1.32
+0.50   46.73   0.88
+0.70   45.64   0.54
+0.90   44.42   0.60
+1.10   42.82   0.74
+2.10   33.14   2.91
+2.40   27.65   1.21
+2.95   23.74   2.16
+3.05   22.05   1.88
+3.15   20.10   1.02
+3.30   18.13   0.59

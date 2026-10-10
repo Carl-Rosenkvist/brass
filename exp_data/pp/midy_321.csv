@@ -1,0 +1,20 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+# pp-> k+
+"# ecm,	dndy|y_cm err"
+# na61/shine
+"# CMS  EPJ C72, 2164 (2012) Fig. 17  \cite{Chatrchyan:2012qb}"
+"# ALICE collaboration \cite{ALICE:2019hno}, Table 4 from https://arxiv.org/pdf/1910.07678.pdf"
+"# Mean pT of kplus at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"
+# sqrt(s) [GeV/c] <pT> error(stat. and sys.)
+sqrtsnn,dndy,stat_err,sys_err
+200,0.140,0.006,
+900,0.183,0.004,0.015
+6.27,0.04682,0.00297,0.00282
+7.62,0.0553,0.00315,0.00345
+8.8,0.0607,0.00345,0.00454
+12.3,0.0692,0.0099,0.00206
+17.3,0.0701,0.0065,0.00316
+2700,0.295,0.004,0.009
+7000,0.374,0.006,0.012
+5020,0.267,0.014,

@@ -1,0 +1,11 @@
+# observable: dndy
+# pdg: 3312
+# energy: elb30
+# system: PbPb
+# centrality: 0-5
+# columns: y dndy dndy_err
+-0.75   0.706273   0.187041
+-0.25   1.096399   0.172796
+0.25   1.208841   0.152446
+0.75   0.903971   0.143721
+1.25   0.328438   0.074987
