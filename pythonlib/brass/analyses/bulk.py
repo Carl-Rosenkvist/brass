@@ -24,20 +24,23 @@ class Bulk(brass.Analysis):
             help="PDG codes to analyze.",
         )
 
-    def binary_data_file_matches(self, path: Path) -> bool:
-        return path.name == "particles_binary.bin"
+    def data_file_matches(self, path: Path) -> bool:
+        return (
+            path.name == "particles_binary.bin" or path.name == "particles_custom.bin"
+        )
 
     def analyze_file(self, file_path):
         reader = brass.BinaryReader(
             str(file_path),
             self.quantities,
+            skip_elastic=True,
         )
 
         request = brass.HistogramRequest()
         request.quantities = ["y_rap", "mt"]
         request.axes = [
-            brass.RegularAxis(100, -5.0, 5.0),
-            brass.RegularAxis(100, 0.0, 3.0),
+            brass.RegularAxis(50, -4.0, 4.0),
+            brass.RegularAxis(50, 0.0, 2.0),
         ]
         request.group_by = brass.HistogramGroupBy(
             "pdg",

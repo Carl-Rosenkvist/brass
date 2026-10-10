@@ -36,7 +36,7 @@ class Analysis(ABC):
         self.config = self.load_config()
         self.meta = self.extract_meta()
         self.quantities = self.extract_output_quantities()
-        self.binary_file = self.find_binary_data_file()
+        self.data_file = self.find_data_file()
 
     @classmethod
     def add_arguments(
@@ -53,7 +53,7 @@ class Analysis(ABC):
         return self
 
     def run(self) -> None:
-        self.analyze_file(self.binary_file)
+        self.analyze_file(self.data_file)
 
     def load_config(self) -> dict[str, Any]:
         with self.config_path.open("r") as file:
@@ -65,24 +65,24 @@ class Analysis(ABC):
         return config
 
     @abstractmethod
-    def binary_data_file_matches(self, path: Path) -> bool:
+    def data_file_matches(self, path: Path) -> bool:
         raise NotImplementedError
 
-    def find_binary_data_file(self) -> Path:
+    def find_data_file(self) -> Path:
         matching_files = [
             path
             for path in self.folder_path.iterdir()
-            if path.is_file() and self.binary_data_file_matches(path)
+            if path.is_file() and self.data_file_matches(path)
         ]
 
         if not matching_files:
             raise FileNotFoundError(
-                f"No matching binary file found in {self.folder_path}"
+                f"No matching data file found in {self.folder_path}"
             )
 
         if len(matching_files) > 1:
             raise RuntimeError(
-                f"Expected exactly one matching binary file in "
+                f"Expected exactly one matching data file in "
                 f"{self.folder_path}, but found {len(matching_files)}: "
                 f"{matching_files}"
             )

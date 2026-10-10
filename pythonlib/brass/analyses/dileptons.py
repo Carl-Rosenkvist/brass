@@ -57,7 +57,7 @@ class Dileptons(brass.Analysis):
             help="Quantity used as the histogram weight",
         )
 
-    def binary_data_file_matches(self, path: Path) -> bool:
+    def data_file_matches(self, path: Path) -> bool:
         return path.name == "Dileptons_custom.bin"
 
     def analyze_file(self, file_path: str | Path) -> None:
