@@ -11,7 +11,7 @@ class Bulk(brass.Analysis):
         super().__init__(folder_path, args)
 
         self.pdgs = list(dict.fromkeys(args.pdgs))
-        self.add_pdgs = args.add_pdgs or []
+        self.add_pdgs = getattr(args, "add_pdgs", None) or []
 
         # Validate histogram combinations
         targets = []
