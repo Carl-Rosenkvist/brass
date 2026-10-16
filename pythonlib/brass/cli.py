@@ -1,14 +1,63 @@
 import argparse
+import importlib
+import sys
 from pathlib import Path
+
+import brass
 
 from .analyses import ANALYSES
 from .analysis_runner import AnalysisRunner
 
 
-def create_parser() -> argparse.ArgumentParser:
+def load_analyses(paths: list[Path]) -> dict:
+    """Load additional analyses from Python files."""
+
+    analyses = dict(ANALYSES)
+
+    for path in paths:
+        path = path.resolve()
+
+        if not path.is_file():
+            raise FileNotFoundError(f"Analysis file not found: {path}")
+
+        # Make the module importable by multiprocessing workers
+        module_dir = str(path.parent)
+
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
+
+        # Import the Python file as a normal module
+        module = importlib.import_module(path.stem)
+
+        # Find Analysis subclasses defined in the file
+        for name, obj in vars(module).items():
+            if (
+                isinstance(obj, type)
+                and issubclass(obj, brass.Analysis)
+                and obj is not brass.Analysis
+                and obj.__module__ == module.__name__
+            ):
+                if name in analyses:
+                    raise ValueError(f"Analysis '{name}' is already registered")
+
+                analyses[name] = obj
+
+    return analyses
+
+
+def create_parser(analyses: dict) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="brass",
         description="Run BRASS analyses.",
+    )
+
+    parser.add_argument(
+        "--load",
+        action="append",
+        type=Path,
+        default=[],
+        metavar="FILE",
+        help="Load additional analyses from a Python file",
     )
 
     subparsers = parser.add_subparsers(
@@ -17,7 +66,7 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="ANALYSIS",
     )
 
-    for name, analysis_type in ANALYSES.items():
+    for name, analysis_type in analyses.items():
         analysis_parser = subparsers.add_parser(
             name,
             help=analysis_type.__doc__,
@@ -34,6 +83,7 @@ def create_parser() -> argparse.ArgumentParser:
             type=Path,
             help="Simulation folders to analyze",
         )
+
         analysis_parser.add_argument(
             "-o",
             "--output",
@@ -41,6 +91,7 @@ def create_parser() -> argparse.ArgumentParser:
             default=Path(f"{name}.pkl"),
             help="Output pickle file",
         )
+
         analysis_parser.add_argument(
             "-j",
             "--max-workers",
@@ -55,13 +106,27 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    parser = create_parser()
+    # First, find external analysis files
+    bootstrap = argparse.ArgumentParser(add_help=False)
+
+    bootstrap.add_argument(
+        "--load",
+        action="append",
+        type=Path,
+        default=[],
+    )
+
+    bootstrap_args, _ = bootstrap.parse_known_args()
+
+    # Load external analyses before building subcommands
+    analyses = load_analyses(bootstrap_args.load)
+
+    # Build the full CLI
+    parser = create_parser(analyses)
     args = parser.parse_args()
 
-    analysis_type = args.analysis_type
-
     runner = AnalysisRunner(
-        analysis_type=analysis_type,
+        analysis_type=args.analysis_type,
         folder_paths=args.folders,
         args=args,
         max_workers=args.max_workers,
