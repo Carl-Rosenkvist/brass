@@ -45,9 +45,21 @@ class DataHandler:
         )
 
     def _get_nested(self, mapping, path):
-
         for key in path:
-            mapping = mapping[key]
+            if isinstance(mapping, list) and isinstance(key, str):
+                # Extract a named PYTHIA setting from a list of strings.
+                settings = {}
+
+                for entry in mapping:
+                    name, separator, value = entry.partition("=")
+
+                    if separator:
+                        settings[name.strip()] = value.strip()
+
+                mapping = float(settings[key])
+
+            else:
+                mapping = mapping[key]
 
         return mapping
 
