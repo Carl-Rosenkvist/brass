@@ -1,0 +1,94 @@
+# Build and publish pybrass to PyPI.
+#
+# - Pushing a tag like v0.4.0 builds the source archive and the wheels,
+#   tests every wheel, and uploads everything to PyPI.
+# - A pull request into main, or "Run workflow" in the Actions tab, builds
+#   and tests everything the same way but uploads nothing: a dry run before
+#   tagging a release.
+#
+# Uploading uses PyPI Trusted Publishing (no API token). It must be set up
+# once on pypi.org for this repository, this workflow file (release.yml) and
+# the environment "pypi".
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Build the source archive (sdist) once. Its version number comes from the
+  # git tag via setuptools_scm, so the full history and the Boost submodules
+  # are needed. All wheels below are built from this archive.
+  sdist:
+    name: Source archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # Build one wheel per Python version (3.11-3.14) and platform, and run the
+  # test suite against each. Settings are in [tool.cibuildwheel] in
+  # pyproject.toml.
+  wheels:
+    name: Wheels (${{ matrix.os }})
+    needs: sdist
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest  # Linux x86_64 (manylinux)
+          - macos-latest   # macOS Apple Silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: sdist
+
+      - name: Build and test wheels
+        shell: bash
+        run: pipx run --spec "cibuildwheel==3.*" cibuildwheel sdist/*.tar.gz --output-dir wheelhouse
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  # Upload to PyPI, only for version tags and only if every build passed.
+  publish:
+    name: Publish to PyPI
+    needs: [sdist, wheels]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pybrass
+    permissions:
+      id-token: write  # lets PyPI verify this run (Trusted Publishing)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Check that the version matches the tag
+        run: |
+          expected="pybrass-${GITHUB_REF_NAME#v}.tar.gz"
+          ls dist
+          test -f "dist/$expected" || { echo "::error::expected dist/$expected"; exit 1; }
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -79,7 +79,13 @@ local_scheme = "node-and-date"
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "pp* *-musllinux_*"
+# Run the test suite against every built wheel.
 test-requires = ["pytest"]
+test-command = "pytest {project}/tests -p no:cacheprovider"
 environment = { CMAKE_BUILD_PARALLEL_LEVEL = "1" }
+
+[tool.cibuildwheel.macos]
+# Wheels work on macOS 11 and newer (the C++20 library features need it).
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "1", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 
