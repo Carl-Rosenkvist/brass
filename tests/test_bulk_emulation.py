@@ -7,6 +7,13 @@ from brass import AnalysisRunner
 from brass.analyses import Bulk
 from brass.emulation.bulk import BulkEmulator
 
+
+def bulk_args(pdgs):
+    """Parse Bulk arguments with the real CLI defaults."""
+    parser = argparse.ArgumentParser()
+    Bulk.add_arguments(parser)
+    return parser.parse_args(["--pdgs", *map(str, pdgs)])
+
 PION_PDG = 211
 PION_MASS = 0.13957
 
@@ -189,9 +196,7 @@ def test_bulk_emulator(tmp_path):
     runner = AnalysisRunner(
         Bulk,
         runs,
-        args=argparse.Namespace(
-            pdgs=[PION_PDG],
-        ),
+        args=bulk_args([PION_PDG]),
         max_workers=2,
     )
 

@@ -6,6 +6,13 @@ import pytest
 from brass import AnalysisRunner
 from brass.analyses import Bulk
 
+
+def bulk_args(pdgs):
+    """Parse Bulk arguments with the real CLI defaults."""
+    parser = argparse.ArgumentParser()
+    Bulk.add_arguments(parser)
+    return parser.parse_args(["--pdgs", *map(str, pdgs)])
+
 PION_PDG = 211
 PROTON_PDG = 2212
 
@@ -215,12 +222,7 @@ def test_bulk_with_analysis_runner(tmp_path):
         meta=2,
     )
 
-    args = argparse.Namespace(
-        pdgs=[
-            PION_PDG,
-            PROTON_PDG,
-        ],
-    )
+    args = bulk_args([PION_PDG, PROTON_PDG])
 
     runner = AnalysisRunner(
         Bulk,
@@ -294,12 +296,7 @@ def test_bulk_recovers_generated_distributions(tmp_path):
         meta=1,
     )
 
-    args = argparse.Namespace(
-        pdgs=[
-            PION_PDG,
-            PROTON_PDG,
-        ],
-    )
+    args = bulk_args([PION_PDG, PROTON_PDG])
 
     analysis = Bulk(
         run,
