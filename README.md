@@ -271,10 +271,41 @@ hist_y, hist_mt = brass.histograms(reader, [y_request, mt_request])
 hist_y, hist_mt = brass.histograms(particles, [y_request, mt_request])
 ```
 
+## Performance
+
+Rapidity histogram (`dN/dy`, 100 bins) of every particle in a synthetic SMASH
+binary file, BRASS compared with a plain NumPy reader. Both files hold the
+same 2 million particles, split into small or large events:
+
+| Case | Events × particles | File size | BRASS | NumPy | Speedup |
+|---|---|---|---|---|---|
+| pp-like | 200,000 × 10 | 102 MB | 0.06 s | 0.44 s | 7.0× |
+| heavy-ion-like | 2,000 × 1,000 | 96 MB | 0.03 s | 0.03 s | 1.2× |
+
+The NumPy reader loops over blocks in Python, reads each with
+`np.frombuffer`, and histograms all rapidities in one `np.histogram` call at the
+end. Both readers produce identical histograms.
+
+- With many small events, NumPy spends most of its time in the per-block Python
+  loop, so BRASS is several times faster.
+- With large events, NumPy's vectorized math is efficient and both readers
+  are limited mostly by reading the file.
+- BRASS fills several histograms, or one per PDG code, in the same pass over
+  the file, which the timings above do not include.
+
+Best of 3 runs with the file in the OS cache, on an Apple M3 (16 GB),
+Python 3.12, NumPy 2.5. To reproduce:
+
+```bash
+python benchmarks/benchmark.py --compare
+```
+
+`python benchmarks/benchmark.py` runs a more detailed set of BRASS timings.
+
 ## Development
 
 ```bash
-pip install -e .
+pip install -e ".[test]"
 pytest tests
 ```
 

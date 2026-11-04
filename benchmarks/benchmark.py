@@ -1,24 +1,40 @@
+"""BRASS benchmarks on synthetic SMASH binary files.
+
+    python benchmarks/benchmark.py            # detailed BRASS timings
+    python benchmarks/benchmark.py --compare  # BRASS vs a NumPy reader
+"""
+
+import argparse
 import os
+import platform
+import struct
 import tempfile
 import time
 
 import numpy as np
 
 import brass
-from brass.testing import SmashBinaryWriter
+from brass.testing import SmashBinaryWriter, particle_dtype
 
 
 QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
 
 
-def make_benchmark_file(path, n_events=100_000, particles_per_event=20):
+def make_benchmark_file(
+    path,
+    n_events=100_000,
+    particles_per_event=20,
+    elastic_every=25,
+):
+    """Write a synthetic file. Every `elastic_every`-th event has 2 particles
+    (like an elastic collision); pass None for uniform events."""
     rng = np.random.default_rng(12345)
 
     pdgs = np.array([211, -211, 321, -321, 2212, -2212], dtype=np.int32)
 
     with SmashBinaryWriter(path, QUANTITIES) as writer:
         for event_number in range(n_events):
-            if event_number % 25 == 0:
+            if elastic_every and event_number % elastic_every == 0:
                 npart = 2
             else:
                 npart = particles_per_event
@@ -240,6 +256,109 @@ def bench_grouped_histograms_y_and_mt_separate(path):
     return run
 
 
+# ---------------------------------------------------------------------
+# Comparison with a plain NumPy reader
+# ---------------------------------------------------------------------
+
+DNDY_BINS = 100
+DNDY_RANGE = (-5.0, 5.0)
+
+# Same total number of particles, very different event sizes.
+COMPARE_CASES = [
+    ("pp-like", 200_000, 10),
+    ("heavy-ion-like", 2_000, 1_000),
+]
+
+
+def brass_dndy(path):
+    reader = brass.BinaryReader(path, QUANTITIES)
+
+    request = brass.HistogramRequest()
+    request.quantities = ["y_rap"]
+    request.axes = [brass.RegularAxis(DNDY_BINS, *DNDY_RANGE)]
+
+    return np.asarray(brass.histogram(reader, request).values)
+
+
+def numpy_dndy(path):
+    """Rapidity histogram with NumPy only: read each block with
+    np.frombuffer, collect rapidities, histogram once at the end."""
+    dtype = particle_dtype(QUANTITIES)
+    rapidities = []
+
+    with open(path, "rb") as f:
+        f.read(4)  # magic number
+        _, _, version_length = struct.unpack("<HHI", f.read(8))
+        f.read(version_length)
+
+        while tag := f.read(1):
+            if tag == b"p":
+                _, _, npart = struct.unpack("<iiI", f.read(12))
+                particles = np.frombuffer(
+                    f.read(npart * dtype.itemsize), dtype=dtype
+                )
+                p0 = particles["p0"]
+                pz = particles["pz"]
+                rapidities.append(0.5 * np.log((p0 + pz) / (p0 - pz)))
+
+            elif tag == b"f":
+                f.read(4 + 4 + 8 + 1)
+
+            else:
+                raise RuntimeError(f"unexpected block tag: {tag!r}")
+
+    return np.histogram(
+        np.concatenate(rapidities), bins=DNDY_BINS, range=DNDY_RANGE
+    )[0]
+
+
+def best_time(func, repeats):
+    best = float("inf")
+    result = None
+
+    for _ in range(repeats):
+        start = time.perf_counter()
+        result = func()
+        best = min(best, time.perf_counter() - start)
+
+    return best, result
+
+
+def compare(repeats=3):
+    rows = []
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for name, n_events, per_event in COMPARE_CASES:
+            path = os.path.join(tmpdir, f"{name}.bin")
+            make_benchmark_file(path, n_events, per_event, elastic_every=None)
+            size_mb = os.path.getsize(path) / 1e6
+
+            t_brass, h_brass = best_time(lambda: brass_dndy(path), repeats)
+            t_numpy, h_numpy = best_time(lambda: numpy_dndy(path), repeats)
+
+            if not np.array_equal(h_brass, h_numpy):
+                raise RuntimeError(f"{name}: BRASS and NumPy histograms differ")
+
+            rows.append(
+                (name, n_events, per_event, size_mb, t_brass, t_numpy)
+            )
+
+    print(f"dN/dy of all particles, {DNDY_BINS} bins; best of {repeats} runs")
+    print(f"{platform.machine()}, Python {platform.python_version()}, "
+          f"NumPy {np.__version__}")
+    print("Histograms from both readers are identical.")
+    print()
+    print("| Case | Events × particles | File size | BRASS | NumPy | Speedup |")
+    print("|---|---|---|---|---|---|")
+
+    for name, n_events, per_event, size_mb, t_brass, t_numpy in rows:
+        print(
+            f"| {name} | {n_events:,} × {per_event:,} | {size_mb:.0f} MB "
+            f"| {t_brass:.2f} s | {t_numpy:.2f} s "
+            f"| {t_numpy / t_brass:.1f}× |"
+        )
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "bench_particles.bin")
@@ -305,4 +424,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="compare BRASS with a plain NumPy reader (README table)",
+    )
+    args = parser.parse_args()
+
+    if args.compare:
+        compare()
+    else:
+        main()
