@@ -17,10 +17,16 @@ It provides:
 
 ## Installation
 
-For development:
+For development, with the test dependencies:
 
 ```bash
-pip install -e .
+pip install -e ".[test]"
+```
+
+The GP emulation (`brass.emulation`) needs scikit-learn, available as an extra:
+
+```bash
+pip install -e ".[emulation]"
 ```
 
 Or from PyPI:

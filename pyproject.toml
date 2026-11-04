@@ -33,6 +33,15 @@ dependencies = [
   "PyYAML",
 ]
 
+[project.optional-dependencies]
+emulation = [
+  "scikit-learn",
+]
+test = [
+  "pytest",
+  "scikit-learn",
+]
+
 [project.urls]
 Homepage = "https://github.com/Carl-Rosenkvist/brass"
 Source = "https://github.com/Carl-Rosenkvist/brass"
