@@ -6,6 +6,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
@@ -56,37 +57,41 @@ class Particles {
 
     const ParticleLayout& layout() const;
 
-    const QuantityOffset& quantity(const std::string& name) const;
-    const QuantityOffset* find_quantity(const std::string& name) const;
+    const QuantityOffset& quantity(Quantity q) const;
+    const QuantityOffset* find_quantity(Quantity q) const;
 
     ParticleRow row(std::size_t i) const;
 
-    double stored_value(const ParticleRow& row, const std::string& name) const;
+    // Stored quantities are read directly; pt, p, and mass, mt, y_rap when
+    // they are not stored, are computed from the momentum.
+    double value(const ParticleRow& row, Quantity q) const;
+    double value(std::size_t i, Quantity q) const;
 
-    double value(const ParticleRow& row, const std::string& name) const;
-
-    double value(std::size_t i, const std::string& name) const;
-
-    const Column& column_variant(const std::string& name) const;
+    const Column& column_variant(Quantity q) const;
 
     template <class T>
-    const std::vector<T>& column(const std::string& name) const {
-        const auto& col = column_variant(name);
+    const std::vector<T>& column(Quantity q) const {
+        const auto& col = column_variant(q);
 
         const auto* ptr = std::get_if<std::vector<T>>(&col);
         if (ptr == nullptr) {
             throw std::runtime_error("wrong type for particle quantity: " +
-                                     name);
+                                     std::string(to_string(q)));
         }
 
         return *ptr;
     }
 
+    template <class T>
+    const std::vector<T>& column(std::string_view name) const {
+        return column<T>(parse_quantity(name));
+    }
+
    private:
-    void make_column(const std::string& name) const;
+    void make_column(const QuantityOffset& q) const;
 
     template <class T>
-    void make_column(const QuantityOffset& q) const {
+    void make_typed_column(const QuantityOffset& q) const {
         std::vector<T> values(size_);
         const auto size = particle_size();
 
@@ -95,14 +100,14 @@ class Particles {
                         sizeof(T));
         }
 
-        columns_.emplace(q.name, std::move(values));
+        columns_.emplace(q.quantity, std::move(values));
     }
 
     std::vector<std::byte> bytes_;
     std::shared_ptr<const ParticleLayout> layout_;
     std::size_t size_ = 0;
 
-    mutable std::unordered_map<std::string, Column> columns_;
+    mutable std::unordered_map<Quantity, Column> columns_;
 };
 
 }  // namespace brass

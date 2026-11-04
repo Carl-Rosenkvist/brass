@@ -37,7 +37,7 @@ static std::optional<DileptonFourVector> outgoing_pair(
 
     for (std::size_t i = 0; i < block.outgoing.size(); ++i) {
         const auto row = block.outgoing.row(i);
-        const auto pdg = static_cast<int32_t>(block.outgoing.value(row, "pdg"));
+        const auto pdg = static_cast<int32_t>(block.outgoing.value(row, Quantity::pdg));
 
         if (pdg != pair_pdgs.first && pdg != pair_pdgs.second) {
             continue;
@@ -45,10 +45,10 @@ static std::optional<DileptonFourVector> outgoing_pair(
 
         found_pdgs.push_back(pdg);
 
-        pair.p0 += block.outgoing.value(row, "p0");
-        pair.px += block.outgoing.value(row, "px");
-        pair.py += block.outgoing.value(row, "py");
-        pair.pz += block.outgoing.value(row, "pz");
+        pair.p0 += block.outgoing.value(row, Quantity::p0);
+        pair.px += block.outgoing.value(row, Quantity::px);
+        pair.py += block.outgoing.value(row, Quantity::py);
+        pair.pz += block.outgoing.value(row, Quantity::pz);
     }
 
     std::vector<int32_t> expected_pdgs{
@@ -84,45 +84,47 @@ static double dilepton_rapidity(const DileptonFourVector& p) {
     return 0.5 * std::log((p.p0 + p.pz) / (p.p0 - p.pz));
 }
 
-static double dilepton_value(const DileptonFourVector& p,
-                             const std::string& name) {
-    if (name == "p0") {
-        return p.p0;
+static bool is_dilepton_quantity(Quantity q) {
+    switch (q) {
+        case Quantity::p0:
+        case Quantity::px:
+        case Quantity::py:
+        case Quantity::pz:
+        case Quantity::p:
+        case Quantity::pt:
+        case Quantity::mass:
+        case Quantity::mt:
+        case Quantity::y_rap:
+            return true;
+        default:
+            return false;
     }
+}
 
-    if (name == "px") {
-        return p.px;
+static double dilepton_value(const DileptonFourVector& p, Quantity q) {
+    switch (q) {
+        case Quantity::p0:
+            return p.p0;
+        case Quantity::px:
+            return p.px;
+        case Quantity::py:
+            return p.py;
+        case Quantity::pz:
+            return p.pz;
+        case Quantity::p:
+            return dilepton_momentum(p);
+        case Quantity::pt:
+            return dilepton_pt(p);
+        case Quantity::mass:
+            return dilepton_mass(p);
+        case Quantity::mt:
+            return std::hypot(dilepton_mass(p), dilepton_pt(p));
+        case Quantity::y_rap:
+            return dilepton_rapidity(p);
+        default:
+            throw std::runtime_error("unknown dilepton quantity: " +
+                                     std::string(to_string(q)));
     }
-
-    if (name == "py") {
-        return p.py;
-    }
-
-    if (name == "pz") {
-        return p.pz;
-    }
-
-    if (name == "p") {
-        return dilepton_momentum(p);
-    }
-
-    if (name == "pt") {
-        return dilepton_pt(p);
-    }
-
-    if (name == "mass") {
-        return dilepton_mass(p);
-    }
-
-    if (name == "mt") {
-        return std::hypot(dilepton_mass(p), dilepton_pt(p));
-    }
-
-    if (name == "y_rap") {
-        return dilepton_rapidity(p);
-    }
-
-    throw std::runtime_error("unknown dilepton quantity: " + name);
 }
 
 static std::string dilepton_channel_key(const InteractionBlock& block) {
@@ -132,7 +134,7 @@ static std::string dilepton_channel_key(const InteractionBlock& block) {
 
     const auto parent_row = block.incoming.row(0);
     const auto parent_pdg =
-        static_cast<int32_t>(block.incoming.value(parent_row, "pdg"));
+        static_cast<int32_t>(block.incoming.value(parent_row, Quantity::pdg));
 
     std::vector<int32_t> daughters;
     daughters.reserve(block.outgoing.size());
@@ -141,7 +143,7 @@ static std::string dilepton_channel_key(const InteractionBlock& block) {
         const auto row = block.outgoing.row(i);
 
         daughters.push_back(
-            static_cast<int32_t>(block.outgoing.value(row, "pdg")));
+            static_cast<int32_t>(block.outgoing.value(row, Quantity::pdg)));
     }
 
     std::sort(daughters.begin(), daughters.end());
@@ -158,10 +160,24 @@ static std::string dilepton_channel_key(const InteractionBlock& block) {
 DileptonHistogrammer::DileptonHistogrammer(
     std::vector<std::string> quantities, std::vector<AxisConfig> axes,
     std::pair<int32_t, int32_t> pair_pdgs, std::string weight_quantity)
-    : quantities_(std::move(quantities)),
-      axes_(std::move(axes)),
-      pair_pdgs_(pair_pdgs),
-      weight_quantity_(std::move(weight_quantity)) {}
+    : axes_(std::move(axes)), pair_pdgs_(pair_pdgs) {
+    quantities_.reserve(quantities.size());
+
+    for (const auto& name : quantities) {
+        const auto q = parse_quantity(name);
+
+        if (!is_dilepton_quantity(q)) {
+            throw std::runtime_error("unknown dilepton quantity: " + name);
+        }
+
+        quantities_.push_back(q);
+    }
+
+    // An empty name means unweighted.
+    if (!weight_quantity.empty()) {
+        weight_quantity_ = parse_interaction_quantity(weight_quantity);
+    }
+}
 
 void DileptonHistogrammer::fill(const InteractionBlock& block) {
     const auto pair = outgoing_pair(block, pair_pdgs_);
@@ -191,11 +207,8 @@ void DileptonHistogrammer::fill(const InteractionBlock& block) {
         values[i] = dilepton_value(*pair, quantities_[i]);
     }
 
-    double weight = 1.0;
-
-    if (!weight_quantity_.empty()) {
-        weight = interaction_value(block, weight_quantity_);
-    }
+    const double weight =
+        weight_quantity_ ? interaction_value(block, *weight_quantity_) : 1.0;
 
     hist.fill_values(values, weight);
 }

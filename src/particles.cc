@@ -1,6 +1,5 @@
 #include "particles.h"
 
-#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
@@ -8,7 +7,7 @@
 namespace brass {
 
 double ParticleRow::get_double(const QuantityOffset& q) const {
-    if (q.size != sizeof(double)) {
+    if (q.type != QuantityType::Double) {
         throw std::runtime_error("quantity is not double: " + q.name);
     }
 
@@ -16,7 +15,7 @@ double ParticleRow::get_double(const QuantityOffset& q) const {
 }
 
 int32_t ParticleRow::get_int32(const QuantityOffset& q) const {
-    if (q.size != sizeof(int32_t)) {
+    if (q.type != QuantityType::Int32) {
         throw std::runtime_error("quantity is not int32: " + q.name);
     }
 
@@ -24,15 +23,14 @@ int32_t ParticleRow::get_int32(const QuantityOffset& q) const {
 }
 
 double ParticleRow::get_as_double(const QuantityOffset& q) const {
-    if (q.size == sizeof(double)) {
-        return get_double(q);
+    switch (q.type) {
+        case QuantityType::Double:
+            return get_value<double>(q.offset);
+        case QuantityType::Int32:
+            return static_cast<double>(get_value<int32_t>(q.offset));
     }
 
-    if (q.size == sizeof(int32_t)) {
-        return static_cast<double>(get_int32(q));
-    }
-
-    throw std::runtime_error("unsupported quantity size: " + q.name);
+    throw std::logic_error("unhandled quantity type: " + q.name);
 }
 
 Particles::Particles(std::vector<std::byte> bytes,
@@ -65,18 +63,12 @@ const ParticleLayout& Particles::layout() const {
     return *layout_;
 }
 
-const QuantityOffset& Particles::quantity(const std::string& name) const {
-    return layout().quantity(name);
+const QuantityOffset& Particles::quantity(Quantity q) const {
+    return layout().at(q);
 }
 
-const QuantityOffset* Particles::find_quantity(const std::string& name) const {
-    const auto& offsets = layout().offsets;
-
-    const auto it =
-        std::find_if(offsets.begin(), offsets.end(),
-                     [&](const QuantityOffset& q) { return q.name == name; });
-
-    return it == offsets.end() ? nullptr : &*it;
+const QuantityOffset* Particles::find_quantity(Quantity q) const {
+    return layout().find(q);
 }
 
 ParticleRow Particles::row(std::size_t i) const {
@@ -87,88 +79,80 @@ ParticleRow Particles::row(std::size_t i) const {
     return ParticleRow(bytes_.data() + i * particle_size());
 }
 
-double Particles::stored_value(const ParticleRow& row,
-                               const std::string& name) const {
-    return row.get_as_double(quantity(name));
-}
+double Particles::value(const ParticleRow& row, Quantity q) const {
+    const auto& layout = this->layout();
 
-double Particles::value(const ParticleRow& row, const std::string& name) const {
-    if (name == "pt") {
-        const auto px = stored_value(row, "px");
-        const auto py = stored_value(row, "py");
-        return std::hypot(px, py);
+    if (const auto* stored = layout.find(q)) {
+        return row.get_as_double(*stored);
     }
 
-    if (name == "p") {
-        const auto px = stored_value(row, "px");
-        const auto py = stored_value(row, "py");
-        const auto pz = stored_value(row, "pz");
-        return std::sqrt(px * px + py * py + pz * pz);
-    }
+    const auto get = [&](Quantity stored) {
+        return row.get_double(layout.at(stored));
+    };
 
-    if (name == "mass") {
-        if (find_quantity("mass") != nullptr) {
-            return stored_value(row, "mass");
+    switch (q) {
+        case Quantity::pt:
+            return std::hypot(get(Quantity::px), get(Quantity::py));
+
+        case Quantity::p: {
+            const auto px = get(Quantity::px);
+            const auto py = get(Quantity::py);
+            const auto pz = get(Quantity::pz);
+            return std::sqrt(px * px + py * py + pz * pz);
         }
 
-        const auto p0 = stored_value(row, "p0");
-        const auto px = stored_value(row, "px");
-        const auto py = stored_value(row, "py");
-        const auto pz = stored_value(row, "pz");
+        case Quantity::mass: {
+            const auto p0 = get(Quantity::p0);
+            const auto px = get(Quantity::px);
+            const auto py = get(Quantity::py);
+            const auto pz = get(Quantity::pz);
+            const auto m2 = p0 * p0 - px * px - py * py - pz * pz;
+            return m2 > 0.0 ? std::sqrt(m2) : 0.0;
+        }
 
-        const auto m2 = p0 * p0 - px * px - py * py - pz * pz;
-        return m2 > 0.0 ? std::sqrt(m2) : 0.0;
-    }
+        case Quantity::mt: {
+            const auto m = value(row, Quantity::mass);
+            const auto pt = value(row, Quantity::pt);
+            return std::sqrt(m * m + pt * pt);
+        }
 
-    if (name == "mt") {
-        const auto m = value(row, "mass");
-        const auto pt = value(row, "pt");
-        return std::sqrt(m * m + pt * pt);
-    }
-    if (name == "rapidity" || name == "y_rap") {
-        const auto p0 = stored_value(row, "p0");
-        const auto pz = stored_value(row, "pz");
-        return 0.5 * std::log((p0 + pz) / (p0 - pz));
-    }
+        case Quantity::y_rap: {
+            const auto p0 = get(Quantity::p0);
+            const auto pz = get(Quantity::pz);
+            return 0.5 * std::log((p0 + pz) / (p0 - pz));
+        }
 
-    return stored_value(row, name);
+        default:
+            // Not stored and not computable: reports "not in file".
+            return row.get_as_double(layout.at(q));
+    }
 }
 
-double Particles::value(std::size_t i, const std::string& name) const {
-    return value(row(i), name);
+double Particles::value(std::size_t i, Quantity q) const {
+    return value(row(i), q);
 }
 
-const Column& Particles::column_variant(const std::string& name) const {
-    const auto it = columns_.find(name);
-
-    if (it != columns_.end()) {
+const Column& Particles::column_variant(Quantity q) const {
+    if (const auto it = columns_.find(q); it != columns_.end()) {
         return it->second;
     }
 
-    make_column(name);
+    make_column(quantity(q));
 
-    const auto inserted = columns_.find(name);
-    if (inserted == columns_.end()) {
-        throw std::runtime_error("unknown particle quantity: " + name);
-    }
-
-    return inserted->second;
+    return columns_.at(q);
 }
 
-void Particles::make_column(const std::string& name) const {
-    const auto& q = quantity(name);
-
-    if (q.size == sizeof(double)) {
-        make_column<double>(q);
-        return;
+void Particles::make_column(const QuantityOffset& q) const {
+    switch (q.type) {
+        case QuantityType::Double:
+            make_typed_column<double>(q);
+            return;
+        case QuantityType::Int32:
+            make_typed_column<int32_t>(q);
+            return;
     }
 
-    if (q.size == sizeof(int32_t)) {
-        make_column<int32_t>(q);
-        return;
-    }
-
-    throw std::runtime_error("unsupported quantity size: " + q.name);
+    throw std::logic_error("unhandled quantity type: " + q.name);
 }
 
 }  // namespace brass

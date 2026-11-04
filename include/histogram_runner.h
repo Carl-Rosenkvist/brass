@@ -71,8 +71,30 @@ struct HistogramRequest {
 using HistogramStorage =
     std::variant<Histogram, std::unordered_map<int32_t, Histogram>>;
 
+// A HistogramRequest with all names resolved to enums. Built once when the
+// runner is constructed, so no names are looked up while filling.
+struct ResolvedRequest {
+    HistogramTarget target = HistogramTarget::Particles;
+
+    // Axis quantities; which vector is used depends on the target.
+    std::vector<Quantity> particle_quantities;  // Particles/Incoming/Outgoing
+    std::vector<InteractionQuantity> interaction_quantities;  // Interaction
+    std::vector<EndBlockQuantity> end_block_quantities;       // EndBlock
+    std::vector<HeaderQuantity> header_quantities;            // Header
+
+    std::optional<Quantity> group_by;
+
+    // At most one of these is set.
+    std::optional<Quantity> particle_weight;
+    std::optional<InteractionQuantity> interaction_weight;
+    std::optional<EndBlockQuantity> end_block_weight;
+    std::optional<HeaderQuantity> header_weight;
+};
+
+ResolvedRequest resolve_request(const HistogramRequest& request);
+
 struct HistogramRun {
-    HistogramRequest request;
+    ResolvedRequest request;
     HistogramStorage histograms;
 };
 
@@ -91,42 +113,8 @@ class HistogramRunner {
     BinaryReader& reader_;
     std::vector<HistogramRun> runs_;
 
-    template <class BlockType, class Value>
-    void fill_block_histograms(std::vector<HistogramRun>& runs,
-                               HistogramTarget target, const BlockType& block,
-                               Value value) {
-        for (auto& run : runs) {
-            if (run.request.target != target) {
-                continue;
-            }
-
-            if (run.request.group_by) {
-                throw std::runtime_error(
-                    "group_by is not supported for block histograms");
-            }
-
-            auto& hist = std::get<Histogram>(run.histograms);
-
-            if (run.request.quantities.size() != hist.rank()) {
-                throw std::runtime_error(
-                    "histogram: quantity/axis dimension mismatch");
-            }
-
-            std::vector<double> values(run.request.quantities.size());
-
-            for (std::size_t d = 0; d < run.request.quantities.size(); ++d) {
-                values[d] = value(block, run.request.quantities[d]);
-            }
-
-            double weight = 1.0;
-
-            if (run.request.weight_quantity) {
-                weight = value(block, *run.request.weight_quantity);
-            }
-
-            hist.fill_values(values, weight);
-        }
-    }
+    void fill_particles(HistogramRun& run, const Particles& particles,
+                        double block_weight = 1.0);
 };
 
 }  // namespace brass

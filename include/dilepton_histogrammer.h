@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,10 +29,10 @@ class DileptonHistogrammer {
     std::map<std::string, HistogramResult> result() const;
 
    private:
-    std::vector<std::string> quantities_;
+    std::vector<Quantity> quantities_;
     std::vector<AxisConfig> axes_;
     std::pair<int32_t, int32_t> pair_pdgs_;
-    std::string weight_quantity_;
+    std::optional<InteractionQuantity> weight_quantity_;
 
     std::map<std::string, Histogram> histograms_;
 };

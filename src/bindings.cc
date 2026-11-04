@@ -25,20 +25,19 @@ py::object block_to_python(brass::Block&& block) {
 }
 
 py::array particle_column_to_numpy(const brass::Particles& particles,
-                                   const std::string& name, py::object owner) {
-    const auto& q = particles.quantity(name);
-
-    if (q.size == sizeof(double)) {
-        const auto& values = particles.column<double>(name);
-        return py::array_t<double>(values.size(), values.data(), owner);
+                                   brass::Quantity q, py::object owner) {
+    switch (particles.quantity(q).type) {
+        case brass::QuantityType::Double: {
+            const auto& values = particles.column<double>(q);
+            return py::array_t<double>(values.size(), values.data(), owner);
+        }
+        case brass::QuantityType::Int32: {
+            const auto& values = particles.column<int32_t>(q);
+            return py::array_t<int32_t>(values.size(), values.data(), owner);
+        }
     }
 
-    if (q.size == sizeof(int32_t)) {
-        const auto& values = particles.column<int32_t>(name);
-        return py::array_t<int32_t>(values.size(), values.data(), owner);
-    }
-
-    throw std::runtime_error("unsupported quantity size: " + name);
+    throw std::logic_error("unhandled quantity type");
 }
 
 py::object histogram_result_to_python(brass::HistogramRunResult&& result) {
@@ -97,7 +96,8 @@ PYBIND11_MODULE(_brass, m) {
             "column",
             [](py::object self, const std::string& name) {
                 const auto& particles = self.cast<const brass::Particles&>();
-                return particle_column_to_numpy(particles, name, self);
+                return particle_column_to_numpy(
+                    particles, brass::parse_quantity(name), self);
             },
             py::arg("name"))
         .def("columns", [](py::object self) {
@@ -107,7 +107,7 @@ PYBIND11_MODULE(_brass, m) {
 
             for (const auto& q : particles.layout().offsets) {
                 out[py::str(q.name)] =
-                    particle_column_to_numpy(particles, q.name, self);
+                    particle_column_to_numpy(particles, q.quantity, self);
             }
 
             return out;
