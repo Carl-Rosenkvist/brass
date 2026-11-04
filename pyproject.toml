@@ -11,7 +11,7 @@ name = "pybrass"
 dynamic = ["version"]
 description = "Binary Reader and Analysis Suite Software"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [
   { name = "Carl B. Rosenkvist", email = "rosenkvist@itp.uni-frankfurt.de" }
 ]
@@ -77,7 +77,7 @@ version_scheme = "no-guess-dev"
 local_scheme = "node-and-date"
 
 [tool.cibuildwheel]
-build = "cp3?-*"
+build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "pp* *-musllinux_*"
 test-requires = ["pytest"]
 environment = { CMAKE_BUILD_PARALLEL_LEVEL = "1" }
