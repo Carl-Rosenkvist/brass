@@ -1,122 +1,24 @@
-import argparse
-import struct
-
 import numpy as np
 import pytest
+
+# Emulation needs the optional extra: pip install -e ".[emulation]"
+pytest.importorskip("sklearn")
+
 from brass import AnalysisRunner
 from brass.analyses import Bulk
 from brass.emulation.bulk import BulkEmulator
-
-
-def bulk_args(pdgs):
-    """Parse Bulk arguments with the real CLI defaults."""
-    parser = argparse.ArgumentParser()
-    Bulk.add_arguments(parser)
-    return parser.parse_args(["--pdgs", *map(str, pdgs)])
+from brass.testing import analysis_args, generate_particles, write_run
 
 PION_PDG = 211
 PION_MASS = 0.13957
 
 N_PARTICLES = 10_000
 
-
-def write_header(file):
-    file.write(b"SMSH")
-    file.write(struct.pack("<H", 9))
-    file.write(struct.pack("<H", 1))
-
-    version = b"SMASH-3.1"
-    file.write(struct.pack("<I", len(version)))
-    file.write(version)
+QUANTITIES = ["p0", "px", "py", "pz", "pdg"]
 
 
-def write_particles(file, particles):
-    if not particles:
-        return
-
-    n_fields = len(particles[0])
-
-    if any(len(particle) != n_fields for particle in particles):
-        raise ValueError("All particles must have the same number of fields")
-
-    dtype = np.dtype(
-        [
-            (
-                f"f{i}",
-                "<i4" if isinstance(value, int) else "<f8",
-            )
-            for i, value in enumerate(particles[0])
-        ]
-    )
-
-    array = np.array(
-        [tuple(particle) for particle in particles],
-        dtype=dtype,
-    )
-
-    file.write(array.tobytes())
-
-
-def write_particle_block(
-    file,
-    particles,
-    event_number=0,
-    ensemble_number=0,
-):
-    file.write(b"p")
-    file.write(struct.pack("<i", event_number))
-    file.write(struct.pack("<i", ensemble_number))
-    file.write(struct.pack("<I", len(particles)))
-
-    write_particles(file, particles)
-
-
-def generate_particles(
-    rng,
-    n,
-    y_mean,
-    y_sigma,
-    pt_mean,
-):
-    y = rng.normal(
-        y_mean,
-        y_sigma,
-        n,
-    )
-
-    pt = rng.exponential(
-        pt_mean,
-        n,
-    )
-
-    phi = rng.uniform(
-        0.0,
-        2.0 * np.pi,
-        n,
-    )
-
-    mt = np.sqrt(PION_MASS**2 + pt**2)
-
-    px = pt * np.cos(phi)
-    py = pt * np.sin(phi)
-    pz = mt * np.sinh(y)
-    p0 = mt * np.cosh(y)
-
-    return [
-        [
-            float(energy),
-            float(px_i),
-            float(py_i),
-            float(pz_i),
-            PION_PDG,
-        ]
-        for energy, px_i, py_i, pz_i in zip(
-            p0,
-            px,
-            py,
-            pz,
-        )
-    ]
+def bulk_args(pdgs):
+    return analysis_args(Bulk, "--pdgs", *map(str, pdgs))
 
 
 def make_run(
@@ -126,44 +28,22 @@ def make_run(
     y_sigma,
     pt_mean,
 ):
-    folder.mkdir()
-
-    (folder / "config.yaml").write_text(
-        f"""
-Meta:
-  y_mean: {y_mean}
-  y_sigma: {y_sigma}
-  pt_mean: {pt_mean}
-
-Output:
-  Particles:
-    Quantities:
-      - p0
-      - px
-      - py
-      - pz
-      - pdg
-"""
-    )
-
     rng = np.random.default_rng(seed)
 
-    particles = generate_particles(
+    pions = generate_particles(
         rng,
         N_PARTICLES,
-        y_mean,
-        y_sigma,
-        pt_mean,
+        pdg=PION_PDG,
+        mass=PION_MASS,
+        y_mean=y_mean,
+        y_sigma=y_sigma,
+        pt_mean=pt_mean,
     )
 
-    path = folder / "particles_binary.bin"
+    meta = {"y_mean": y_mean, "y_sigma": y_sigma, "pt_mean": pt_mean}
 
-    with path.open("wb") as file:
-        write_header(file)
-        write_particle_block(
-            file,
-            particles,
-        )
+    with write_run(folder, QUANTITIES, config={"Meta": meta}) as w:
+        w.particles(pions)
 
 
 def test_bulk_emulator(tmp_path):

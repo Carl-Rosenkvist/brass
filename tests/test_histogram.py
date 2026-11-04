@@ -1,22 +1,12 @@
-import struct
-
 import brass
 import numpy as np
 import pytest
+from brass.testing import SmashBinaryWriter
 
 Q = ["px", "py", "pz", "pdg"]
 P4 = ["p0", "px", "py", "pz"]
 
-TYPE = {
-    "p0": "<d",
-    "px": "<d",
-    "py": "<d",
-    "pz": "<d",
-    "pdg": "<i",
-}
-
-DEFAULT_EVENT_NUMBER = 1
-DEFAULT_ENSEMBLE_NUMBER = 0
+EVENT_NUMBER = 1
 
 
 def request(
@@ -55,93 +45,14 @@ def rows(data):
     return np.array(data, dtype=object)
 
 
-def write_header(
-    f,
-    version=b"SMASH-3.1",
-    format_version=9,
-    format_variant=1,
-):
-    f.write(b"SMSH")
-    f.write(
-        struct.pack(
-            "<HHI",
-            format_version,
-            format_variant,
-            len(version),
-        )
-    )
-    f.write(version)
-
-
-def write_end(
-    f,
-    event_number=1,
-    ensemble_number=0,
-    impact_parameter=0.0,
-    empty=False,
-):
-    f.write(b"f")
-    f.write(
-        struct.pack(
-            "<Iid?",
-            event_number,
-            ensemble_number,
-            impact_parameter,
-            empty,
-        )
-    )
-
-
-def write_rows(f, rows_, quantities):
-    for row in rows_:
-        for value, quantity in zip(row, quantities):
-            f.write(
-                struct.pack(
-                    TYPE[quantity],
-                    value,
-                )
-            )
-
-
-def write_particles(
-    f,
-    rows_,
-    quantities=Q,
-    event_number=DEFAULT_EVENT_NUMBER,
-    ensemble_number=DEFAULT_ENSEMBLE_NUMBER,
-):
-    f.write(b"p")
-    f.write(
-        struct.pack(
-            "<iiI",
-            event_number,
-            ensemble_number,
-            len(rows_),
-        )
-    )
-
-    write_rows(
-        f,
-        rows_,
-        quantities,
-    )
-
-
 def write_particle_file(
     path,
     rows_,
     quantities=Q,
 ):
-    with open(path, "wb") as f:
-        write_header(f)
-
-        write_particles(
-            f,
-            rows_,
-            quantities,
-        )
-
-        write_end(f)
+    with SmashBinaryWriter(path, quantities) as w:
+        w.particles(rows_, event=EVENT_NUMBER)
+        w.end(event=EVENT_NUMBER)
 
 
 def interaction(
@@ -192,67 +103,23 @@ def interaction_table(
     )
 
 
-def write_interaction(
-    f,
-    data,
-    quantities=Q,
-):
-    incoming = data["incoming"]
-    outgoing = data["outgoing"]
-
-    f.write(b"i")
-    f.write(
-        struct.pack(
-            "<ii",
-            len(incoming),
-            len(outgoing),
-        )
-    )
-
-    f.write(
-        struct.pack(
-            "<dddi",
-            interaction_value(data, "rho"),
-            interaction_value(data, "sigma"),
-            interaction_value(data, "sigma_p"),
-            int(
-                interaction_value(
-                    data,
-                    "process",
-                )
-            ),
-        )
-    )
-
-    write_rows(
-        f,
-        incoming,
-        quantities,
-    )
-
-    write_rows(
-        f,
-        outgoing,
-        quantities,
-    )
-
-
 def write_interaction_file(
     path,
     interactions,
     quantities=Q,
 ):
-    with open(path, "wb") as f:
-        write_header(f)
-
+    with SmashBinaryWriter(path, quantities) as w:
         for data in interactions:
-            write_interaction(
-                f,
-                data,
-                quantities,
+            w.interaction(
+                data["incoming"],
+                data["outgoing"],
+                rho=data["rho"],
+                sigma=data["sigma"],
+                sigma_p=data["sigma_p"],
+                process=int(data["process"]),
             )
 
-        write_end(f)
+        w.end(event=EVENT_NUMBER)
 
 
 def run(
@@ -566,7 +433,8 @@ def test_p4_histograms(tmp_path):
             [1.9, 0.3, 0.4, 0.0],
             [3.0, 0.6, 0.8, 1.0],
             [3.0, 0.1, 0.1, -1.0],
-            [1.0, 0.1, 0.1, 1.0],
+            # y_rap ~ 1.52, outside the rapidity axis
+            [1.1, 0.1, 0.1, 1.0],
         ],
         dtype=float,
     )

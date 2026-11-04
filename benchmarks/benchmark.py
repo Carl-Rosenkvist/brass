@@ -1,48 +1,14 @@
 import os
-import struct
 import tempfile
 import time
 
 import numpy as np
 
 import brass
+from brass.testing import SmashBinaryWriter
 
 
 QUANTITIES = ["mass", "p0", "pz", "px", "py", "pdg", "ncoll"]
-
-
-def write_header(f):
-    f.write(b"SMSH")
-    f.write(struct.pack("<H", 9))
-    f.write(struct.pack("<H", 1))
-
-    version = b"SMASH-3.1"
-    f.write(struct.pack("<I", len(version)))
-    f.write(version)
-
-
-def write_end_block(f, event_number):
-    f.write(b"f")
-    f.write(struct.pack("<I", event_number))
-    f.write(struct.pack("<i", 0))
-    f.write(struct.pack("<d", 0.0))
-    f.write(struct.pack("<?", False))
-
-
-def write_particle_block(f, event_number, npart, particles):
-    f.write(b"p")
-    f.write(struct.pack("<i", event_number))
-    f.write(struct.pack("<i", 0))
-    f.write(struct.pack("<I", npart))
-
-    for mass, p0, pz, px, py, pdg, ncoll in particles:
-        f.write(struct.pack("<d", mass))
-        f.write(struct.pack("<d", p0))
-        f.write(struct.pack("<d", pz))
-        f.write(struct.pack("<d", px))
-        f.write(struct.pack("<d", py))
-        f.write(struct.pack("<i", int(pdg)))
-        f.write(struct.pack("<i", int(ncoll)))
 
 
 def make_benchmark_file(path, n_events=100_000, particles_per_event=20):
@@ -50,9 +16,7 @@ def make_benchmark_file(path, n_events=100_000, particles_per_event=20):
 
     pdgs = np.array([211, -211, 321, -321, 2212, -2212], dtype=np.int32)
 
-    with open(path, "wb") as f:
-        write_header(f)
-
+    with SmashBinaryWriter(path, QUANTITIES) as writer:
         for event_number in range(n_events):
             if event_number % 25 == 0:
                 npart = 2
@@ -70,10 +34,19 @@ def make_benchmark_file(path, n_events=100_000, particles_per_event=20):
             pdg = rng.choice(pdgs, size=npart)
             ncoll = rng.integers(0, 20, size=npart, dtype=np.int32)
 
-            particles = zip(mass, p0, pz, px, py, pdg, ncoll)
-
-            write_particle_block(f, event_number, npart, particles)
-            write_end_block(f, event_number)
+            writer.particles(
+                {
+                    "mass": mass,
+                    "p0": p0,
+                    "pz": pz,
+                    "px": px,
+                    "py": py,
+                    "pdg": pdg,
+                    "ncoll": ncoll,
+                },
+                event=event_number,
+            )
+            writer.end(event=event_number)
 
 
 def bench(name, func, repeats=5):
