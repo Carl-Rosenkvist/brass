@@ -93,9 +93,31 @@ struct ResolvedRequest {
 
 ResolvedRequest resolve_request(const HistogramRequest& request);
 
+// Values collected from one block before they are filled in one call.
+// Reused across blocks so that filling does not allocate per block.
+struct FillBuffer {
+    std::vector<std::vector<double>> columns;  // one per axis
+    std::vector<double> weights;               // empty when unweighted
+
+    void reset(std::size_t rank) {
+        columns.resize(rank);
+        for (auto& column : columns) {
+            column.clear();
+        }
+        weights.clear();
+    }
+
+    std::size_t size() const {
+        return columns.empty() ? 0 : columns.front().size();
+    }
+};
+
 struct HistogramRun {
     ResolvedRequest request;
     HistogramStorage histograms;
+
+    FillBuffer buffer;  // whole block, all particles
+    std::unordered_map<int32_t, FillBuffer> group_buffers;  // grouped
 };
 
 class HistogramRunner {

@@ -148,4 +148,44 @@ void Histogram::fill_values(const std::vector<double>& values, double weight) {
     }
 }
 
+std::size_t Histogram::check_columns(
+    const std::vector<std::vector<double>>& columns) const {
+    if (columns.size() != rank()) {
+        throw std::runtime_error("Histogram: fill dimension mismatch");
+    }
+
+    const auto n = columns.front().size();
+
+    for (const auto& column : columns) {
+        if (column.size() != n) {
+            throw std::runtime_error("Histogram: fill columns differ in length");
+        }
+    }
+
+    return n;
+}
+
+void Histogram::fill_columns(const std::vector<std::vector<double>>& columns) {
+    if (check_columns(columns) == 0) {
+        return;
+    }
+
+    hist_.fill(columns);
+}
+
+void Histogram::fill_columns(const std::vector<std::vector<double>>& columns,
+                             const std::vector<double>& weights) {
+    const auto n = check_columns(columns);
+
+    if (weights.size() != n) {
+        throw std::runtime_error("Histogram: weights and values differ in length");
+    }
+
+    if (n == 0) {
+        return;
+    }
+
+    hist_.fill(columns, histogram_detail::bh::weight(weights));
+}
+
 }  // namespace brass

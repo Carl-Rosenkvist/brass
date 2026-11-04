@@ -69,6 +69,12 @@ class Histogram {
 
     void fill_values(const std::vector<double>& values, double weight = 1.0);
 
+    // Fill many entries at once: one column of values per axis, all of the
+    // same length, and optionally one weight per entry.
+    void fill_columns(const std::vector<std::vector<double>>& columns);
+    void fill_columns(const std::vector<std::vector<double>>& columns,
+                      const std::vector<double>& weights);
+
     std::size_t rank() const;
     std::size_t size() const;
 
@@ -77,6 +83,9 @@ class Histogram {
     std::vector<std::size_t> shape() const;
 
    private:
+    std::size_t check_columns(
+        const std::vector<std::vector<double>>& columns) const;
+
     static histogram_detail::BoostAxis make_axis(const AxisConfig& axis);
     static histogram_detail::BoostAxes make_axes(
         const std::vector<AxisConfig>& axes);

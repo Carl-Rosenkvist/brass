@@ -1,6 +1,7 @@
 #include "particles.h"
 
 #include <cmath>
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 
@@ -130,6 +131,122 @@ double Particles::value(const ParticleRow& row, Quantity q) const {
 
 double Particles::value(std::size_t i, Quantity q) const {
     return value(row(i), q);
+}
+
+void Particles::compute(Quantity q, std::vector<double>& out) const {
+    out.resize(size_);
+
+    if (size_ == 0) {
+        return;
+    }
+
+    const auto& layout = this->layout();
+    const auto stride = particle_size();
+    const std::byte* base = bytes_.data();
+
+    const auto load = [&](std::size_t offset, std::size_t i) {
+        double value;
+        std::memcpy(&value, base + i * stride + offset, sizeof(double));
+        return value;
+    };
+
+    if (const auto* stored = layout.find(q)) {
+        const auto offset = stored->offset;
+
+        if (stored->type == QuantityType::Double) {
+            for (std::size_t i = 0; i < size_; ++i) {
+                out[i] = load(offset, i);
+            }
+        } else {
+            for (std::size_t i = 0; i < size_; ++i) {
+                int32_t value;
+                std::memcpy(&value, base + i * stride + offset, sizeof(value));
+                out[i] = static_cast<double>(value);
+            }
+        }
+
+        return;
+    }
+
+    // Offset of a stored double quantity needed for a computed one.
+    const auto offset_of = [&](Quantity needed) {
+        const auto& stored = layout.at(needed);
+
+        if (stored.type != QuantityType::Double) {
+            throw std::runtime_error("quantity is not double: " + stored.name);
+        }
+
+        return stored.offset;
+    };
+
+    switch (q) {
+        case Quantity::pt: {
+            const auto px = offset_of(Quantity::px);
+            const auto py = offset_of(Quantity::py);
+            for (std::size_t i = 0; i < size_; ++i) {
+                out[i] = std::hypot(load(px, i), load(py, i));
+            }
+            return;
+        }
+
+        case Quantity::p: {
+            const auto px = offset_of(Quantity::px);
+            const auto py = offset_of(Quantity::py);
+            const auto pz = offset_of(Quantity::pz);
+            for (std::size_t i = 0; i < size_; ++i) {
+                const auto x = load(px, i);
+                const auto y = load(py, i);
+                const auto z = load(pz, i);
+                out[i] = std::sqrt(x * x + y * y + z * z);
+            }
+            return;
+        }
+
+        case Quantity::mass: {
+            const auto p0 = offset_of(Quantity::p0);
+            const auto px = offset_of(Quantity::px);
+            const auto py = offset_of(Quantity::py);
+            const auto pz = offset_of(Quantity::pz);
+            for (std::size_t i = 0; i < size_; ++i) {
+                const auto e = load(p0, i);
+                const auto x = load(px, i);
+                const auto y = load(py, i);
+                const auto z = load(pz, i);
+                const auto m2 = e * e - x * x - y * y - z * z;
+                out[i] = m2 > 0.0 ? std::sqrt(m2) : 0.0;
+            }
+            return;
+        }
+
+        case Quantity::mt: {
+            // mass is stored or computed; reuse `out` for it.
+            compute(Quantity::mass, out);
+            const auto px = offset_of(Quantity::px);
+            const auto py = offset_of(Quantity::py);
+            for (std::size_t i = 0; i < size_; ++i) {
+                const auto m = out[i];
+                const auto pt = std::hypot(load(px, i), load(py, i));
+                out[i] = std::sqrt(m * m + pt * pt);
+            }
+            return;
+        }
+
+        case Quantity::y_rap: {
+            const auto p0 = offset_of(Quantity::p0);
+            const auto pz = offset_of(Quantity::pz);
+            for (std::size_t i = 0; i < size_; ++i) {
+                const auto e = load(p0, i);
+                const auto z = load(pz, i);
+                out[i] = 0.5 * std::log((e + z) / (e - z));
+            }
+            return;
+        }
+
+        default:
+            // Not stored and not computable: reports "not in file".
+            layout.at(q);
+            return;
+    }
 }
 
 const Column& Particles::column_variant(Quantity q) const {

@@ -67,6 +67,10 @@ class Particles {
     double value(const ParticleRow& row, Quantity q) const;
     double value(std::size_t i, Quantity q) const;
 
+    // The same values for every particle at once, written to `out`
+    // (resized to size()). Offsets and types are resolved once per call.
+    void compute(Quantity q, std::vector<double>& out) const;
+
     const Column& column_variant(Quantity q) const;
 
     template <class T>

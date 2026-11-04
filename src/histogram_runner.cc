@@ -25,39 +25,68 @@ std::vector<Q> parse_all(const std::vector<std::string>& names, Parse parse) {
     return out;
 }
 
+void fill_from_buffer(Histogram& hist, const FillBuffer& buffer,
+                      bool weighted) {
+    if (weighted) {
+        hist.fill_columns(buffer.columns, buffer.weights);
+    } else {
+        hist.fill_columns(buffer.columns);
+    }
+}
+
+// Compute the axis values (and weights) of every particle in the block.
+// Returns whether the entries are weighted.
+bool compute_block(const Particles& particles,
+                   const std::vector<Quantity>& quantities, FillBuffer& buffer,
+                   const std::optional<Quantity>& particle_weight,
+                   double block_weight) {
+    buffer.columns.resize(quantities.size());
+
+    for (std::size_t d = 0; d < quantities.size(); ++d) {
+        particles.compute(quantities[d], buffer.columns[d]);
+    }
+
+    if (particle_weight) {
+        particles.compute(*particle_weight, buffer.weights);
+
+        if (block_weight != 1.0) {
+            for (auto& weight : buffer.weights) {
+                weight *= block_weight;
+            }
+        }
+
+        return true;
+    }
+
+    if (block_weight != 1.0) {
+        buffer.weights.assign(particles.size(), block_weight);
+        return true;
+    }
+
+    buffer.weights.clear();
+    return false;
+}
+
 void fill_histogram(const Particles& particles,
                     const std::vector<Quantity>& quantities, Histogram& hist,
+                    FillBuffer& buffer,
                     const std::optional<Quantity>& particle_weight,
                     double block_weight) {
     if (quantities.size() != hist.rank()) {
         throw std::runtime_error("histogram: quantity/axis dimension mismatch");
     }
 
-    std::vector<double> values(quantities.size());
+    const bool weighted = compute_block(particles, quantities, buffer,
+                                        particle_weight, block_weight);
 
-    for (std::size_t i = 0; i < particles.size(); ++i) {
-        const auto row = particles.row(i);
-
-        for (std::size_t d = 0; d < quantities.size(); ++d) {
-            values[d] = particles.value(row, quantities[d]);
-        }
-
-        double weight = block_weight;
-
-        if (particle_weight) {
-            weight *= particles.value(row, *particle_weight);
-        }
-
-        hist.fill_values(values, weight);
-    }
+    fill_from_buffer(hist, buffer, weighted);
 }
 
-void fill_grouped_histogram(const Particles& particles,
-                            const std::vector<Quantity>& quantities,
-                            Quantity group_by,
-                            std::unordered_map<int32_t, Histogram>& hists,
-                            const std::optional<Quantity>& particle_weight,
-                            double block_weight) {
+void fill_grouped_histogram(
+    const Particles& particles, const std::vector<Quantity>& quantities,
+    Quantity group_by, std::unordered_map<int32_t, Histogram>& hists,
+    FillBuffer& block, std::unordered_map<int32_t, FillBuffer>& buffers,
+    const std::optional<Quantity>& particle_weight, double block_weight) {
     if (hists.empty()) {
         return;
     }
@@ -70,28 +99,37 @@ void fill_grouped_histogram(const Particles& particles,
 
     const auto& group_quantity = particles.quantity(group_by);
 
-    std::vector<double> values(quantities.size());
+    const bool weighted = compute_block(particles, quantities, block,
+                                        particle_weight, block_weight);
 
+    for (auto& [group, buffer] : buffers) {
+        buffer.reset(rank);
+    }
+
+    // Distribute the block's entries to their groups.
     for (std::size_t i = 0; i < particles.size(); ++i) {
-        const auto row = particles.row(i);
-        const auto group_value = row.get_int32(group_quantity);
+        const auto group_value = particles.row(i).get_int32(group_quantity);
 
-        const auto it = hists.find(group_value);
-        if (it == hists.end()) {
+        const auto it = buffers.find(group_value);
+        if (it == buffers.end()) {
             continue;
         }
 
-        for (std::size_t d = 0; d < quantities.size(); ++d) {
-            values[d] = particles.value(row, quantities[d]);
+        auto& buffer = it->second;
+
+        for (std::size_t d = 0; d < rank; ++d) {
+            buffer.columns[d].push_back(block.columns[d][i]);
         }
 
-        double weight = block_weight;
-
-        if (particle_weight) {
-            weight *= particles.value(row, *particle_weight);
+        if (weighted) {
+            buffer.weights.push_back(block.weights[i]);
         }
+    }
 
-        it->second.fill_values(values, weight);
+    for (auto& [group, buffer] : buffers) {
+        if (buffer.size() > 0) {
+            fill_from_buffer(hists.at(group), buffer, weighted);
+        }
     }
 }
 
@@ -231,11 +269,17 @@ HistogramRun make_run(const HistogramRequest& request) {
     auto resolved = resolve_request(request);
 
     if (request.group_by) {
-        return HistogramRun{
+        HistogramRun run{
             .request = std::move(resolved),
             .histograms =
                 make_grouped_histograms(request.axes, request.group_by->values),
         };
+
+        for (const auto group : request.group_by->values) {
+            run.group_buffers.try_emplace(group);
+        }
+
+        return run;
     }
 
     return HistogramRun{
@@ -264,11 +308,12 @@ void HistogramRunner::fill_particles(HistogramRun& run,
             std::get<std::unordered_map<int32_t, Histogram>>(run.histograms);
 
         fill_grouped_histogram(particles, request.particle_quantities,
-                               *request.group_by, hists,
+                               *request.group_by, hists, run.buffer,
+                               run.group_buffers,
                                request.particle_weight, block_weight);
     } else {
         fill_histogram(particles, request.particle_quantities,
-                       std::get<Histogram>(run.histograms),
+                       std::get<Histogram>(run.histograms), run.buffer,
                        request.particle_weight, block_weight);
     }
 }
