@@ -35,13 +35,10 @@ class DataHandler:
         with open(path, "rb") as f:
             data = pickle.load(f)
 
-        return (
-            cls(
-                data=data,
-                parameter_paths=parameter_paths,
-                n_components=n_components,
-            )
-            @ staticmethod
+        return cls(
+            data=data,
+            parameter_paths=parameter_paths,
+            n_components=n_components,
         )
 
     def _get_nested(self, mapping, path):

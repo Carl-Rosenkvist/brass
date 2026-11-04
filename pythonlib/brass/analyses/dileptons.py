@@ -19,6 +19,7 @@ class Dileptons(brass.Analysis):
 
         self.edges: dict[str, np.ndarray] = {}
         self.values: dict[str, np.ndarray] = {}
+        self.nevents = 0
 
     @classmethod
     def add_arguments(
@@ -80,6 +81,9 @@ class Dileptons(brass.Analysis):
 
         histogrammer.fill(reader)
         results = histogrammer.result()
+
+        # Every event in dilepton output ends with an end block.
+        self.nevents = reader.end_blocks_read
 
         self.edges.clear()
         self.values.clear()

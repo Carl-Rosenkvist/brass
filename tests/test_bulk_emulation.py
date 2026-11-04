@@ -256,3 +256,37 @@ def test_bulk_emulator(tmp_path):
         target[2],
         abs=0.05,
     )
+
+
+def test_from_file(tmp_path):
+    from brass.emulation.bulk.data import DataHandler
+
+    runs = []
+
+    for i, (y_mean, pt_mean) in enumerate(
+        [(-0.5, 0.3), (-0.5, 0.5), (0.5, 0.3), (0.5, 0.5)]
+    ):
+        run = tmp_path / f"run{i}"
+        make_run(run, seed=i, y_mean=y_mean, y_sigma=1.0, pt_mean=pt_mean)
+        runs.append(run)
+
+    runner = AnalysisRunner(Bulk, runs, args=bulk_args([PION_PDG]), max_workers=1)
+    path = tmp_path / "bulk.pkl"
+    results = runner.run_and_save(path)
+
+    parameter_paths = {
+        "y_mean": ("Meta", "y_mean"),
+        "pt_mean": ("Meta", "pt_mean"),
+    }
+
+    direct = DataHandler(results, parameter_paths, n_components=2)
+    loaded = DataHandler.from_file(path, parameter_paths, n_components=2)
+
+    assert isinstance(loaded, DataHandler)
+    np.testing.assert_allclose(loaded.parameters, direct.parameters)
+    np.testing.assert_allclose(
+        loaded.histograms[PION_PDG], direct.histograms[PION_PDG]
+    )
+
+    emulator = BulkEmulator.from_file(path, parameter_paths, n_components=2)
+    assert isinstance(emulator, BulkEmulator)
