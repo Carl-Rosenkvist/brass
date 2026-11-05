@@ -7,7 +7,7 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
-## [0.4.0] – Unreleased
+## [0.4.0] – 2026-11-05
 Rewrite of the core: a block-based binary reader, a Boost.Histogram-based
 histogram engine, and analyses written in Python. **This release is not
 backwards compatible with 0.3.x** (see *Changed* and *Removed*).
@@ -45,6 +45,9 @@ backwards compatible with 0.3.x** (see *Changed* and *Removed*).
   pp), provided as-is.
 - **`brass.testing`**: write synthetic SMASH binary files and run folders, for
   tests, benchmarks and examples.
+- **Prebuilt wheels** for Python 3.11–3.14 on Linux (x86_64) and macOS
+  (Apple Silicon, macOS 11+), built and tested automatically for each release.
+  Previously only a macOS wheel for Python 3.12 was published.
 - Container build (`container/Dockerfile`).
 - Benchmark script with a NumPy comparison, and a *Performance* section in the
   README.
@@ -71,6 +74,8 @@ backwards compatible with 0.3.x** (see *Changed* and *Removed*).
 - `mt` and `y_rap` are read from the file when stored, and computed otherwise.
 - Unknown quantity names now raise when a histogram is set up, instead of
   while reading.
+- The README badge and `CITATION.cff` use the Zenodo DOI for all versions
+  (`10.5281/zenodo.17426761`), which always resolves to the latest release.
 
 ### Removed
 - CLI tools `brass-analyze`, `brass-inspect` and `brass-run_cmds`
