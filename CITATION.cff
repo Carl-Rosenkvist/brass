@@ -1,8 +1,11 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the Zenodo record below."
+message: >-
+  If you use this software, please cite it using the Zenodo DOI below. It
+  always points to the latest version; the Zenodo page lists a DOI for each
+  individual version.
 
 title: "BRASS (Binary Reader and Analysis Suite Software)"
-version: "0.3.1"
+version: "0.4.0"
 
 authors:
   - family-names: Rosenkvist
@@ -15,17 +18,17 @@ license: "MIT"
 
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.17783753"
-    description: "Zenodo archive of BRASS"
+    value: "10.5281/zenodo.17426761"
+    description: "Zenodo archive of BRASS (all versions)"
 
 preferred-citation:
   type: software
-  title: "BRASS-0.3.1"
+  title: "BRASS (Binary Reader and Analysis Suite Software)"
   authors:
     - family-names: Rosenkvist
       given-names: Carl B.
       affiliation: Frankfurt Institute for Advanced Studies
       orcid: "https://orcid.org/0009-0001-8384-2806"
-  year: 2025        
-  doi: "10.5281/zenodo.17783753"
-  url: "https://doi.org/10.5281/zenodo.17783753"
+  year: 2025
+  doi: "10.5281/zenodo.17426761"
+  url: "https://doi.org/10.5281/zenodo.17426761"
