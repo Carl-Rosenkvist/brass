@@ -1,0 +1,6 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+"# pp, pi0"
+# e	dn/dy@y_cm
+sqrtsnn,dndy,stat_err,sys_err
+28.3,0.81,0.08,

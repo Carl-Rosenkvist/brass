@@ -1,0 +1,25 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+# pp
+# ecm	pi- e (dndy@y_cm)
+# na61/shine
+"# CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+"# ALICE collaboration \cite{ALICE:2019hno}, Table 4 from https://arxiv.org/pdf/1910.07678.pdf"
+"# Mean pT of piminus at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"
+# sqrt(s) [GeV/c] <pT> error(stat. and sys.)
+sqrtsnn,dndy,stat_err,sys_err
+6.13,0.39,.04,
+11.83,0.61,.03,
+14.2,0.66,.03,
+17.4,0.67,0.0,
+20.3,0.62,.06,
+28.3,0.78,.08,
+900,1.485,.004,0.074
+6.27,0.5369,0.02453,0
+7.62,0.64,0.384,0.0182
+8.8,0.538,0.186,0.0183
+12.3,0.778,0.211,0.0210
+17.3,0.704,0.140,0.0237
+2700,2.40,0.004,0.06
+7000,2.97,0.004,0.09
+5020,2.07,0.15,

@@ -1,17 +1,55 @@
-from . import _brass  # bind the module object
-from ._brass import *  # re-export its names
-
-from .scan.template import smash_cmd
+from ._brass import (
+    BinaryReader,
+    DileptonHistogrammer,
+    EndBlock,
+    Header,
+    HistogramGroupBy,
+    HistogramRequest,
+    HistogramResult,
+    HistogramRunner,
+    HistogramTarget,
+    IntegerAxis,
+    InteractionBlock,
+    ParticleBlock,
+    Particles,
+    RegularAxis,
+    VariableAxis,
+    particle_size_from_quantities,
+)
+from .analysis import Analysis
+from .analysis_runner import AnalysisRunner
+from .decays import DecayReconstructor
 from .scan.scan import Scan
-from .histNd import HistND
-from .meta.meta import MetaBuilder
-from .analyses.run_analysis import *
-from .merging.merge import *
-from . import analyses  # this will run analyses/__init__.py
-from .physics.decayreconstruction import DecayReconstructor
-import atexit
 
-if hasattr(_brass, "_clear_registry"):
-    atexit.register(_brass._clear_registry)
 
-__all__ = [name for name in dir() if not name.startswith("_")]
+def histograms(reader, requests):
+    runner = HistogramRunner(reader, requests)
+    runner.run()
+    return runner.result()
+
+
+def histogram(reader, request):
+    return histograms(reader, [request])[0]
+
+
+__all__ = [
+    "BinaryReader",
+    "Header",
+    "ParticleBlock",
+    "EndBlock",
+    "InteractionBlock",
+    "Particles",
+    "RegularAxis",
+    "VariableAxis",
+    "IntegerAxis",
+    "HistogramResult",
+    "HistogramRequest",
+    "HistogramGroupBy",
+    "HistogramTarget",
+    "HistogramRunner",
+    "DileptonHistogrammer",
+    "histogram",
+    "histograms",
+    "particle_size_from_quantities",
+    "DecayReconstructor",
+]

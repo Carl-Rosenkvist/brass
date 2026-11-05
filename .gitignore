@@ -70,15 +70,3 @@ Makefile
 *.xcodeproj/
 *.swp
 
-# ------------------
-# Optional: data / experiments
-# ------------------
-*.dat
-*.csv
-*.tsv
-*.yaml
-*.yml
-*.json
-results/
-plots/
-tables/

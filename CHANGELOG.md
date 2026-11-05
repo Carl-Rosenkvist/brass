@@ -7,6 +7,83 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
+## [0.4.0] – Unreleased
+Rewrite of the core: a block-based binary reader, a Boost.Histogram-based
+histogram engine, and analyses written in Python. **This release is not
+backwards compatible with 0.3.x** (see *Changed* and *Removed*).
+
+### Added
+- **Block-based reader**: `BinaryReader.read()` returns `ParticleBlock`,
+  `InteractionBlock` (incoming/outgoing particles, `rho`, `sigma`, `sigma_p`,
+  `process`) and `EndBlock` (`impact_parameter`, `empty`), with optional
+  skipping of elastic two-particle events.
+- **Zero-copy NumPy columns** of particle quantities via `Particles.column()`
+  and `Particles.columns()`.
+- **Histogram engine** built on Boost.Histogram (`HistogramRequest`,
+  `HistogramRunner`, `brass.histogram()`, `brass.histograms()`):
+  - 1D to 4D histograms with regular, variable and integer axes
+  - several histograms filled in one pass over a file
+  - grouped histograms, e.g. one per PDG code (`HistogramGroupBy`)
+  - per-particle or per-interaction weights
+  - histograms of particles, incoming/outgoing interaction particles,
+    interaction blocks and end blocks (`HistogramTarget`)
+  - computed quantities `pt`, `p`, `mt`, `y_rap` and `mass`
+- `DileptonHistogrammer` for weighted dilepton invariant-mass spectra per
+  decay channel.
+- **Python analysis framework**: subclass `brass.Analysis`; `AnalysisRunner`
+  runs analyses over many run folders in parallel and merges results with
+  identical SMASH configuration (ignoring seeds, logging and output settings).
+- New **`brass` CLI** with one subcommand per analysis; `--load FILE` adds
+  analyses from your own Python files.
+- Built-in analyses: `bulk` (y–mT histograms per PDG, with `--add-pdgs` to
+  combine species), `centrality` (impact parameter and charged multiplicity),
+  `dileptons`.
+- **Bulk emulation** (`brass.emulation`): PCA + Gaussian-process emulator for
+  bulk observables and a χ² likelihood against experimental data. Requires the
+  new `emulation` extra (`pip install "pybrass[emulation]"`).
+- **Experimental data** collection in `exp_data/` (dN/dy for Pb+Pb, Au+Au and
+  pp), provided as-is.
+- **`brass.testing`**: write synthetic SMASH binary files and run folders, for
+  tests, benchmarks and examples.
+- Container build (`container/Dockerfile`).
+- Benchmark script with a NumPy comparison, and a *Performance* section in the
+  README.
+- `brass-scan` accepts list values, e.g. `Modi.Collider.Impact.Range=[0,3],[3,6]`.
+
+### Improved
+- Particle quantities are resolved from names once; reading, computing and
+  filling no longer compare strings per particle.
+- Histograms are computed and filled column-wise per block; BRASS is faster
+  than an equivalent NumPy reader for both small and large events (see
+  *Performance* in the README).
+- Particle quantity types (int32/double) are explicit instead of inferred from
+  their size.
+
+### Changed
+- **Requires Python 3.11 or newer**; wheels are built for Python 3.11–3.14.
+- Analyses are now Python classes instead of C++ analyses registered in the
+  extension module.
+- `brass-scan` and `brass-merge` were rewritten; `brass-merge` merges result
+  pickles by their SMASH configuration.
+- `DecayReconstructor` moved to `brass.decays` (still available as
+  `brass.DecayReconstructor`).
+- Optional extras are now `emulation` and `test`; the `dev` extra was removed.
+- `mt` and `y_rap` are read from the file when stored, and computed otherwise.
+- Unknown quantity names now raise when a histogram is set up, instead of
+  while reading.
+
+### Removed
+- CLI tools `brass-analyze`, `brass-inspect` and `brass-run_cmds`
+  (use `brass` and `brass-merge`).
+- C++ analysis registry (`Analysis`, `MergeKey`, accessors, 1D/2D histogram
+  classes) and the old analyses `dndydmt`, `dndydmt_unwounded`,
+  `count_unwounded` and `xsection`.
+- `HistND`, `MetaBuilder`, `smash_cmd` and the `brass.merging` module.
+
+### Fixed
+- `DataHandler.from_file` always raised a `TypeError`.
+- Merging two `dileptons` results raised an `AttributeError`.
+
 ## [0.3.1] – 2026-05-01
 Small cleanups and addition of the merge CLI tool.
 

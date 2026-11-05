@@ -1,0 +1,8 @@
+# observable: mid_dndy_vs_sqrtsnn
+# midrapidity
+# pp-> aOm (Om+aOm)/2 !!!!!
+"# ecm,   dndy|y_cm err"
+# ALICE Phys. Lett. B 712 (2012) 309 Fig. 3 \cite{Abelev:2012jp}
+sqrtsnn,dndy,stat_err,sys_err
+200,0.00017,0.00005,
+7000,1.33e-3,5e-4,
