@@ -1,4 +1,4 @@
-# BRASS (Binary Reader and Analysis Suite Software) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19956167.svg)](https://doi.org/10.5281/zenodo.19956167)
+# BRASS (Binary Reader and Analysis Suite Software) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17426761.svg)](https://doi.org/10.5281/zenodo.17426761)
 
 
 **Binary Reader and Analysis Suite Software**
