@@ -15,6 +15,8 @@ It provides:
 - grouped histograms, for example one histogram per PDG code
 - computed quantities such as `pt`, `p`, `mt`, and `y_rap`
 - optional skipping of elastic two-particle events
+- ready-made analyses and command-line tools for running them over many SMASH
+  runs (see the [user guide](docs/guide.md))
 
 ## Installation
 
@@ -44,13 +46,28 @@ The `examples/` directory contains:
 
 ```text
 examples/
-  1dhist.py
-  2dhist.py
+  grouped_1d_yrap_mt.py
+  grouped_2d_yrap_mt_projection.py
 ```
 
-`1dhist.py` creates grouped 1D histograms for rapidity and transverse mass in one file pass.
+`grouped_1d_yrap_mt.py` creates grouped 1D histograms for rapidity and transverse mass in one file pass.
 
-`2dhist.py` creates a grouped 2D histogram in `(y_rap, mT)` and projects it to `dN/dy` and `dN/dmT`.
+`grouped_2d_yrap_mt_projection.py` creates a grouped 2D histogram in `(y_rap, mT)` and projects it to `dN/dy` and `dN/dmT`.
+
+Set `filename` at the top of each script to one of your SMASH output files.
+
+## Analyses and command-line tools
+
+BRASS includes ready-made analyses (`bulk`, `centrality`, `dileptons`) and
+command-line tools to run them over many SMASH runs (`brass`), combine
+results (`brass-merge`) and generate parameter scans (`brass-scan`):
+
+```bash
+brass bulk runs/* --pdgs 211 -211 2212 -o bulk.pkl
+```
+
+The [user guide](docs/guide.md) explains each analysis and tool, how to read
+the results, and how to write your own analysis.
 
 ## Quantity order matters
 
