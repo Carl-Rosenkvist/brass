@@ -6,13 +6,16 @@ namespace brass {
 BinaryReader::BinaryReader(const std::string& filename,
                            std::vector<std::string> quantities,
                            bool skip_elastic)
-    : file_(filename, std::ios::binary),
+    : file_(std::fopen(filename.c_str(), "rb")),
+      skip_elastic_(skip_elastic),
       layout_(std::make_shared<ParticleLayout>(
-          particle_layout_from_quantities(quantities))),
-      skip_elastic_(skip_elastic) {
+          particle_layout_from_quantities(quantities))) {
     if (!file_) {
         throw std::runtime_error("BinaryReader: could not open file");
     }
+
+    file_buffer_.resize(1 << 20);
+    std::setvbuf(file_.get(), file_buffer_.data(), _IOFBF, file_buffer_.size());
 
     header_ = read_header();
 }
@@ -20,8 +23,7 @@ BinaryReader::BinaryReader(const std::string& filename,
 Header BinaryReader::read_header() {
     Header h;
 
-    file_.read(h.magic_number.data(), 4);
-    if (!file_) {
+    if (!read_bytes(h.magic_number.data(), 4)) {
         throw std::runtime_error("Header: failed to read magic number");
     }
 
@@ -35,8 +37,7 @@ Header BinaryReader::read_header() {
     if (len > 0) {
         std::string version(len, '\0');
 
-        file_.read(version.data(), static_cast<std::streamsize>(len));
-        if (!file_) {
+        if (!read_bytes(version.data(), len)) {
             throw std::runtime_error("Header: failed to read SMASH version");
         }
 
@@ -46,16 +47,11 @@ Header BinaryReader::read_header() {
     return h;
 }
 
-std::vector<std::byte> BinaryReader::read_chunk(std::size_t size) {
-    std::vector<std::byte> buf(size);
+ByteBuffer BinaryReader::read_chunk(std::size_t size) {
+    ByteBuffer buf(size);  // not zero-filled; overwritten by the read
 
-    if (size > 0) {
-        file_.read(reinterpret_cast<char*>(buf.data()),
-                   static_cast<std::streamsize>(size));
-
-        if (!file_) {
-            throw std::runtime_error("read_chunk: failed");
-        }
+    if (!read_bytes(buf.data(), size)) {
+        throw std::runtime_error("read_chunk: failed");
     }
 
     return buf;
@@ -63,7 +59,7 @@ std::vector<std::byte> BinaryReader::read_chunk(std::size_t size) {
 std::optional<Block> BinaryReader::read() {
     while (true) {
         char tag{};
-        if (!file_.read(&tag, 1)) {
+        if (!read_bytes(&tag, 1)) {
             return std::nullopt;
         }
 
@@ -72,7 +68,7 @@ std::optional<Block> BinaryReader::read() {
                 constexpr std::size_t HDR =
                     sizeof(int32_t) + sizeof(int32_t) + sizeof(uint32_t);
 
-                auto header = read_chunk(HDR);
+                const auto header = read_array<HDR>();
                 std::size_t off = 0;
 
                 ParticleBlock block;
@@ -100,7 +96,7 @@ std::optional<Block> BinaryReader::read() {
                 constexpr std::size_t HDR = sizeof(uint32_t) + sizeof(int32_t) +
                                             sizeof(double) + sizeof(char);
 
-                auto header = read_chunk(HDR);
+                const auto header = read_array<HDR>();
                 std::size_t off = 0;
 
                 EndBlock block;
@@ -122,7 +118,7 @@ std::optional<Block> BinaryReader::read() {
                                             3 * sizeof(double) +
                                             sizeof(int32_t);
 
-                auto header = read_chunk(HDR);
+                const auto header = read_array<HDR>();
                 std::size_t off = 0;
 
                 InteractionBlock block;
@@ -142,8 +138,8 @@ std::optional<Block> BinaryReader::read() {
 
                 auto split = bytes.begin() + incoming_size;
 
-                std::vector<std::byte> incoming_bytes(bytes.begin(), split);
-                std::vector<std::byte> outgoing_bytes(split, bytes.end());
+                ByteBuffer incoming_bytes(bytes.begin(), split);
+                ByteBuffer outgoing_bytes(split, bytes.end());
                 block.incoming = Particles(std::move(incoming_bytes), layout_);
                 block.outgoing = Particles(std::move(outgoing_bytes), layout_);
 

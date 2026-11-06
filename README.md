@@ -297,8 +297,8 @@ same 2 million particles, split into small or large events:
 
 | Case | Events × particles | File size | BRASS | NumPy | Speedup |
 |---|---|---|---|---|---|
-| pp-like | 200,000 × 10 | 102 MB | 0.06 s | 0.44 s | 7.0× |
-| heavy-ion-like | 2,000 × 1,000 | 96 MB | 0.03 s | 0.03 s | 1.2× |
+| pp-like | 200,000 × 10 | 102 MB | 0.05 s | 0.43 s | 9.2× |
+| heavy-ion-like | 2,000 × 1,000 | 96 MB | 0.02 s | 0.03 s | 1.9× |
 
 The NumPy reader loops over blocks in Python, reads each with
 `np.frombuffer`, and histograms all rapidities in one `np.histogram` call at the
@@ -306,8 +306,8 @@ end. Both readers produce identical histograms.
 
 - With many small events, NumPy spends most of its time in the per-block Python
   loop, so BRASS is several times faster.
-- With large events, NumPy's vectorized math is efficient and both readers
-  are limited mostly by reading the file.
+- With large events, NumPy's vectorized math is efficient and the difference
+  is smaller; both readers are then limited mostly by reading the file.
 - BRASS fills several histograms, or one per PDG code, in the same pass over
   the file, which the timings above do not include.
 

@@ -1,19 +1,23 @@
 #ifndef BINARY_READER_H
 #define BINARY_READER_H
-#include <fstream>
+#include <array>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 #include <memory>
 #include <optional>
-#include <span>
+#include <stdexcept>
 #include <string>
-#include <variant>
+#include <type_traits>
+#include <vector>
 
 #include "block.h"
 #include "particles.h"
 #include "quantities.h"
 namespace brass {
 
-template <class T>
-inline T extract_and_advance(const std::vector<std::byte>& buf, size_t& off) {
+template <class T, class Buffer>
+inline T extract_and_advance(const Buffer& buf, size_t& off) {
     static_assert(std::is_trivially_copyable_v<T>,
                   "extract: T must be trivially copyable");
     if (off + sizeof(T) > buf.size())
@@ -39,31 +43,52 @@ class BinaryReader {
     }
 
    private:
+    struct FileCloser {
+        void operator()(std::FILE* f) const { std::fclose(f); }
+    };
+
+    // C stdio with a large buffer: much faster than std::ifstream for the
+    // many block-sized reads of a SMASH file.
+    std::unique_ptr<std::FILE, FileCloser> file_;
+    std::vector<char> file_buffer_;
+
     Header header_;
-    std::ifstream file_;
     std::size_t particle_blocks_read_ = 0;
     std::size_t end_blocks_read_ = 0;
     std::size_t interaction_blocks_read_ = 0;
-    std::vector<std::string> quantities_;
     const bool skip_elastic_;
 
     std::shared_ptr<const ParticleLayout> layout_;
     Header read_header();
+
+    // Read exactly n bytes into dst; false at end of file or on error.
+    bool read_bytes(void* dst, std::size_t n) {
+        return n == 0 || std::fread(dst, 1, n, file_.get()) == n;
+    }
+
     template <class T>
     T read_pod() {
         static_assert(std::is_trivially_copyable_v<T>);
 
         T value{};
-        file_.read(reinterpret_cast<char*>(&value), sizeof(T));
-
-        if (!file_) {
+        if (!read_bytes(&value, sizeof(T))) {
             throw std::runtime_error("read_pod: failed");
         }
 
         return value;
     }
 
-    std::vector<std::byte> read_chunk(std::size_t n);
+    // Fixed-size block header, read onto the stack.
+    template <std::size_t N>
+    std::array<std::byte, N> read_array() {
+        std::array<std::byte, N> buf;
+        if (!read_bytes(buf.data(), N)) {
+            throw std::runtime_error("read_chunk: failed");
+        }
+        return buf;
+    }
+
+    ByteBuffer read_chunk(std::size_t n);
 };
 }  // namespace brass
 

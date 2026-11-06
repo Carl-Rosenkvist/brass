@@ -34,7 +34,7 @@ double ParticleRow::get_as_double(const QuantityOffset& q) const {
     throw std::logic_error("unhandled quantity type: " + q.name);
 }
 
-Particles::Particles(std::vector<std::byte> bytes,
+Particles::Particles(ByteBuffer bytes,
                      std::shared_ptr<const ParticleLayout> layout)
     : bytes_(std::move(bytes)), layout_(std::move(layout)) {
     const auto size = particle_size();

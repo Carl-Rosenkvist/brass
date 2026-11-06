@@ -61,6 +61,10 @@ backwards compatible with 0.3.x** (see *Changed* and *Removed*).
   *Performance* in the README).
 - Particle quantity types (int32/double) are explicit instead of inferred from
   their size.
+- Faster file reading: buffered C I/O instead of `std::ifstream`, and block
+  buffers are no longer zero-filled before being read into.
+- `import brass` is faster: the analysis framework, `DecayReconstructor` and
+  `Scan` are loaded on first use.
 
 ### Changed
 - **Requires Python 3.11 or newer**; wheels are built for Python 3.11–3.14.

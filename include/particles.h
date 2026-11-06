@@ -10,11 +10,42 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <utility>
 #include <vector>
 
 #include "quantities.h"
 
 namespace brass {
+
+// Allocator that leaves elements default-initialized, i.e. uninitialized for
+// std::byte. Byte buffers are always filled by a file read right after
+// allocation, so zero-filling them first would only cost time.
+template <class T>
+struct UninitializedAllocator : std::allocator<T> {
+    using value_type = T;
+
+    UninitializedAllocator() noexcept = default;
+
+    template <class U>
+    UninitializedAllocator(const UninitializedAllocator<U>&) noexcept {}
+
+    template <class U>
+    struct rebind {
+        using other = UninitializedAllocator<U>;
+    };
+
+    template <class U>
+    void construct(U* p) noexcept(std::is_nothrow_default_constructible_v<U>) {
+        ::new (static_cast<void*>(p)) U;
+    }
+
+    template <class U, class... Args>
+    void construct(U* p, Args&&... args) {
+        ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
+    }
+};
+
+using ByteBuffer = std::vector<std::byte, UninitializedAllocator<std::byte>>;
 
 using Column = std::variant<std::vector<double>, std::vector<int32_t>>;
 
@@ -45,8 +76,7 @@ class Particles {
    public:
     Particles() = default;
 
-    Particles(std::vector<std::byte> bytes,
-              std::shared_ptr<const ParticleLayout> layout);
+    Particles(ByteBuffer bytes, std::shared_ptr<const ParticleLayout> layout);
 
     std::size_t particle_size() const;
     std::size_t size() const { return size_; }
@@ -107,7 +137,7 @@ class Particles {
         columns_.emplace(q.quantity, std::move(values));
     }
 
-    std::vector<std::byte> bytes_;
+    ByteBuffer bytes_;
     std::shared_ptr<const ParticleLayout> layout_;
     std::size_t size_ = 0;
 
