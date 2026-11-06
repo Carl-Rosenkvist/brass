@@ -1,139 +1,128 @@
 import pickle
 
 import numpy as np
-from sklearn.decomposition import PCA
+
+from .observables import Observables
 
 
 class DataHandler:
-    def __init__(
-        self,
-        data,
-        parameter_paths,
-        n_components=3,
-    ):
-        self.parameter_paths = parameter_paths
-        self.parameter_names = list(parameter_paths)
-        self.n_components = n_components
+    """Parameters and normalised (y, mT) histograms from Bulk results.
+
+    ``histograms[pdg]`` has shape (n_runs, n_y, n_mt) and holds
+    d²N/(dy dmT) per event.
+    """
+
+    def __init__(self, data, parameter_paths):
+        self.parameter_paths = dict(parameter_paths)
+        self.parameter_names = list(self.parameter_paths)
 
         self.y_edges = {}
         self.mt_edges = {}
 
         self.parameters, self.histograms = self._process(data)
 
-        self.pca = {}
-        self.latent = {}
-
-        self._fit_pca()
-
     @classmethod
-    def from_file(
-        cls,
-        path,
-        parameter_paths,
-        n_components=3,
-    ):
+    def from_file(cls, path, parameter_paths):
         with open(path, "rb") as f:
             data = pickle.load(f)
 
-        return cls(
-            data=data,
-            parameter_paths=parameter_paths,
-            n_components=n_components,
-        )
+        return cls(data=data, parameter_paths=parameter_paths)
 
-    def _get_nested(self, mapping, path):
+    @staticmethod
+    def _get_nested(mapping, path):
         for key in path:
             if isinstance(mapping, list) and isinstance(key, str):
-                # Extract a named PYTHIA setting from a list of strings.
-                settings = {}
-
-                for entry in mapping:
-                    name, separator, value = entry.partition("=")
-
-                    if separator:
-                        settings[name.strip()] = value.strip()
-
-                mapping = float(settings[key])
-
+                mapping = _pythia_setting(mapping, key)
             else:
                 mapping = mapping[key]
 
-        return mapping
+        return float(mapping)
 
     def _extract_parameters(self, analysis):
-
-        return np.array(
-            [
-                self._get_nested(
-                    analysis.config,
-                    self.parameter_paths[name],
+        values = []
+        for name in self.parameter_names:
+            try:
+                values.append(
+                    self._get_nested(analysis.config, self.parameter_paths[name])
                 )
-                for name in self.parameter_names
-            ]
-        )
+            except (KeyError, IndexError, TypeError) as error:
+                raise KeyError(
+                    f"parameter {name!r} not found at "
+                    f"{self.parameter_paths[name]} in {analysis.folder_path}"
+                ) from error
+        return values
 
     def _process(self, data):
-
         parameters = []
         histograms = {}
 
-        for result in data:
+        for run, result in enumerate(data):
             analysis = result["result"]
+
+            if analysis.events <= 0:
+                raise ValueError(f"run {run} ({analysis.folder_path}) has no events")
 
             parameters.append(self._extract_parameters(analysis))
 
             for pdg, histo in analysis.histograms.items():
-                counts = np.asarray(
-                    histo.values,
-                    dtype=float,
-                )
+                counts = np.asarray(histo.values, dtype=float)
+                y_edges, mt_edges = (np.asarray(e, dtype=float) for e in histo.edges)
 
-                y_edges, mt_edges = map(
-                    np.asarray,
-                    histo.edges,
-                )
+                if pdg not in self.y_edges:
+                    if run > 0:
+                        raise ValueError(
+                            f"PDG {pdg} is missing in the runs before run {run}"
+                        )
+                    self.y_edges[pdg] = y_edges
+                    self.mt_edges[pdg] = mt_edges
+                elif not (
+                    np.array_equal(y_edges, self.y_edges[pdg])
+                    and np.array_equal(mt_edges, self.mt_edges[pdg])
+                ):
+                    raise ValueError(
+                        f"PDG {pdg}: histogram edges in run {run} differ from run 0"
+                    )
 
                 dy = np.diff(y_edges)
                 dmt = np.diff(mt_edges)
+                histograms.setdefault(pdg, []).append(
+                    counts / (analysis.events * dy[:, None] * dmt[None, :])
+                )
 
-                hist = counts / (analysis.events * dy[:, None] * dmt[None, :])
+        n_runs = len(parameters)
+        missing = {pdg: n_runs - len(h) for pdg, h in histograms.items() if len(h) != n_runs}
+        if missing:
+            raise ValueError(f"PDGs missing in some runs (pdg: runs missing): {missing}")
 
-                histograms.setdefault(pdg, []).append(hist)
-
-                if pdg not in self.y_edges:
-                    self.y_edges[pdg] = y_edges
-                    self.mt_edges[pdg] = mt_edges
-
-        parameters = np.stack(parameters)
-
-        histograms = {pdg: np.stack(hists) for pdg, hists in histograms.items()}
-
-        return parameters, histograms
-
-    def _fit_pca(self):
-
-        for pdg, H in self.histograms.items():
-            H_flat = H.reshape(
-                len(H),
-                -1,
-            )
-
-            pca = PCA(n_components=self.n_components)
-
-            Z = pca.fit_transform(H_flat)
-
-            self.pca[pdg] = pca
-            self.latent[pdg] = Z
-
-    def inverse_transform(self, pdg, Z):
-
-        Z = np.atleast_2d(Z)
-
-        H_flat = self.pca[pdg].inverse_transform(Z)
-
-        hist_shape = self.histograms[pdg].shape[1:]
-
-        return H_flat.reshape(
-            -1,
-            *hist_shape,
+        return (
+            np.asarray(parameters, dtype=float),
+            {pdg: np.stack(h) for pdg, h in histograms.items()},
         )
+
+    @property
+    def pdgs(self):
+        return list(self.histograms)
+
+    def observables(self, pdg):
+        return Observables(self.y_edges[pdg], self.mt_edges[pdg])
+
+    def observable(self, pdg, name):
+        """Training values of an observable, shape (n_runs, n_outputs)."""
+        H = self.histograms[pdg]
+        obs = self.observables(pdg)
+        if name == "hist2d":
+            return H.reshape(len(H), -1)
+        if name == "dNdy":
+            return obs.dNdy(H)
+        if name == "dNdmt":
+            return obs.dNdmt(H)
+        raise ValueError(f"unknown observable {name!r}")
+
+
+def _pythia_setting(entries, key):
+    """Value of ``key`` in a list of PYTHIA ``"key = value"`` strings."""
+    for entry in entries:
+        name, separator, value = entry.partition("=")
+        if separator and name.strip() == key:
+            return value.strip()
+    raise KeyError(key)

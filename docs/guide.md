@@ -377,6 +377,81 @@ code that starts it must be inside `if __name__ == "__main__":`. Without it,
 the run fails on macOS and Windows with `BrokenProcessPool`. Pass
 `max_workers=N` to limit the number of processes.
 
+## Calibrating model parameters: `brass.emulation`
+
+With `bulk` results from a parameter scan (for example generated with
+`brass-scan`), BRASS can build an emulator — a fast surrogate for SMASH — and
+compare it to experimental data. It needs the `emulation` extra
+(`pip install "pybrass[emulation]"`).
+
+**1. Fit the emulator.** `parameter_paths` says where each parameter is found
+in the run's `config.yaml`. A string key inside a list of PYTHIA settings
+(`"key = value"` entries) is looked up by name. Every parameter is a GP
+input, including the collision energy, so one emulator covers several
+energies.
+
+```python
+from brass.emulation.bulk import BulkEmulator
+
+paths = {
+    "Sqrtsnn": ("Modi", "Collider", "Sqrtsnn"),
+    "Strange_Supp": ("Collision_Term", "String_Parameters", "Strange_Supp"),
+    "probSQtoQQ": ("Collision_Term", "String_Parameters", "Pythia_Settings",
+                   "StringFlav:probSQtoQQ"),
+}
+
+emu = BulkEmulator.from_file("bulk.pkl", paths, observables=["dNdy"])
+emu.fit(verbose=True)          # prints the PCA components per particle
+emu.save("emulator.npz")       # later: emu = BulkEmulator.load("emulator.npz")
+```
+
+- `observables`: `"dNdy"` (default), `"dNdmt"` or `"hist2d"`. Emulate only what
+  you compare to data: the 2D histogram of a rare particle is mostly
+  statistical noise and needs many more components.
+- `n_components`: a fraction of variance to keep (default `0.99`) or a number.
+- `log_parameters=["Sqrtsnn"]`: use log(√s) as GP input, which suits energy
+  scans.
+
+**2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
+parameter points and predicts them. The standardised residuals
+`(prediction − simulation) / σ` should be roughly standard normal; much wider
+means the emulator is overconfident.
+
+**3. Build the likelihood** once, outside the MCMC loop:
+
+```python
+from brass.emulation import EmulatorLikelihood
+
+like = EmulatorLikelihood(emu, rel_error_floor=0.03)
+like.add(211, y_exp, dndy_exp, err_exp, fixed={"Sqrtsnn": 17.3})
+like.add(211, y_exp2, dndy_exp2, err_exp2, fixed={"Sqrtsnn": 8.76})
+print(like.parameters)         # the fitted parameters, in theta order
+```
+
+**4. Sample.** `like(thetas)` takes all walkers at once and returns their
+log-likelihoods, so it works directly with `emcee`'s `vectorize=True`:
+
+```python
+import emcee
+import numpy as np
+
+def log_probability(thetas):
+    inside = np.all((thetas >= lower) & (thetas <= upper), axis=1)
+    logp = np.full(len(thetas), -np.inf)
+    if inside.any():
+        logp[inside] = like(thetas[inside])
+    return logp
+
+sampler = emcee.EnsembleSampler(n_walkers, len(like.parameters),
+                                log_probability, vectorize=True)
+```
+
+The likelihood is Gaussian with the experimental errors plus the emulator's
+covariance (GP uncertainty and PCA truncation error, correlated between
+points). `covariance="diagonal"` uses only its diagonal; `"none"` ignores it.
+Run the chain long enough: check `sampler.get_autocorr_time()` and use many
+times that number of steps.
+
 ## Troubleshooting
 
 | Message | Cause and fix |

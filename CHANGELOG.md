@@ -7,6 +7,40 @@ The version number follows **X.Y.Z**, where:
 - **Y** — new features  
 - **Z** — bug fixes or small updates  
 
+## [Unreleased]
+
+### Added
+- **`BulkEmulator(observables=...)`**: emulate `"dNdy"` (default), `"dNdmt"`
+  or the full `"hist2d"` histogram. dN/dy, dN/dmT and yields are derived
+  linearly from whichever is fitted. Emulating dN/dy directly needs far fewer
+  PCA components for rare particles (Ξ⁻ in a pp calibration: 55 → 2–10).
+- **`EmulatorLikelihood`**: batched Gaussian log-likelihood for MCMC.
+  Experimental datasets are added once (with fixed parameters such as the
+  collision energy); calling it with all walkers' parameters evaluates each
+  GP once per energy. Uses the full emulator covariance by default. In a pp
+  calibration (1000 runs, 16 datasets) one MCMC step went from 0.23 s to
+  0.05 s.
+- **`PCAGP`**: generic PCA + GP emulator for any vector-valued output, used
+  by `BulkEmulator`. Parameters can be emulated in `log` (`log_parameters`).
+- `BulkEmulator.save()` / `BulkEmulator.load()`: compact `.npz` files with no
+  pickled scikit-learn objects (a pp calibration: 886 MB pickle → 2.2 MB).
+- `BulkEmulator.validate()`: hold out parameter points, refit, and return
+  predictions and standardised residuals.
+
+### Changed
+- GP kernel is now `amplitude × Matérn(5/2) + noise`; the noise term absorbs
+  statistical fluctuations of the training runs (`noise=False` restores an
+  interpolating GP).
+- Predicted uncertainties include the PCA truncation error.
+- `BulkEmulator` defaults to `observables=["dNdy"]` and `n_components=0.99`;
+  pass `observables=["hist2d"]` for the previous 2D-histogram emulation.
+- `DataHandler` only loads data (no PCA) and reports PDGs missing in some
+  runs or histogram edges that differ between runs.
+- Emulators pickled with 0.4.0 cannot be loaded; refit and use `save()`.
+
+### Removed
+- `brass.emulation.bulk.gp.GPEmulator` and `BulkEmulator.validate_covariance`.
+
 ## [0.4.0] – 2026-11-05
 Rewrite of the core: a block-based binary reader, a Boost.Histogram-based
 histogram engine, and analyses written in Python. **This release is not

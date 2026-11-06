@@ -1,3 +1,4 @@
-from .likelihood import Likelihood
+from .likelihood import EmulatorLikelihood, Likelihood
+from .pcagp import PCAGP
 
-__all__ = ["Likelihood"]
+__all__ = ["EmulatorLikelihood", "Likelihood", "PCAGP"]
