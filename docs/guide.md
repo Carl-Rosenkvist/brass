@@ -411,6 +411,30 @@ emu.save("emulator.npz")       # later: emu = BulkEmulator.load("emulator.npz")
 - `n_components`: a fraction of variance to keep (default `0.99`) or a number.
 - `log_parameters=["Sqrtsnn"]`: use log(√s) as GP input, which suits energy
   scans.
+- `mt_max=3.0, mt_group=2`: before fitting, drop mT bins above 3 GeV and merge
+  pairs of neighbouring mT bins (particle numbers are kept). This makes a
+  `"hist2d"` emulator several times smaller. Particles above `mt_max` are
+  lost, also from the dN/dy derived from it.
+
+From a `"hist2d"` emulator, spectra in rapidity windows and in Feynman x_F are
+derived as well (the density is taken as uniform within each (y, mT) bin):
+
+```python
+from brass.emulation.bulk import MtSpectrum, PtSpectrum, XfSpectrum
+
+emu = BulkEmulator.from_file("bulk.pkl", paths, observables=["hist2d"],
+                             mt_max=3.0, mt_group=2)
+emu.fit()
+
+spec = PtSpectrum(0.0, 0.2, mass=0.938)        # d²N/(dy dpT), 0 < y < 0.2
+pt = emu.axis(2212, spec)
+mean, std = emu.predict_observable(theta, 2212, spec, return_std=True)
+```
+
+- `MtSpectrum(y_min, y_max)`: d²N/(dy dmT) averaged over the window.
+- `PtSpectrum(y_min, y_max, mass)`: d²N/(dy dpT) averaged over the window.
+- `XfSpectrum(sqrts, edges)`: dN/dx_F in the given x_F bins, with
+  x_F = 2 mT sinh(y)/√s.
 
 **2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
 parameter points and predicts them. The standardised residuals
@@ -427,6 +451,12 @@ like.add(211, y_exp, dndy_exp, err_exp, fixed={"Sqrtsnn": 17.3})
 like.add(211, y_exp2, dndy_exp2, err_exp2, fixed={"Sqrtsnn": 8.76})
 print(like.parameters)         # the fitted parameters, in theta order
 ```
+
+`observable=` selects what the data are, for example
+`like.add(2212, pt_exp, spec_exp, err_exp, observable=PtSpectrum(0.0, 0.2, 0.938),
+fixed={"Sqrtsnn": 17.3})` with `pt_exp` the pT values. Do not add both dN/dy
+and pT spectra measured on the same particles without accounting for their
+correlation.
 
 **4. Sample.** `like(thetas)` takes all walkers at once and returns their
 log-likelihoods, so it works directly with `emcee`'s `vectorize=True`:

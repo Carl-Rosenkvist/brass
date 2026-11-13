@@ -4,7 +4,7 @@ import numpy as np
 
 from ..pcagp import PCAGP
 from .data import DataHandler
-from .observables import Observables
+from .observables import SPECTRA, Observables
 
 OBSERVABLES = ("dNdy", "dNdmt", "hist2d")
 
@@ -24,6 +24,16 @@ class BulkEmulator:
         the full d²N/(dy dmT) histogram. dN/dy, dN/dmT and yields can be
         derived from it, but rare particles need many PCA components.
 
+    From a fitted ``"hist2d"`` the spectra :class:`MtSpectrum` (mT in a
+    rapidity window), :class:`PtSpectrum` (pT in a rapidity window) and
+    :class:`XfSpectrum` (Feynman x_F) are derived as well; pass them as
+    ``observable`` to :meth:`predict_observable` or
+    :meth:`~brass.emulation.EmulatorLikelihood.add`.
+
+    ``mt_max`` and ``mt_group`` reduce the histograms before fitting (see
+    :meth:`DataHandler.reduce`): crop at ``mt_max`` and merge ``mt_group``
+    neighbouring mT bins. This makes a ``"hist2d"`` emulator much smaller.
+
     Every parameter in ``parameter_paths`` is a GP input, including e.g. the
     collision energy, so one emulator covers an energy scan.
     """
@@ -39,12 +49,16 @@ class BulkEmulator:
         n_restarts=0,
         random_state=None,
         include_truncation=True,
+        mt_max=None,
+        mt_group=1,
     ):
         self.data = (
             data
             if isinstance(data, DataHandler)
             else DataHandler(data=data, parameter_paths=parameter_paths)
         )
+        if mt_max is not None or mt_group != 1:
+            self.data = self.data.reduce(mt_max=mt_max, mt_group=mt_group)
 
         observables = (observables,) if isinstance(observables, str) else observables
         unknown = set(observables) - set(OBSERVABLES)
@@ -113,41 +127,56 @@ class BulkEmulator:
     def axis(self, pdg, observable):
         """Bin centres of an observable (None for the total yield)."""
         obs = self.observables(pdg)
+        if isinstance(observable, SPECTRA):
+            return observable.build(obs)[0]
         return {"dNdy": obs.y, "dNdmt": obs.mt, "yield": None}.get(observable)
+
+    def _derivation(self, pdg, observable, available):
+        """(source, A) with ``observable = A @ source`` for a source in ``available``.
+
+        A is None when ``observable`` itself is available.
+        """
+        if observable in available:
+            return observable, None
+        if pdg not in self.y_edges:
+            raise KeyError(f"no emulator for PDG {pdg}")
+
+        obs = self.observables(pdg)
+        if isinstance(observable, SPECTRA):
+            derived = {"hist2d": lambda: observable.build(obs)[1]}
+        else:
+            ny, nmt = len(obs.dy), len(obs.dmt)
+            derived = {
+                "dNdy": {"hist2d": lambda: np.kron(np.eye(ny), obs.dmt[None, :])},
+                "dNdmt": {"hist2d": lambda: np.kron(obs.dy[None, :], np.eye(nmt))},
+                "yield": {
+                    "dNdy": lambda: obs.dy[None, :],
+                    "dNdmt": lambda: obs.dmt[None, :],
+                    "hist2d": lambda: np.kron(obs.dy, obs.dmt)[None, :],
+                },
+            }.get(observable, {})
+
+        for source, matrix in derived.items():
+            if source in available:
+                return source, matrix()
+        raise ValueError(
+            f"{observable!r} for PDG {pdg} cannot be obtained from the fitted "
+            f"observables {self.observable_names}"
+        )
 
     def linear_model(self, pdg, observable):
         """Fitted model and matrix A with ``observable = A @ model output``.
 
         A is None when the observable is emulated directly. Otherwise it is
         derived linearly from another fitted observable (e.g. dN/dy from the
-        2D histogram, or the yield from dN/dy).
+        2D histogram, the yield from dN/dy, or a pT spectrum from the 2D
+        histogram).
         """
-        if (pdg, observable) in self.models:
-            return self.models[(pdg, observable)], None
-
-        obs = self.observables(pdg)
-        ny, nmt = len(obs.dy), len(obs.dmt)
-        derived = {
-            "dNdy": {"hist2d": np.kron(np.eye(ny), obs.dmt[None, :])},
-            "dNdmt": {"hist2d": np.kron(obs.dy[None, :], np.eye(nmt))},
-            "yield": {
-                "dNdy": obs.dy[None, :],
-                "dNdmt": obs.dmt[None, :],
-                "hist2d": np.kron(obs.dy, obs.dmt)[None, :],
-            },
-        }
-        for source, A in derived.get(observable, {}).items():
-            if (pdg, source) in self.models:
-                return self.models[(pdg, source)], A
-
-        if pdg not in self.y_edges:
-            raise KeyError(f"no emulator for PDG {pdg}")
-        if not self.models:
+        if pdg in self.y_edges and not self.models:
             raise RuntimeError("emulator is not fitted; call fit() first")
-        raise ValueError(
-            f"{observable!r} for PDG {pdg} cannot be obtained from the fitted "
-            f"observables {self.observable_names}"
-        )
+        fitted = [name for p, name in self.models if p == pdg]
+        source, A = self._derivation(pdg, observable, fitted)
+        return self.models[(pdg, source)], A
 
     def predict_observable(
         self, parameters, pdg, observable, *, return_std=False, return_cov=False
@@ -195,6 +224,10 @@ class BulkEmulator:
 
         All runs at a parameter point (e.g. the same point at several
         energies) are held out together.
+
+        ``observables`` may include derived ones (e.g. ``"dNdy"`` or a
+        :class:`PtSpectrum` from a ``"hist2d"`` emulator); they are then
+        predicted from the refitted source model, as in the likelihood.
         """
         if self.data is None:
             raise RuntimeError("a loaded emulator has no training data to validate")
@@ -217,15 +250,19 @@ class BulkEmulator:
 
         results = {}
         for pdg in self.pdgs if pdgs is None else pdgs:
+            refitted = {}
             for name in observables or self.observable_names:
-                Y = self.data.observable(pdg, name)
-                model = self._new_model().fit(X[~test], Y[~test])
-                mean, std = model.predict(X[test], return_std=True)
+                source, A = self._derivation(pdg, name, self.observable_names)
+                if source not in refitted:
+                    Y = self.data.observable(pdg, source)
+                    refitted[source] = self._new_model().fit(X[~test], Y[~test])
+                truth = self.data.observable(pdg, name)[test]
+                mean, std = refitted[source].predict(X[test], A, return_std=True)
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    z = (mean - Y[test]) / std
+                    z = (mean - truth) / std
                 results[(pdg, name)] = {
                     "parameters": X[test],
-                    "truth": Y[test],
+                    "truth": truth,
                     "mean": mean,
                     "std": std,
                     "residuals": z,

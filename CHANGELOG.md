@@ -22,6 +22,13 @@ The version number follows **X.Y.Z**, where:
   0.05 s.
 - **`PCAGP`**: generic PCA + GP emulator for any vector-valued output, used
   by `BulkEmulator`. Parameters can be emulated in `log` (`log_parameters`).
+- **`MtSpectrum`, `PtSpectrum`, `XfSpectrum`**: mT and pT spectra in a
+  rapidity window and dN/dx_F, derived linearly (with covariance) from a
+  `"hist2d"` emulator. Usable in `predict_observable()` and
+  `EmulatorLikelihood.add(observable=...)`.
+- `DataHandler.reduce(mt_max, mt_group)` and `BulkEmulator(mt_max=...,
+  mt_group=...)`: crop the histograms in mT and merge neighbouring mT bins
+  before fitting.
 - `BulkEmulator.save()` / `BulkEmulator.load()`: compact `.npz` files with no
   pickled scikit-learn objects (a pp calibration: 886 MB pickle → 2.2 MB).
 - `BulkEmulator.validate()`: hold out parameter points, refit, and return
