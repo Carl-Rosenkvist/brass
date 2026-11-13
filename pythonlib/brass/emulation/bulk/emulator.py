@@ -4,7 +4,13 @@ import numpy as np
 
 from ..pcagp import PCAGP
 from .data import DataHandler
-from .observables import SPECTRA, Observables
+from .observables import (
+    SPECTRA,
+    XF_OBSERVABLES,
+    Observables,
+    observable_from_json,
+    observable_to_json,
+)
 
 OBSERVABLES = ("dNdy", "dNdmt", "hist2d")
 
@@ -24,11 +30,13 @@ class BulkEmulator:
         the full d²N/(dy dmT) histogram. dN/dy, dN/dmT and yields can be
         derived from it, but rare particles need many PCA components.
 
-    From a fitted ``"hist2d"`` the spectra :class:`MtSpectrum` (mT in a
-    rapidity window), :class:`PtSpectrum` (pT in a rapidity window) and
-    :class:`XfSpectrum` (Feynman x_F) are derived as well; pass them as
-    ``observable`` to :meth:`predict_observable` or
-    :meth:`~brass.emulation.EmulatorLikelihood.add`.
+    :class:`XfSpectrum` (dN/dx_F) and :class:`MeanPtXf` (<p_T> vs x_F) are
+    fitted directly on the (x_F, p_T) histograms of a Bulk analysis run with
+    ``--xf-bins``; give them in ``observables`` with the data's x_F bins.
+
+    From a fitted ``"hist2d"``, :class:`MtSpectrum` (mT in a rapidity window)
+    is derived as well. Pass any of these as ``observable`` to
+    :meth:`predict_observable` or :meth:`~brass.emulation.EmulatorLikelihood.add`.
 
     ``mt_max`` and ``mt_group`` reduce the histograms before fitting (see
     :meth:`DataHandler.reduce`): crop at ``mt_max`` and merge ``mt_group``
@@ -61,10 +69,15 @@ class BulkEmulator:
             self.data = self.data.reduce(mt_max=mt_max, mt_group=mt_group)
 
         observables = (observables,) if isinstance(observables, str) else observables
-        unknown = set(observables) - set(OBSERVABLES)
+        unknown = [
+            o
+            for o in observables
+            if not (o in OBSERVABLES or isinstance(o, XF_OBSERVABLES))
+        ]
         if unknown:
             raise ValueError(
-                f"unknown observables {sorted(unknown)}; choose from {OBSERVABLES}"
+                f"unknown observables {unknown}; choose from {OBSERVABLES}, "
+                "XfSpectrum or MeanPtXf"
             )
 
         self.parameter_names = list(self.data.parameter_names)
@@ -114,7 +127,7 @@ class BulkEmulator:
                 self.models[(pdg, name)] = model
                 if verbose:
                     print(
-                        f"{pdg:>7} {name:<7} {model.n_kept:3d} components "
+                        f"{pdg:>7} {name!s:<7} {model.n_kept:3d} components "
                         f"({100 * model.explained_fraction:.1f} % of variance)"
                     )
         return self
@@ -126,6 +139,8 @@ class BulkEmulator:
 
     def axis(self, pdg, observable):
         """Bin centres of an observable (None for the total yield)."""
+        if isinstance(observable, XF_OBSERVABLES):
+            return observable.axis()
         obs = self.observables(pdg)
         if isinstance(observable, SPECTRA):
             return observable.build(obs)[0]
@@ -226,7 +241,7 @@ class BulkEmulator:
         energies) are held out together.
 
         ``observables`` may include derived ones (e.g. ``"dNdy"`` or a
-        :class:`PtSpectrum` from a ``"hist2d"`` emulator); they are then
+        :class:`MtSpectrum` from a ``"hist2d"`` emulator); they are then
         predicted from the refitted source model, as in the likelihood.
         """
         if self.data is None:
@@ -273,22 +288,23 @@ class BulkEmulator:
 
     def save(self, path):
         """Save the fitted emulator (without training data) to a .npz file."""
+        models = list(self.models.items())
         meta = {
-            "format": 1,
+            "format": 2,
             "parameter_names": self.parameter_names,
-            "observables": self.observable_names,
+            "observables": [observable_to_json(o) for o in self.observable_names],
             "log_parameters": self.log_parameters,
             "settings": self.settings,
-            "models": [[int(pdg), name] for pdg, name in self.models],
+            "models": [[int(pdg), observable_to_json(name)] for (pdg, name), _ in models],
             "pdgs": [int(pdg) for pdg in self.pdgs],
         }
         arrays = {"meta": np.array(json.dumps(meta))}
         for pdg in self.pdgs:
             arrays[f"edges/{pdg}/y"] = self.y_edges[pdg]
             arrays[f"edges/{pdg}/mt"] = self.mt_edges[pdg]
-        for (pdg, name), model in self.models.items():
+        for i, (_, model) in enumerate(models):
             for key, value in model.state().items():
-                arrays[f"model/{pdg}/{name}/{key}"] = value
+                arrays[f"model/{i}/{key}"] = value
         np.savez_compressed(path, **arrays)
 
     @classmethod
@@ -300,18 +316,19 @@ class BulkEmulator:
         emu = cls.__new__(cls)
         emu.data = None
         emu.parameter_names = meta["parameter_names"]
-        emu.observable_names = meta["observables"]
+        emu.observable_names = [observable_from_json(o) for o in meta["observables"]]
         emu.log_parameters = meta["log_parameters"]
         emu.settings = meta["settings"]
         emu.y_edges = {pdg: arrays[f"edges/{pdg}/y"] for pdg in meta["pdgs"]}
         emu.mt_edges = {pdg: arrays[f"edges/{pdg}/mt"] for pdg in meta["pdgs"]}
         emu.models = {}
-        for pdg, name in meta["models"]:
-            prefix = f"model/{pdg}/{name}/"
+        for i, (pdg, name) in enumerate(meta["models"]):
+            # Format 1 stored models under their (pdg, name), format 2 by index.
+            prefix = f"model/{pdg}/{name}/" if meta["format"] == 1 else f"model/{i}/"
             state = {
                 key[len(prefix) :]: value
                 for key, value in arrays.items()
                 if key.startswith(prefix)
             }
-            emu.models[(pdg, name)] = PCAGP.from_state(state)
+            emu.models[(pdg, observable_from_json(name))] = PCAGP.from_state(state)
         return emu

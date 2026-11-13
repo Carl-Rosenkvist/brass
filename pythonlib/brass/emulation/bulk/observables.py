@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import pairwise
 
 import numpy as np
 
@@ -75,79 +76,122 @@ class MtSpectrum:
         return obs.mt, np.kron(weights[None, :], np.eye(len(obs.dmt)))
 
 
-@dataclass(frozen=True)
-class PtSpectrum:
-    """d²N/(dy dpT) averaged over the rapidity window [y_min, y_max].
+# -- spectra from the (x_F, p_T) histogram -------------------------------------
+#
+# Bulk fills these with --xf-bins. They are fitted directly by the emulator
+# (they are not derived from the (y, mT) histogram, whose bins are too coarse
+# for x_F: dN/dx_F would be off by 10-30 % and <p_T>(x_F) biased). ``edges``
+# are the x_F bins of the data; each must be an edge of the stored binning.
 
-    Obtained from the mT spectrum with d²N/(dy dpT) = pT/mT · d²N/(dy dmT),
-    evaluated at the mT bin centres. The axis is pT = sqrt(mT² - mass²) of
-    the bins whose centre lies above the mass.
-    """
 
-    y_min: float
-    y_max: float
-    mass: float
+def _xf_groups(edges, xf_edges):
+    """Index ranges of the stored x_F bins that make up each bin of ``edges``."""
+    index = []
+    for edge in edges:
+        match = np.flatnonzero(np.isclose(xf_edges, edge, rtol=0, atol=1e-9))
+        if len(match) == 0:
+            raise ValueError(
+                f"x_F edge {edge:g} is not an edge of the stored binning "
+                f"({len(xf_edges) - 1} bins in {xf_edges[0]:g}..{xf_edges[-1]:g})"
+            )
+        index.append(int(match[0]))
+    return list(pairwise(index))
 
-    def __str__(self):
-        return f"pT[{self.y_min:g}<y<{self.y_max:g}, m={self.mass:g}]"
 
-    def build(self, obs):
-        _, A = MtSpectrum(self.y_min, self.y_max).build(obs)
-        keep = obs.mt > self.mass
-        if not keep.any():
-            raise ValueError(f"no mT bin centre above the mass {self.mass}")
-        pt = np.sqrt(obs.mt[keep] ** 2 - self.mass**2)
-        return pt, (pt / obs.mt[keep])[:, None] * A[keep]
+def _check_edges(self):
+    edges = tuple(float(e) for e in self.edges)
+    if len(edges) < 2 or np.any(np.diff(edges) <= 0):
+        raise ValueError("x_F edges must be increasing with at least two entries")
+    object.__setattr__(self, "edges", edges)
 
 
 @dataclass(frozen=True)
 class XfSpectrum:
-    """dN/dx_F with x_F = 2 pz/√s = 2 mT sinh(y)/√s, binned in ``edges``.
+    """dN/dx_F per event in the x_F bins ``edges``.
 
-    Each (y, mT) bin is split into ``n_sub`` × ``n_sub`` cells which are
-    assigned to the x_F bins. Only particles inside the histogram's y and mT
-    range contribute; choose ``edges`` that this range covers.
+    Particles outside the p_T range of the histogram are not counted.
     """
 
-    sqrts: float
     edges: tuple
-    n_sub: int = 16
 
-    def __post_init__(self):
-        edges = tuple(float(e) for e in self.edges)
-        if len(edges) < 2 or np.any(np.diff(edges) <= 0):
-            raise ValueError("x_F edges must be increasing with at least two entries")
-        object.__setattr__(self, "edges", edges)
+    __post_init__ = _check_edges
 
     def __str__(self):
-        return f"xF[sqrts={self.sqrts:g}]"
+        return f"dN/dxF[{self.edges[0]:g}..{self.edges[-1]:g}, {len(self.edges) - 1} bins]"
 
-    def build(self, obs):
-        edges = np.asarray(self.edges)
-        n = self.n_sub
-        sub = (np.arange(n) + 0.5) / n
-        y = obs.y_edges[:-1, None] + obs.dy[:, None] * sub  # (n_y, n)
-        mt = obs.mt_edges[:-1, None] + obs.dmt[:, None] * sub  # (n_mt, n)
-        xf = (
-            2.0
-            / self.sqrts
-            * mt[None, :, None, :]
-            * np.sinh(y[:, None, :, None])
-        )  # (n_y, n_mt, n, n)
+    def axis(self):
+        e = np.asarray(self.edges)
+        return 0.5 * (e[:-1] + e[1:])
 
-        n_y, n_mt = len(obs.dy), len(obs.dmt)
-        cell = np.broadcast_to(
-            np.arange(n_y * n_mt).reshape(n_y, n_mt, 1, 1), xf.shape
-        ).ravel()
-        k = np.searchsorted(edges, xf.ravel(), side="right") - 1
-        inside = (k >= 0) & (k < len(edges) - 1)
-
-        fraction = np.zeros((len(edges) - 1, n_y * n_mt))
-        np.add.at(fraction, (k[inside], cell[inside]), 1.0 / n**2)
-
-        area = np.kron(obs.dy, obs.dmt)
-        centres = 0.5 * (edges[:-1] + edges[1:])
-        return centres, fraction * area[None, :] / np.diff(edges)[:, None]
+    def values(self, hist, xf_edges, pt_edges):
+        """From d²N/(dx_F dp_T) of shape (n_runs, n_xf, n_pt)."""
+        counts = hist @ np.diff(pt_edges) * np.diff(xf_edges)  # per event
+        return np.stack(
+            [counts[:, a:b].sum(axis=1) for a, b in _xf_groups(self.edges, xf_edges)],
+            axis=1,
+        ) / np.diff(self.edges)
 
 
-SPECTRA = (MtSpectrum, PtSpectrum, XfSpectrum)
+@dataclass(frozen=True)
+class MeanPtXf:
+    """Mean p_T in the x_F bins ``edges``.
+
+    Computed from the p_T bin centres of the histogram (with 0.1 GeV bins
+    the bias is below a tenth of the statistical error of 10⁶ events).
+    Every training run needs particles in every bin.
+    """
+
+    edges: tuple
+
+    __post_init__ = _check_edges
+
+    def __str__(self):
+        return f"<pT>(xF)[{self.edges[0]:g}..{self.edges[-1]:g}, {len(self.edges) - 1} bins]"
+
+    def axis(self):
+        return XfSpectrum(self.edges).axis()
+
+    def values(self, hist, xf_edges, pt_edges):
+        pt = 0.5 * (pt_edges[:-1] + pt_edges[1:])
+        weights = hist * np.diff(pt_edges)  # d N/dx_F per p_T bin
+        n, s = [], []
+        for a, b in _xf_groups(self.edges, xf_edges):
+            w = weights[:, a:b].sum(axis=1)
+            n.append(w.sum(axis=1))
+            s.append(w @ pt)
+        n, s = np.stack(n, axis=1), np.stack(s, axis=1)
+        empty = np.argwhere(n <= 0)
+        if len(empty):
+            run, k = empty[0]
+            raise ValueError(
+                f"no particles in x_F bin [{self.edges[k]:g}, {self.edges[k + 1]:g}] "
+                f"of run {run}; use a narrower x_F range"
+            )
+        return s / n
+
+
+# Derived linearly from a fitted "hist2d" model.
+SPECTRA = (MtSpectrum,)
+# Fitted directly on the (x_F, p_T) histogram.
+XF_OBSERVABLES = (XfSpectrum, MeanPtXf)
+
+_TYPES = {cls.__name__: cls for cls in (*SPECTRA, *XF_OBSERVABLES)}
+
+
+def observable_to_json(observable):
+    """JSON-serialisable form of an observable name or spec."""
+    if isinstance(observable, str):
+        return observable
+    data = {
+        name: list(value) if isinstance(value, tuple) else value
+        for name, value in observable.__dict__.items()
+    }
+    return {"type": type(observable).__name__, **data}
+
+
+def observable_from_json(data):
+    if isinstance(data, str):
+        return data
+    data = dict(data)
+    cls = _TYPES[data.pop("type")]
+    return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in data.items()})

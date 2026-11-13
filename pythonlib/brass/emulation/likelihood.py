@@ -185,9 +185,9 @@ class EmulatorLikelihood:
     def add(self, pdg, x, y, yerr, observable="dNdy", fixed=None, label=None):
         """Add one experimental dataset.
 
-        ``observable`` is a name such as ``"dNdy"`` or a derived spectrum
-        such as ``PtSpectrum(-0.1, 0.1, mass=0.938)``; ``x`` is then its
-        axis (y, mT, pT or x_F) and ``y`` the measured values.
+        ``observable`` is a name such as ``"dNdy"`` or a spectrum such as
+        ``MeanPtXf(edges)``; ``x`` is then its axis (y, mT or x_F) and ``y``
+        the measured values.
         ``fixed`` gives values of emulator parameters that are not fitted,
         such as the collision energy of this dataset. Points outside the
         emulated range, or with non-finite values, are dropped.

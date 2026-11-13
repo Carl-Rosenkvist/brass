@@ -22,10 +22,14 @@ The version number follows **X.Y.Z**, where:
   0.05 s.
 - **`PCAGP`**: generic PCA + GP emulator for any vector-valued output, used
   by `BulkEmulator`. Parameters can be emulated in `log` (`log_parameters`).
-- **`MtSpectrum`, `PtSpectrum`, `XfSpectrum`**: mT and pT spectra in a
-  rapidity window and dN/dx_F, derived linearly (with covariance) from a
-  `"hist2d"` emulator. Usable in `predict_observable()` and
-  `EmulatorLikelihood.add(observable=...)`.
+- **`bulk --xf-bins N`**: also fill an (x_F, pT) histogram per PDG, with
+  exact x_F = 2 p_z/√s bins (`--pt-range`, `--pt-bins`). Deriving x_F from
+  the (y, mT) histogram is not accurate enough (10–30 % in dN/dx_F).
+- **`XfSpectrum(edges)`, `MeanPtXf(edges)`**: dN/dx_F and ⟨pT⟩(x_F), fitted
+  directly by `BulkEmulator(observables=[...])` from these histograms, in the
+  x_F bins of the data.
+- **`MtSpectrum(y_min, y_max)`**: mT spectrum in a rapidity window, derived
+  linearly (with covariance) from a `"hist2d"` emulator.
 - `DataHandler.reduce(mt_max, mt_group)` and `BulkEmulator(mt_max=...,
   mt_group=...)`: crop the histograms in mT and merge neighbouring mT bins
   before fitting.

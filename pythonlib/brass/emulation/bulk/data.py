@@ -3,14 +3,16 @@ import pickle
 
 import numpy as np
 
-from .observables import SPECTRA, Observables
+from .observables import SPECTRA, XF_OBSERVABLES, Observables
 
 
 class DataHandler:
     """Parameters and normalised (y, mT) histograms from Bulk results.
 
     ``histograms[pdg]`` has shape (n_runs, n_y, n_mt) and holds
-    d²N/(dy dmT) per event.
+    d²N/(dy dmT) per event. If the Bulk analysis ran with ``--xf-bins``,
+    ``xf_histograms[pdg]`` has shape (n_runs, n_xf, n_pt) and holds
+    d²N/(dx_F dp_T) per event, with bin edges ``xf_edges`` and ``pt_edges``.
     """
 
     def __init__(self, data, parameter_paths):
@@ -19,6 +21,9 @@ class DataHandler:
 
         self.y_edges = {}
         self.mt_edges = {}
+        self.xf_edges = {}
+        self.pt_edges = {}
+        self.xf_histograms = {}
 
         self.parameters, self.histograms = self._process(data)
 
@@ -90,15 +95,53 @@ class DataHandler:
                     counts / (analysis.events * dy[:, None] * dmt[None, :])
                 )
 
+            self._add_xf(run, analysis)
+
         n_runs = len(parameters)
         missing = {pdg: n_runs - len(h) for pdg, h in histograms.items() if len(h) != n_runs}
         if missing:
             raise ValueError(f"PDGs missing in some runs (pdg: runs missing): {missing}")
 
+        with_xf = [len(h) for h in self.xf_histograms.values()]
+        if self.xf_histograms and (set(self.xf_histograms) != set(histograms)
+                                   or set(with_xf) != {n_runs}):
+            raise ValueError("x_F histograms (--xf-bins) are missing in some runs")
+        self.xf_histograms = {
+            pdg: np.stack(h) for pdg, h in self.xf_histograms.items()
+        }
+
         return (
             np.asarray(parameters, dtype=float),
             {pdg: np.stack(h) for pdg, h in histograms.items()},
         )
+
+    def _add_xf(self, run, analysis):
+        """Store d²N/(dx_F dp_T) of one run (Bulk with --xf-bins)."""
+        xf_histograms = getattr(analysis, "xf_histograms", None)
+        if not xf_histograms:
+            return
+        for pdg, histo in xf_histograms.items():
+            pz_edges, pt_edges = (np.asarray(e, dtype=float) for e in histo.edges)
+            xf_edges = 2.0 * pz_edges / analysis.sqrts
+            if pdg not in self.xf_edges:
+                self.xf_edges[pdg] = xf_edges
+                self.pt_edges[pdg] = pt_edges
+            elif not (
+                np.allclose(xf_edges, self.xf_edges[pdg], rtol=0, atol=1e-9)
+                and np.array_equal(pt_edges, self.pt_edges[pdg])
+            ):
+                raise ValueError(
+                    f"PDG {pdg}: x_F histogram binning in run {run} differs from run 0"
+                )
+            counts = np.asarray(histo.values, dtype=float)
+            self.xf_histograms.setdefault(pdg, []).append(
+                counts
+                / (
+                    analysis.events
+                    * np.diff(xf_edges)[:, None]
+                    * np.diff(pt_edges)[None, :]
+                )
+            )
 
     @property
     def pdgs(self):
@@ -120,6 +163,15 @@ class DataHandler:
         if isinstance(name, SPECTRA):
             _, A = name.build(obs)
             return H.reshape(len(H), -1) @ A.T
+        if isinstance(name, XF_OBSERVABLES):
+            if pdg not in self.xf_histograms:
+                raise ValueError(
+                    f"{name} needs x_F histograms: run the Bulk analysis "
+                    "with --xf-bins"
+                )
+            return name.values(
+                self.xf_histograms[pdg], self.xf_edges[pdg], self.pt_edges[pdg]
+            )
         raise ValueError(f"unknown observable {name!r}")
 
     def reduce(self, mt_max=None, mt_group=1):
