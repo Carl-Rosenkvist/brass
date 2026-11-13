@@ -3,6 +3,8 @@
 # sqrt_s: 17.3
 # system: pp
 # ref: A. Aduszkiewicz et al. Eur. Phys. J., C77(10):671, 2017
+# note: point at y = 2.9 (0.02695, zero error on HEPData) removed: about half of
+# note: the trend of its neighbours and of NA49 (EPJC 45 (2006) 343), ~0.058
 y,dndy,dndy_err
 0.100000,0.720800,0.086490
 0.300000,0.715100,0.046720
@@ -16,4 +18,3 @@ y,dndy,dndy_err
 2.300000,0.177400,0.000518
 2.500000,0.132400,0.000432
 2.700000,0.094640,0.000353
-2.900000,0.026950,0.000000

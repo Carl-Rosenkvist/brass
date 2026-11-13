@@ -1,0 +1,20 @@
+# observable: meanpt_xf
+# pdg: -2212
+# sqrt_s: 17.3
+# system: pp
+# ref: T. Anticic et al. (NA49), Eur. Phys. J. C65 (2010) 9, Table 9 [arXiv:0904.2708]
+# note: per inelastic event, feed-down from weak decays subtracted; x_F = 2 p_z/sqrt(s), x_F >= 0 (pp is symmetric)
+# err: statistical only; sys: not quoted for <pT>; the normalisation cancels
+xf,meanpt,meanpt_err
+0.000000,0.488,0.00083
+0.025000,0.4897,0.000881
+0.050000,0.4924,0.00064
+0.075000,0.4972,0.000646
+0.100000,0.5038,0.000806
+0.125000,0.5109,0.00092
+0.150000,0.5185,0.00124
+0.200000,0.5252,0.00126
+0.250000,0.5296,0.00175
+0.300000,0.5361,0.00231
+0.350000,0.5394,0.00264
+0.400000,0.5499,0.00462
