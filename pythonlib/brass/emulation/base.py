@@ -179,9 +179,9 @@ class Emulator:
             raise RuntimeError("a loaded emulator has no training data to fit")
 
         for pdg in self.pdgs if pdgs is None else pdgs:
-            for name in self.observable_names:
+            for name in self._observables_for(pdg):
                 model = self._new_model().fit(
-                    self.data.parameters, self.data.observable(pdg, name)
+                    self.data.parameters, self._training(pdg, name)
                 )
                 self.models[(pdg, name)] = model
                 self._fitted(pdg, name)
@@ -194,6 +194,14 @@ class Emulator:
 
     def _fitted(self, pdg, name):
         """Hook called after fitting (pdg, name)."""
+
+    def _observables_for(self, pdg):
+        """Observables fitted for a particle (all of them by default)."""
+        return self.observable_names
+
+    def _training(self, pdg, name):
+        """Training values of an observable, shape (n_runs, n_outputs)."""
+        return self.data.observable(pdg, name)
 
     # -- observables ----------------------------------------------------------
 
@@ -212,7 +220,7 @@ class Emulator:
             raise KeyError(f"no emulator for PDG {pdg}")
         raise ValueError(
             f"{observable!r} for PDG {pdg} cannot be obtained from the fitted "
-            f"observables {self.observable_names}"
+            f"observables {list(available)}"
         )
 
     def linear_model(self, pdg, observable):
@@ -248,7 +256,8 @@ class Emulator:
 
         All runs at a parameter point (e.g. the same point at several
         energies) are held out together. Derived observables are predicted
-        from the refitted source model, as in the likelihood.
+        from the refitted source model, as in the likelihood. With explicit
+        ``observables`` and no ``pdgs``, particles without them are skipped.
         """
         if self.data is None:
             raise RuntimeError("a loaded emulator has no training data to validate")
@@ -269,15 +278,23 @@ class Emulator:
         n_test = min(max(1, int(round(holdout * n_points))), n_points - 1)
         test = np.isin(point_of_run, rng.choice(n_points, size=n_test, replace=False))
 
+        if pdgs is None:
+            pdgs = self.pdgs
+            if observables:
+                usable = [p for p in pdgs if self._obtainable(p, observables)]
+                # If no particle has them, the loop below raises the reason.
+                pdgs = usable or pdgs[:1]
+
         results = {}
-        for pdg in self.pdgs if pdgs is None else pdgs:
+        for pdg in pdgs:
             refitted = {}
-            for name in observables or self.observable_names:
-                source, A = self._derivation(pdg, name, self.observable_names)
+            available = self._observables_for(pdg)
+            for name in observables or available:
+                source, A = self._derivation(pdg, name, available)
                 if source not in refitted:
-                    Y = self.data.observable(pdg, source)
+                    Y = self._training(pdg, source)
                     refitted[source] = self._new_model().fit(X[~test], Y[~test])
-                truth = self.data.observable(pdg, name)[test]
+                truth = self._training(pdg, name)[test]
                 mean, std = refitted[source].predict(X[test], A, return_std=True)
                 with np.errstate(divide="ignore", invalid="ignore"):
                     z = (mean - truth) / std
@@ -290,6 +307,14 @@ class Emulator:
                 }
         return results
 
+    def _obtainable(self, pdg, observables):
+        try:
+            for name in observables:
+                self._derivation(pdg, name, self._observables_for(pdg))
+        except ValueError:
+            return False
+        return True
+
     # -- persistence ----------------------------------------------------------
 
     def _save_arrays(self):
@@ -298,6 +323,10 @@ class Emulator:
 
     def _load_arrays(self, arrays, meta):
         pass
+
+    def _extra_meta(self):
+        """JSON-serialisable settings needed after loading."""
+        return {}
 
     def save(self, path):
         """Save the fitted emulator (without training data) to a .npz file."""
@@ -310,6 +339,7 @@ class Emulator:
             "settings": self.settings,
             "models": [[int(pdg), name] for pdg, name in self.models],
             "pdgs": [int(pdg) for pdg in self.pdgs],
+            "extra": self._extra_meta(),
         }
         arrays = {"meta": np.array(json.dumps(meta)), **self._save_arrays()}
         for (pdg, name), model in self.models.items():

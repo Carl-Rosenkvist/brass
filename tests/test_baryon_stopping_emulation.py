@@ -11,10 +11,17 @@ from brass.analyses import BaryonStopping, Bulk
 from brass.emulation import EmulatorLikelihood
 from brass.emulation.baryon_stopping import BaryonStoppingData, BaryonStoppingEmulator
 from brass.emulation.bulk import BulkEmulator
-from brass.testing import analysis_args, generate_particles, write_run
+from brass.testing import (
+    analysis_args,
+    concatenate_particles,
+    generate_particles,
+    write_run,
+)
 
 PION_PDG = 211
 PION_MASS = 0.13957
+PROTON_PDG = 2212
+PROTON_MASS = 0.93827
 SQRTS = 6.0
 N_PARTICLES = 10_000
 
@@ -45,15 +52,21 @@ def runs(tmp_path_factory):
             "Meta": {"y_mean": y_mean, "y_sigma": y_sigma, "pt_mean": pt_mean},
             "Modi": {"Collider": {"Sqrtsnn": SQRTS, "Calculation_Frame": "center of mass"}},
         }
+        protons = generate_particles(
+            np.random.default_rng(500 + i), 3000, pdg=PROTON_PDG,
+            mass=PROTON_MASS, y_mean=y_mean, y_sigma=0.6, pt_mean=pt_mean,
+        )
         with write_run(run, ["p0", "px", "py", "pz", "pdg"], config=config) as w:
-            w.particles(pions)
+            w.particles(concatenate_particles(pions, protons))
         out.append((run, pions))
     return out
 
 
 @pytest.fixture(scope="module")
 def results(runs):
-    args = analysis_args(BaryonStopping, "--pdgs", str(PION_PDG), "--xf-bins", "40")
+    args = analysis_args(
+        BaryonStopping, "--pdgs", str(PION_PDG), str(PROTON_PDG), "--xf-bins", "40"
+    )
     return AnalysisRunner(BaryonStopping, [r for r, _ in runs], args=args).run()
 
 
@@ -179,7 +192,7 @@ def test_unknown_or_unfitted_observables(results, emulator):
     with pytest.raises(ValueError, match="cannot be obtained"):
         only_xf.predict_observable([[0.0, 1.0, 0.4]], PION_PDG, "meanpT_xF")
     with pytest.raises(KeyError):
-        emulator.axis(2212, "dNdxF")
+        emulator.axis(3312, "dNdxF")
 
 
 def test_validate(emulator):
@@ -245,3 +258,108 @@ def test_likelihood_combines_emulators(runs, emulator):
             PION_PDG, xf, mean_pt, np.full(len(xf), 0.01), observable="meanpT_xF",
             emulator=emulator,
         )
+
+
+# -- per-particle observables, x_F grouping and range ---------------------------
+
+
+def test_xf_group_and_range(results):
+    data = BaryonStoppingData(results, PARAMETER_PATHS)
+    n = data.counts["xf"][PION_PDG]  # 40 bins of 0.05
+
+    grouped = data.observable(PION_PDG, "dNdxF", xf_group=4)  # bins of 0.2
+    np.testing.assert_allclose(grouped, n.reshape(len(n), 10, 4).sum(2) / 0.2)
+    np.testing.assert_allclose(
+        data.axis(PION_PDG, "dNdxF", xf_group=4), np.linspace(-0.9, 0.9, 10)
+    )
+
+    # Only bins entirely within |x_F| <= 0.2.
+    np.testing.assert_allclose(
+        data.axis(PION_PDG, "dNdxF", xf_group=2, xf_max=0.2), [-0.15, -0.05, 0.05, 0.15]
+    )
+    pt = data.counts["xf_pt"][PION_PDG]
+    mean = data.observable(PION_PDG, "meanpT_xF", xf_group=2, xf_max=0.2)
+    centre = slice(16, 24)
+    expected = (pt[:, centre].reshape(-1, 4, 2).sum(2)
+                / n[:, centre].reshape(-1, 4, 2).sum(2))
+    np.testing.assert_allclose(mean, expected)
+
+    with pytest.raises(ValueError, match="does not divide"):
+        data.observable(PION_PDG, "dNdxF", xf_group=3)
+
+
+def test_no_usable_bins_is_reported():
+    data = BaryonStoppingData(fake_results([[3, 0], [0, 5]]), {"a": ("Meta", "a")})
+    with pytest.raises(ValueError, match="PDG 211: no usable bins for 'meanpT_xF'"):
+        data.observable(PION_PDG, "meanpT_xF")
+    with pytest.raises(ValueError, match="no usable bins"):
+        data.observable(PION_PDG, "dNdxF", xf_max=0.5)  # bins are [-1, 0] and [0, 1]
+
+    emu = BaryonStoppingEmulator(
+        fake_results([[3, 0], [0, 5]]), {"a": ("Meta", "a")}, observables=["meanpT_xF"]
+    )
+    with pytest.raises(ValueError, match="PDG 211"):
+        emu.fit()
+
+
+@pytest.fixture(scope="module")
+def per_particle(results):
+    return BaryonStoppingEmulator(
+        results,
+        PARAMETER_PATHS,
+        observables={PION_PDG: ["dNdxF", "meanpT_xF"], PROTON_PDG: ["meanpT_xF"]},
+        xf_max={PROTON_PDG: 0.2},
+        xf_group=2,
+    ).fit()
+
+
+def test_per_particle_observables(per_particle):
+    emu = per_particle
+    assert emu.pdgs == [PION_PDG, PROTON_PDG]
+    assert set(emu.models) == {
+        (PION_PDG, "dNdxF"), (PION_PDG, "meanpT_xF"), (PROTON_PDG, "meanpT_xF")
+    }
+    np.testing.assert_allclose(emu.axis(PROTON_PDG, "meanpT_xF"), [-0.15, -0.05, 0.05, 0.15])
+    assert np.allclose(np.diff(emu.axis(PION_PDG, "dNdxF")), 0.1)
+
+    theta = [[0.0, 1.0, 0.4]]
+    assert emu.predict_observable(theta, PROTON_PDG, "meanpT_xF").shape == (1, 4)
+    with pytest.raises(ValueError, match="cannot be obtained"):
+        emu.predict_observable(theta, PROTON_PDG, "dNdxF")
+
+    # Only particles that have the observable are validated.
+    results = emu.validate(holdout=0.25, observables=["dNdxF"])
+    assert list(results) == [(PION_PDG, "dNdxF")]
+    with pytest.raises(ValueError, match="cannot be obtained"):
+        emu.validate(observables=["dNdy"])
+
+
+def test_per_particle_settings_are_checked(results):
+    with pytest.raises(KeyError, match="not in the data"):
+        BaryonStoppingEmulator(results, PARAMETER_PATHS, observables={3312: ["dNdxF"]})
+    with pytest.raises(KeyError, match="not emulated"):
+        BaryonStoppingEmulator(
+            results, PARAMETER_PATHS, observables={PION_PDG: ["dNdxF"]},
+            xf_max={PROTON_PDG: 0.2},
+        )
+
+
+def test_per_particle_save_and_load(per_particle, tmp_path):
+    path = tmp_path / "bs.npz"
+    per_particle.save(path)
+    loaded = BaryonStoppingEmulator.load(path)
+
+    assert loaded.pdgs == per_particle.pdgs
+    assert loaded.xf_max == per_particle.xf_max
+    assert loaded.xf_group == per_particle.xf_group
+    theta = [[0.1, 1.0, 0.4]]
+    for pdg, name in per_particle.models:
+        np.testing.assert_allclose(loaded.axis(pdg, name), per_particle.axis(pdg, name))
+        np.testing.assert_allclose(
+            loaded.predict_observable(theta, pdg, name),
+            per_particle.predict_observable(theta, pdg, name),
+            rtol=1e-10,
+        )
+    with pytest.raises(ValueError, match="cannot be obtained"):
+        loaded.predict_observable(theta, PROTON_PDG, "dNdxF")
+

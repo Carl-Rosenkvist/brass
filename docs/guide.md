@@ -476,6 +476,29 @@ mean, std = bs.predict_observable(theta, 2212, "meanpT_xF", return_std=True)
 - They are emulated in the bins that hold particles in every training run,
   so for rare hadrons the x_F range is narrower; `axis()` gives the bins.
 
+Rare particles have too few entries for ⟨pT⟩(x_F) far from x_F = 0, so choose
+per particle which observables to emulate, over which x_F range and in which
+bins (plot the training data first to see where it is noisy):
+
+```python
+bs = BaryonStoppingEmulator.from_file(
+    "baryon-stopping.pkl", paths,
+    observables={
+        2212:  ["dNdxF", "meanpT_xF"],
+        211:   ["dNdxF", "meanpT_xF"],
+        3122:  ["meanpT_xF"],
+        -2212: ["meanpT_xF"],
+    },
+    xf_max={211: 0.8, 3122: 0.8, -2212: 0.3},   # |x_F| range per particle
+    xf_group=2,                                 # merge 2 x_F bins (0.05 wide)
+)
+```
+
+Particles not in `observables` are not emulated. `xf_max` and `xf_group` are
+a number for all particles or a dict per PDG; merging bins adds counts and
+summed pT exactly. A choice that leaves no usable bin stops `fit()` with a
+message naming the particle and observable.
+
 **2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
 parameter points and predicts them. The standardised residuals
 `(prediction − simulation) / σ` should be roughly standard normal; much wider

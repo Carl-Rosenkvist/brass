@@ -27,7 +27,9 @@ The version number follows **X.Y.Z**, where:
   summed mT in rapidity, so dN/dx_F, ⟨pT⟩(x_F), dN/dy and ⟨mT⟩(y) follow
   without pT or mT bins.
 - **`BaryonStoppingEmulator`**: emulates `"dNdxF"`, `"meanpT_xF"`, `"dNdy"`
-  and `"meanmT_y"`; mean values are emulated directly.
+  and `"meanmT_y"`; mean values are emulated directly. Observables can be
+  chosen per particle (`observables={pdg: [...]}`), with an |x_F| range
+  (`xf_max`) and merged x_F bins (`xf_group`) per particle.
 - `EmulatorLikelihood.add(..., emulator=...)`: datasets from several
   emulators of the same scan (e.g. dN/dy and ⟨pT⟩(x_F)) in one likelihood.
 - **`MtSpectrum(y_min, y_max)`**: mT spectrum in a rapidity window, derived

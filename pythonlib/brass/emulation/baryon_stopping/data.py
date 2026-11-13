@@ -55,37 +55,59 @@ class BaryonStoppingData(RunData):
     def pdgs(self):
         return list(self.counts["xf"])
 
-    def _mean(self, pdg, kind):
-        """Mean of the weight per bin, in the bins filled in every run."""
-        n, total = self.counts[kind][pdg], self.counts[kind + "_" + _WEIGHT[kind]][pdg]
-        filled = np.all(n > 0, axis=0)
-        return filled, total[:, filled] / n[:, filled]
+    def _spectrum(self, pdg, name, xf_group=1, xf_max=None):
+        """(bin centres, values of shape (n_runs, n_bins)) of an observable."""
+        if name not in _KIND:
+            raise ValueError(f"unknown observable {name!r}")
+        kind = _KIND[name]
+        n = self.counts[kind][pdg]
+        total = self.counts[kind + "_" + _WEIGHT[kind]][pdg]
+        edges = self.xf_edges[pdg] if kind == "xf" else self.y_edges[pdg]
 
-    def observable(self, pdg, name):
+        if kind == "xf":
+            xf_group = int(xf_group)
+            if xf_group < 1 or n.shape[1] % xf_group:
+                raise ValueError(
+                    f"xf_group={xf_group} does not divide the {n.shape[1]} x_F bins"
+                )
+            n = n.reshape(len(n), -1, xf_group).sum(axis=2)
+            total = total.reshape(len(total), -1, xf_group).sum(axis=2)
+            edges = edges[::xf_group]
+            keep = np.ones(n.shape[1], dtype=bool)
+            if xf_max is not None:
+                tol = 1e-9
+                keep = (edges[:-1] >= -xf_max - tol) & (edges[1:] <= xf_max + tol)
+        else:
+            keep = np.ones(n.shape[1], dtype=bool)
+
+        if name.startswith("mean"):
+            keep &= np.all(n > 0, axis=0)
+        if not keep.any():
+            raise ValueError(
+                f"PDG {pdg}: no usable bins for {name!r} (xf_group={xf_group}, "
+                f"xf_max={xf_max}); mean values need particles in every run"
+            )
+
+        centres = 0.5 * (edges[:-1] + edges[1:])[keep]
+        if name.startswith("mean"):
+            return centres, total[:, keep] / n[:, keep]
+        return centres, n[:, keep] / np.diff(edges)[keep]
+
+    def observable(self, pdg, name, xf_group=1, xf_max=None):
         """Training values of an observable, shape (n_runs, n_bins).
 
         ``"dNdxF"`` and ``"dNdy"`` are per event. ``"meanpT_xF"`` and
         ``"meanmT_y"`` are given only in the bins that hold particles in
-        every run (see :meth:`axis`).
+        every run. For the x_F observables, ``xf_group`` merges that many
+        neighbouring x_F bins (counts and summed pT add exactly) and
+        ``xf_max`` keeps only bins within |x_F| <= xf_max.
         """
-        if name == "dNdxF":
-            return self.counts["xf"][pdg] / np.diff(self.xf_edges[pdg])
-        if name == "dNdy":
-            return self.counts["y"][pdg] / np.diff(self.y_edges[pdg])
-        if name == "meanpT_xF":
-            return self._mean(pdg, "xf")[1]
-        if name == "meanmT_y":
-            return self._mean(pdg, "y")[1]
-        raise ValueError(f"unknown observable {name!r}")
+        return self._spectrum(pdg, name, xf_group, xf_max)[1]
 
-    def axis(self, pdg, name):
-        """Bin centres of an observable."""
-        kind = {"dNdxF": "xf", "meanpT_xF": "xf", "dNdy": "y", "meanmT_y": "y"}[name]
-        edges = self.xf_edges[pdg] if kind == "xf" else self.y_edges[pdg]
-        centres = 0.5 * (edges[:-1] + edges[1:])
-        if name.startswith("mean"):
-            return centres[self._mean(pdg, kind)[0]]
-        return centres
+    def axis(self, pdg, name, xf_group=1, xf_max=None):
+        """Bin centres of an observable (see :meth:`observable`)."""
+        return self._spectrum(pdg, name, xf_group, xf_max)[0]
 
 
+_KIND = {"dNdxF": "xf", "meanpT_xF": "xf", "dNdy": "y", "meanmT_y": "y"}
 _WEIGHT = {"xf": "pt", "y": "mt"}
