@@ -89,8 +89,6 @@ Saved 3 grouped result(s) to bulk.pkl
 ### `bulk`: rapidity and transverse-mass spectra
 
 Fills a two-dimensional (y, mT) histogram for each requested PDG code.
-With `--xf-bins` it also fills an (x_F, pT) histogram, with Feynman
-x_F = 2 p_z/√s in exact bins.
 
 - **Reads:** `particles_binary.bin` or `particles_custom.bin`
 - **Needs quantities:** `p0`, `px`, `py`, `pz`, `pdg` (`mass` is used if present)
@@ -105,14 +103,6 @@ x_F = 2 p_z/√s in exact bins.
 | `--y-bins N` | `50` | Rapidity bins |
 | `--mt-range MIN MAX` | `0 10` | Transverse-mass range in GeV |
 | `--mt-bins N` | `100` | Transverse-mass bins |
-| `--xf-bins N` | off | Also fill an (x_F, pT) histogram with N bins in −1 < x_F < 1. Needs `Modi.Collider.Sqrtsnn` and the centre-of-mass frame. |
-| `--pt-range MIN MAX` | `0 3` | pT range of the x_F histogram in GeV |
-| `--pt-bins N` | `30` | pT bins of the x_F histogram |
-
-Do not derive x_F observables from the (y, mT) histogram: with the default
-bins, dN/dx_F is off by 10–30 % and ⟨pT⟩(x_F) is biased by about as much as
-the string parameters change it. Use `--xf-bins` (e.g. `--xf-bins 80` for
-bins of 0.025).
 
 ```bash
 brass bulk runs/* --pdgs 211 -211 2212 3122 --add-pdgs 3122 3212 -o bulk.pkl
@@ -123,11 +113,44 @@ Each result has:
 | Attribute | Content |
 |---|---|
 | `histograms[pdg]` | Histogram with `.values` (counts, shape `(y_bins, mt_bins)`) and `.edges` (`[y_edges, mt_edges]`) |
-| `xf_histograms[pdg]` | With `--xf-bins`: counts of shape `(xf_bins, pt_bins)`, edges `[pz_edges, pt_edges]` (x_F = 2 p_z/√s); otherwise `None` |
-| `sqrts` | √s of the run (with `--xf-bins`) |
 | `events` | Number of analyzed events |
 | `pdgs` | The PDG codes in `histograms` |
 | `config` | The SMASH configuration of the first run in the group |
+
+### `baryon-stopping`: x_F and rapidity spectra with ⟨pT⟩ and ⟨mT⟩
+
+For each requested PDG code, fills one-dimensional histograms of the number
+of particles and of their summed pT in Feynman x_F = 2 p_z/√s, and of the
+number of particles and of their summed mT in rapidity. dN/dx_F, ⟨pT⟩(x_F),
+dN/dy and ⟨mT⟩(y) follow exactly, without bins in pT or mT.
+
+- **Reads:** `particles_binary.bin` or `particles_custom.bin`
+- **Needs quantities:** `p0`, `px`, `py`, `pz`, `pdg`
+- **Needs** `Modi.Collider.Sqrtsnn` and the centre-of-mass frame
+  (`Calculation_Frame: center of mass`, or a symmetric system). The p_z axis
+  spans −√s/2 … √s/2 of each run, so the x_F bins are exact and the same at
+  every energy.
+- **Skips** elastic events, like `bulk`.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--pdgs PDG...` | required | PDG codes to histogram |
+| `--add-pdgs PDG...` | none | Add species together, as for `bulk` |
+| `--xf-bins N` | `80` | x_F bins in −1 < x_F < 1 |
+| `--y-range MIN MAX` | `-4 4` | Rapidity range |
+| `--y-bins N` | `40` | Rapidity bins |
+
+```bash
+brass baryon-stopping runs/* --pdgs 2212 -2212 211 3122 --add-pdgs 3122 3212 -o baryon-stopping.pkl
+```
+
+Each result has `histograms[kind][pdg]` for the kinds `"xf"` (particles),
+`"xf_pt"` (summed pT), `"y"` (particles) and `"y_mt"` (summed mT), plus
+`sqrts`, `events` and `pdgs`.
+
+Do not derive x_F observables from the `bulk` (y, mT) histogram: with its
+default bins dN/dx_F is off by 10–30 % and ⟨pT⟩(x_F) is biased by about as
+much as the string parameters change it.
 
 ### `centrality`: impact parameter and multiplicity
 
@@ -428,36 +451,30 @@ emu.save("emulator.npz")       # later: emu = BulkEmulator.load("emulator.npz")
   `"hist2d"` emulator several times smaller. Particles above `mt_max` are
   lost, also from the dN/dy derived from it.
 
-**x_F observables.** With a Bulk analysis run with `--xf-bins`, dN/dx_F and
-⟨pT⟩(x_F) are emulated directly, in the x_F bins of the data (each edge must
-be an edge of the stored binning):
+From a `"hist2d"` emulator, `MtSpectrum(y_min, y_max)` (d²N/(dy dmT)
+averaged over a rapidity window) is derived as well. Choose window edges on
+the y bin edges; partly covered bins are weighted by the overlap.
+
+**x_F observables** come from `baryon-stopping` results and their own
+emulator, with the same parameters:
 
 ```python
-import numpy as np
-from brass.emulation.bulk import BulkEmulator, MeanPtXf, XfSpectrum
+from brass.emulation.baryon_stopping import BaryonStoppingEmulator
 
-edges = np.linspace(-0.5, 0.5, 21)
-emu = BulkEmulator.from_file(
-    "bulk.pkl", paths,
-    observables=["dNdy", XfSpectrum(edges), MeanPtXf(edges)],
-)
-emu.fit()
-
-spec = MeanPtXf(edges)
-xf = emu.axis(2212, spec)                       # x_F bin centres
-mean, std = emu.predict_observable(theta, 2212, spec, return_std=True)
+bs = BaryonStoppingEmulator.from_file(
+    "baryon-stopping.pkl", paths, observables=["dNdxF", "meanpT_xF"])
+bs.fit()
+xf = bs.axis(2212, "meanpT_xF")                 # x_F bin centres
+mean, std = bs.predict_observable(theta, 2212, "meanpT_xF", return_std=True)
 ```
 
-Emulating ⟨pT⟩(x_F) directly is more accurate than deriving it from a
-`"hist2d"` emulator: in a pp scan it reached the statistical precision of the
-runs with 3–5 PCA components, while the 2D histogram needed about 20 (and
-explained only 60–80 % of the variation at the default `0.99`).
-`MeanPtXf` needs particles in every x_F bin of every training run, so limit
-the x_F range for rare hadrons.
-
-From a `"hist2d"` emulator, `MtSpectrum(y_min, y_max)` (d²N/(dy dmT)
-averaged over a rapidity window) is derived as well. Choose window edges
-on the y bin edges; partly covered bins are weighted by the overlap.
+- Observables: `"dNdxF"`, `"meanpT_xF"`, `"dNdy"` and `"meanmT_y"` (⟨mT⟩, so
+  subtract the mass for ⟨mT⟩ − m), each in the bins of the analysis.
+- ⟨pT⟩ and ⟨mT⟩ are emulated directly. In a pp scan this reached the
+  statistical precision of the runs with 3–5 PCA components; deriving them
+  from emulated spectra needed far more.
+- They are emulated in the bins that hold particles in every training run,
+  so for rare hadrons the x_F range is narrower; `axis()` gives the bins.
 
 **2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
 parameter points and predicts them. The standardised residuals
@@ -475,11 +492,17 @@ like.add(211, y_exp2, dndy_exp2, err_exp2, fixed={"Sqrtsnn": 8.76})
 print(like.parameters)         # the fitted parameters, in theta order
 ```
 
-`observable=` selects what the data are, for example
-`like.add(2212, xf_exp, mean_pt_exp, err_exp, observable=MeanPtXf(edges),
-fixed={"Sqrtsnn": 17.3})` with `xf_exp` the x_F values. Do not add both dN/dy
-and dN/dx_F measured on the same particles without accounting for their
-correlation.
+`observable=` selects what the data are, and `emulator=` takes the dataset
+from another emulator of the same scan, so dN/dy and ⟨pT⟩(x_F) enter one
+likelihood:
+
+```python
+like.add(2212, xf_exp, mean_pt_exp, err_exp, observable="meanpT_xF",
+         emulator=bs, fixed={"Sqrtsnn": 17.3})
+```
+
+Do not add both dN/dy and dN/dx_F measured on the same particles without
+accounting for their correlation.
 
 **4. Sample.** `like(thetas)` takes all walkers at once and returns their
 log-likelihoods, so it works directly with `emcee`'s `vectorize=True`:

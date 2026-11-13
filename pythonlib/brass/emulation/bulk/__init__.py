@@ -1,12 +1,10 @@
 from .data import DataHandler
 from .emulator import OBSERVABLES, BulkEmulator
-from .observables import MeanPtXf, MtSpectrum, XfSpectrum
+from .observables import MtSpectrum
 
 __all__ = [
     "BulkEmulator",
     "DataHandler",
-    "MeanPtXf",
     "MtSpectrum",
     "OBSERVABLES",
-    "XfSpectrum",
 ]

@@ -134,6 +134,11 @@ class EmulatorLikelihood:
         like.add(211, x=y_exp, y=dndy_exp, yerr=err_exp, fixed={"Sqrtsnn": 17.3})
         logp = like(thetas)          # thetas: (n, len(like.parameters))
 
+    Datasets can come from different emulators of the same scan (e.g. a
+    ``BulkEmulator`` for dN/dy and a ``BaryonStoppingEmulator`` for
+    <p_T>(x_F)): pass ``emulator=`` to :meth:`add`. All emulators must have
+    the same parameters.
+
     For each dataset the model is interpolated (linearly) to the experimental
     points, and
 
@@ -147,7 +152,8 @@ class EmulatorLikelihood:
     Parameters
     ----------
     emulator
-        A fitted emulator (e.g. :class:`~brass.emulation.bulk.BulkEmulator`).
+        A fitted emulator (e.g. :class:`~brass.emulation.bulk.BulkEmulator`),
+        used for datasets added without ``emulator=``.
     parameters
         Names of the parameters in ``thetas``, in order. Default: all
         emulator parameters that are not fixed by any dataset.
@@ -182,28 +188,46 @@ class EmulatorLikelihood:
         fixed = {name for d in self.datasets for name in d["fixed"]}
         return [p for p in self.emulator.parameter_names if p not in fixed]
 
-    def add(self, pdg, x, y, yerr, observable="dNdy", fixed=None, label=None):
+    def add(
+        self,
+        pdg,
+        x,
+        y,
+        yerr,
+        observable="dNdy",
+        fixed=None,
+        label=None,
+        emulator=None,
+    ):
         """Add one experimental dataset.
 
-        ``observable`` is a name such as ``"dNdy"`` or a spectrum such as
-        ``MeanPtXf(edges)``; ``x`` is then its axis (y, mT or x_F) and ``y``
-        the measured values.
+        ``observable`` is a name of the emulator such as ``"dNdy"`` or
+        ``"meanpT_xF"`` (or a derived spectrum such as ``MtSpectrum``); ``x``
+        is then its axis (y, mT or x_F) and ``y`` the measured values.
         ``fixed`` gives values of emulator parameters that are not fitted,
-        such as the collision energy of this dataset. Points outside the
-        emulated range, or with non-finite values, are dropped.
+        such as the collision energy of this dataset. ``emulator`` selects
+        another emulator of the same scan for this dataset. Points outside
+        the emulated range, or with non-finite values, are dropped.
         """
+        emulator = self.emulator if emulator is None else emulator
+        if list(emulator.parameter_names) != list(self.emulator.parameter_names):
+            raise ValueError(
+                f"emulator parameters {emulator.parameter_names} differ from "
+                f"{self.emulator.parameter_names}"
+            )
+
         fixed = dict(fixed or {})
-        unknown = set(fixed) - set(self.emulator.parameter_names)
+        unknown = set(fixed) - set(emulator.parameter_names)
         if unknown:
             raise KeyError(f"unknown fixed parameters: {sorted(unknown)}")
 
-        model, A = self.emulator.linear_model(pdg, observable)
+        model, A = emulator.linear_model(pdg, observable)
 
         x = np.atleast_1d(np.asarray(x, dtype=float))
         y = np.atleast_1d(np.asarray(y, dtype=float))
         yerr = np.atleast_1d(np.asarray(yerr, dtype=float))
 
-        axis = self.emulator.axis(pdg, observable)
+        axis = emulator.axis(pdg, observable)
         mask = np.isfinite(y) & np.isfinite(yerr) & (yerr >= 0)
         if axis is None:
             W = np.ones((len(y), 1))

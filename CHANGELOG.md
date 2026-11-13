@@ -21,13 +21,15 @@ The version number follows **X.Y.Z**, where:
   calibration (1000 runs, 16 datasets) one MCMC step went from 0.23 s to
   0.05 s.
 - **`PCAGP`**: generic PCA + GP emulator for any vector-valued output, used
-  by `BulkEmulator`. Parameters can be emulated in `log` (`log_parameters`).
-- **`bulk --xf-bins N`**: also fill an (x_F, pT) histogram per PDG, with
-  exact x_F = 2 p_z/√s bins (`--pt-range`, `--pt-bins`). Deriving x_F from
-  the (y, mT) histogram is not accurate enough (10–30 % in dN/dx_F).
-- **`XfSpectrum(edges)`, `MeanPtXf(edges)`**: dN/dx_F and ⟨pT⟩(x_F), fitted
-  directly by `BulkEmulator(observables=[...])` from these histograms, in the
-  x_F bins of the data.
+  by the emulators (shared base `brass.emulation.base.Emulator`). Parameters can be emulated in `log` (`log_parameters`).
+- **`baryon-stopping` analysis**: per PDG, particles and summed pT in exact
+  Feynman x_F bins (p_z axis over ±√s/2 of each run), and particles and
+  summed mT in rapidity, so dN/dx_F, ⟨pT⟩(x_F), dN/dy and ⟨mT⟩(y) follow
+  without pT or mT bins.
+- **`BaryonStoppingEmulator`**: emulates `"dNdxF"`, `"meanpT_xF"`, `"dNdy"`
+  and `"meanmT_y"`; mean values are emulated directly.
+- `EmulatorLikelihood.add(..., emulator=...)`: datasets from several
+  emulators of the same scan (e.g. dN/dy and ⟨pT⟩(x_F)) in one likelihood.
 - **`MtSpectrum(y_min, y_max)`**: mT spectrum in a rapidity window, derived
   linearly (with covariance) from a `"hist2d"` emulator.
 - `DataHandler.reduce(mt_max, mt_group)` and `BulkEmulator(mt_max=...,
