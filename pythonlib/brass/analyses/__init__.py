@@ -6,6 +6,7 @@ from .bulk import Bulk
 from .bulk_observables import BulkObservables
 from .centrality import Centrality
 from .collision_counts import CollisionCounts
+from .cross_sections import CrossSections
 from .dileptons import Dileptons
 from .multiplicity_vs_time import MultiplicityVsTime
 from .reaction_counts import ReactionCounts
@@ -19,6 +20,7 @@ ANALYSES: dict[str, type[Analysis]] = {
     "collision-counts": CollisionCounts,
     "reaction-counts": ReactionCounts,
     "angular-distributions": AngularDistributions,
+    "cross-sections": CrossSections,
     "multiplicity-vs-time": MultiplicityVsTime,
 }
 
@@ -33,4 +35,5 @@ __all__ = [
     "ReactionCounts",
     "Centrality",
     "CollisionCounts",
+    "CrossSections",
 ]

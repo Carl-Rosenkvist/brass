@@ -13,6 +13,7 @@ command-line tools, and how to write your own analysis.
   - [`reaction-counts`](#reaction-counts-detailed-balance-of-reactions)
   - [`multiplicity-vs-time`](#multiplicity-vs-time-multiplicities-at-every-output-time)
   - [`angular-distributions`](#angular-distributions-dσdθ-and-dσdt-of-22-reactions)
+  - [`cross-sections`](#cross-sections-total-and-partial-cross-sections)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
 - [Reading the results](#reading-the-results)
 - [Combining results: `brass-merge`](#combining-results-brass-merge)
@@ -301,6 +302,39 @@ Each result has `dsigma_dtheta(channels)` and `dsigma_dt(channels)`, each
 `(bin centres, values)` in mb/rad and mb/GeV², summed over the given
 channels (default: all 2 → 2), with dσ/dθ = N_bin σ / (N_total Δθ) and σ the
 mean `sigma` of the interactions; plus `channels()`, `sigma` and `total`.
+
+### `cross-sections`: total and partial cross sections
+
+Cross sections from runs of one projectile and one target particle
+(Collider, `Impact: {Sample: uniform, Max: ...}`).
+
+- **Reads:** `collisions_binary.bin` or `collisions_custom.bin`, written with
+  `Print_Start_End: True` (the initial and final particles of each event)
+- **Needs quantities:** `t`, `x`, `y`, `z`, `p0`, `px`, `py`, `pz`, `pdg`, `id`
+- **Total:** the probability P(d) that the two initial particles interact,
+  in bins of their transverse distance d in the centre-of-mass frame, gives
+  σ = Σ_k P_k π (d²_{k+1} − d²_k). Empty bins take P interpolated from their
+  neighbours; beyond the largest distance no interaction is assumed.
+- **Per event** with an interaction of the two initial particles, the process
+  type and outgoing particles of that first interaction and the final-state
+  particles are recorded; partial cross sections are σ · N_selected / N_interacting.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--d-max D` | `Modi.Collider.Impact.Max` | Largest transverse distance in fm |
+| `--d-bins N` | `1000` | Bins in transverse distance |
+
+```bash
+brass cross-sections runs/* -o cross-sections.pkl
+```
+
+Each result (one per energy) has `total()`, `cross_section(select)` with
+`select(process, first_outgoing_pdgs, final_pdgs)`, `final_states()`,
+`first_channels()`, `process_types()` (elastic, resonance,
+parametrized-inelastic, soft-/hard-/failed-string, other) and
+`is_elastic` (final state equal to the initial one, not after a string),
+all as `(σ, error)` in mb, plus `sqrts`. In a pp run at √s = 3 GeV the total
+agrees with SMASH's own cross section within 0.3 %.
 
 ### `dileptons`: invariant-mass spectra
 

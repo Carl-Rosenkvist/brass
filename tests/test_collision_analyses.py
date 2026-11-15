@@ -223,3 +223,133 @@ def test_angular_distributions_merge(tmp_path):
     merged = results[0]["result"]
     assert merged.total == 2 and merged.events == 2
     assert merged.theta_counts[(PROTON, PROTON)].sum() == 2
+
+
+# --- cross sections -------------------------------------------------------
+
+from brass.analyses import CrossSections  # noqa: E402
+from brass.analyses.cross_sections import transverse_distance  # noqa: E402
+
+XS_QUANTITIES = ["t", "x", "y", "z", "p0", "px", "py", "pz", "pdg", "id"]
+PI0_PDG = 111
+
+
+def xs_particles(*rows):
+    """Rows (t, x, y, z, pdg, px, py, pz, mass, id)."""
+    rows = np.array(rows, dtype=float).reshape(-1, 10)
+    t, x, y, z, pdg, px, py, pz, mass, ids = rows.T
+    return {
+        "t": t, "x": x, "y": y, "z": z,
+        "p0": np.sqrt(mass**2 + px**2 + py**2 + pz**2), "px": px, "py": py, "pz": pz,
+        "pdg": pdg.astype(np.int32), "id": ids.astype(np.int32),
+    }
+
+
+def pp_initial(b, p=1.0):
+    return xs_particles((0, b / 2, 0, -2, PROTON, 0, 0, p, M_P, 0), (0, -b / 2, 0, 2, PROTON, 0, 0, -p, M_P, 1))
+
+
+def write_xs_run(folder, events):
+    """events: list of (b, process or None, final-state pdgs)."""
+    config = {"Modi": {"Collider": {"Sqrtsnn": 3.0, "Impact": {"Max": 2.0}}}}
+    with write_run(folder, XS_QUANTITIES, output="Collisions", config=config) as w:
+        for n, (b, process, final) in enumerate(events):
+            initial = pp_initial(b)
+            w.particles(initial, event=n)
+            if process is not None:
+                out = xs_particles(*[(1, 0, 0, 0, pdg, 0.1 * i, 0, 0.5, 1.0, 2 + i) for i, pdg in enumerate(final)])
+                w.interaction(initial, out, process=process, sigma=31.4)
+                w.particles(out, event=n)
+            else:
+                w.particles(initial, event=n)
+            w.end(event=n)
+
+
+def test_transverse_distance_is_frame_independent():
+    b, p, beta = 0.7, 1.0, 0.6
+    e = np.hypot(M_P, p)
+    x1, p1 = np.array([0, b / 2, 0, -2.0]), np.array([e, 0, 0, p])
+    x2, p2 = np.array([0, -b / 2, 0, 2.0]), np.array([e, 0, 0, -p])
+    assert transverse_distance(x1, p1, x2, p2) == pytest.approx(b)
+
+    gamma = 1 / np.sqrt(1 - beta**2)
+
+    def boost(v):  # along z into a frame moving with -beta
+        return np.array([gamma * (v[0] + beta * v[3]), v[1], v[2], gamma * (v[3] + beta * v[0])])
+
+    assert transverse_distance(boost(x1), boost(p1), boost(x2), boost(p2)) == pytest.approx(b)
+
+
+def test_cross_sections(tmp_path):
+    # black disc of radius 1 fm on a grid of impact parameters in [0, 2) fm
+    bs = (np.arange(400) + 0.5) * 2.0 / 400
+    events = []
+    for i, b in enumerate(bs):
+        if b >= 1.0:
+            events.append((b, None, ()))
+        elif i % 4 == 0:
+            events.append((b, 3, (NEUTRON, DELTA_PP)))                      # inelastic
+        elif i % 4 == 1:
+            events.append((b, 45, (PROTON, PROTON)))                         # string back to pp
+        else:
+            events.append((b, 1, (PROTON, PROTON)))                          # elastic
+    write_xs_run(tmp_path / "run", events)
+
+    args = analysis_args(CrossSections, "--d-bins", "200")
+    analysis = CrossSections(tmp_path / "run", args)
+    analysis.run()
+
+    assert analysis.n_events == 400 and analysis.initial == (PROTON, PROTON)
+    sigma, error = analysis.total()
+    assert sigma == pytest.approx(10 * np.pi * 1.0**2)  # P = 1 inside, 0 outside
+    assert error == pytest.approx(0.0)
+
+    elastic, _ = analysis.cross_section(analysis.is_elastic)
+    assert elastic == pytest.approx(sigma * 100 / 200)
+    finals = analysis.final_states()
+    assert finals[(PROTON, PROTON)][0] == pytest.approx(sigma * 150 / 200)
+    assert finals[(NEUTRON, DELTA_PP)][0] == pytest.approx(sigma * 50 / 200)
+    assert analysis.first_channels()[(NEUTRON, DELTA_PP)][0] == pytest.approx(sigma / 4)
+    types = analysis.process_types()
+    assert types["elastic"][0] == pytest.approx(sigma / 2)
+    assert types["resonance"][0] == pytest.approx(sigma / 4)
+    assert types["soft-string"][0] == pytest.approx(sigma / 4)
+
+
+def test_cross_sections_merge_and_partial_probability(tmp_path):
+    # half of the events at b < 1 interact: sigma = pi / 2 fm^2
+    bs = (np.arange(200) + 0.5) * 1.0 / 200
+    write_xs_run(tmp_path / "a", [(b, 1 if i % 2 else None, (PROTON, PROTON)) for i, b in enumerate(bs)])
+    write_xs_run(tmp_path / "b", [(b, 1 if i % 2 else None, (PROTON, PROTON)) for i, b in enumerate(bs)])
+    args = analysis_args(CrossSections, "--d-bins", "4")
+    results = AnalysisRunner(CrossSections, [tmp_path / "a", tmp_path / "b"], args=args, max_workers=1).run()
+    merged = results[0]["result"]
+    assert merged.n_events == 400
+    sigma, error = merged.total()
+    assert sigma == pytest.approx(10 * np.pi / 2, rel=1e-6)
+    assert error > 0
+
+
+def test_cross_sections_need_start_and_end(tmp_path):
+    with write_run(tmp_path / "run", XS_QUANTITIES, output="Collisions",
+                   config={"Modi": {"Collider": {"Impact": {"Max": 2.0}}}}) as w:
+        initial = pp_initial(0.5)
+        w.interaction(initial, initial, process=1)
+        w.end(event=0)
+    analysis = CrossSections(tmp_path / "run", analysis_args(CrossSections))
+    with pytest.raises(ValueError, match="Print_Start_End"):
+        analysis.run()
+
+
+def test_cross_sections_empty_bins_are_interpolated(tmp_path):
+    # every second bin inside the disc has no events; they must not count as P = 0
+    bs = [(2 * k + 0.5) * 0.1 for k in range(5)]  # centres of bins 0, 2, 4, 6, 8 of width 0.1
+    write_xs_run(tmp_path / "run", [(b, 1, (PROTON, PROTON)) for b in bs] + [(1.95, None, ())])
+    analysis = CrossSections(tmp_path / "run", analysis_args(CrossSections, "--d-bins", "20"))
+    analysis.run()
+    sigma, _ = analysis.total()
+    # P = 1 up to bin 8, interpolated to 0 at the next filled bin (19)
+    centres = (np.arange(20) + 0.5) * 0.1
+    prob = np.interp(centres, [0.05, 0.25, 0.45, 0.65, 0.85, 1.95], [1, 1, 1, 1, 1, 0])
+    expected = 10 * np.pi * (prob * np.diff(np.linspace(0, 2, 21) ** 2)).sum()
+    assert sigma == pytest.approx(expected)
