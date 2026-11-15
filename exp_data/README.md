@@ -20,3 +20,7 @@ The files `multiplicity_<pdg>.csv`, `meanpt_<pdg>.csv`, `meanmt_<pdg>.csv`, `AA/
 - Rows the original tables had commented out are not included; rows marked as missing (`*`) are left out.
 
 Use these files for overview comparisons, as the analysis suite did. Do not use them for fits, calibrations or publications without checking every point against the original publication.
+
+## HADES dilepton spectra
+
+The files `dilepton_mass_*`, `dilepton_pt_*` and `dilepton_y_*` in `pp/`, `pNb/`, `CC/` and `ArKCl/` are HADES dilepton spectra, also converted from the SMASH analysis suite's collection, with the same risks as above. They are HADES-acceptance-filtered measurements: compare them only with spectra passed through the HADES filter of the same beam time (`brass.haft` with the matching acceptance file and lepton momentum cuts). The pp and p+Nb spectra are cross sections (µb/GeV), the C+C and Ar+KCl spectra are yields per π⁰, with N_π⁰ = (N_π⁺ + N_π⁻)/2 as HADES defines it. Only statistical errors are given; the C+C systematic errors of the source were inconsistent and are left out. `cut` in the header gives mass windows (`m150_m470`: 0.15 < M < 0.47 GeV) or the pair-momentum cut of p+Nb (`m800`: p > 0.8 GeV, `m0_m800`: p < 0.8 GeV).

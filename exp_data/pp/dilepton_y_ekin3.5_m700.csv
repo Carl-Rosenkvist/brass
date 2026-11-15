@@ -1,0 +1,22 @@
+# observable: dilepton_y
+# system: pp
+# ekin: 3.5
+# cut: m700
+# quantity: dsigma/dy [mub]
+# ref: HADES
+# rapidity cut: 700 MeV and higher
+# Rapidity(y) dSIGMA/dy[mub] Y_ERR[mub]
+# from: smash-analysis-extras y_spectrum/pp/ekin3.5_m700_dileptons.exp
+y,value,value_stat_err
+0.420,0.000517,0.000239
+0.540,0.002390,0.000875
+0.660,0.003431,0.000709
+0.780,0.005193,0.000857
+0.900,0.008630,0.001444
+1.020,0.007940,0.001262
+1.140,0.007201,0.001273
+1.260,0.005566,0.001154
+1.380,0.003587,0.000908
+1.500,0.002845,0.000875
+1.620,0.002009,0.000714
+1.740,0.001553,0.000637

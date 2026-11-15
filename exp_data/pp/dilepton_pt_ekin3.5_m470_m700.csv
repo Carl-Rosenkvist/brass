@@ -1,0 +1,21 @@
+# observable: dilepton_pt
+# system: pp
+# ekin: 3.5
+# cut: m470_m700
+# quantity: dsigma/dpT [mub/GeV]
+# ref: HADES
+# pT cut: 470-700 MeV
+# Pt[GeV] dSIGMA/dPt[mub/GeV] Y_ERR[mub/GeV]
+# from: smash-analysis-extras pT_spectrum/pp/ekin3.5_m470_m700_dileptons.exp
+pt,value,value_stat_err
+0.040,0.007169,0.001930
+0.120,0.029810,0.003497
+0.200,0.029937,0.004275
+0.280,0.038987,0.003909
+0.360,0.023873,0.003052
+0.440,0.015591,0.002906
+0.520,0.013170,0.002341
+0.600,0.004556,0.001269
+0.680,0.002724,0.000972
+0.760,0.001009,0.000463
+0.840,0.001422,0.001185
