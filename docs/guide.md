@@ -15,6 +15,7 @@ command-line tools, and how to write your own analysis.
   - [`angular-distributions`](#angular-distributions-dσdθ-and-dσdt-of-22-reactions)
   - [`cross-sections`](#cross-sections-total-and-partial-cross-sections)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
+  - [`dilepton-spectra`](#dilepton-spectra-mass-pt-and-y-with-the-hades-filter)
 - [Reading the results](#reading-the-results)
 - [Combining results: `brass-merge`](#combining-results-brass-merge)
 - [Generating SMASH commands: `brass-scan`](#generating-smash-commands-brass-scan)
@@ -359,6 +360,45 @@ brass dileptons runs/* --bins 60 --mass-max 1.2 -o dileptons.pkl
 Each result has `values[channel]` (summed weights per bin), `edges[channel]`
 (bin edges) and `nevents`. Channels are named like `"113 -> -11 11"`
 (ρ⁰ → e⁺e⁻).
+
+### `dilepton-spectra`: mass, pT and y with the HADES filter
+
+Dilepton spectra per decay channel and per mother of the decaying particle
+(`pdg_mother1`), optionally passed through the HADES acceptance filter
+(`brass.haft`, a NumPy port of HAFT 2.0).
+
+- **Reads:** `Dileptons_*.bin`
+- **Needs quantities:** `p0`, `px`, `py`, `pz`, `pdg` (and `pdg_mother1` for
+  the mothers) in `Output.Dileptons`
+- Each dilepton decay is one pair, weighted with its shining weight. With
+  `--acceptance`, both leptons are smeared with the HADES resolution, pairs
+  below the opening angle or outside the lepton momentum range are dropped,
+  and the weight is multiplied by both single-lepton acceptances; all
+  kinematics then use the smeared momenta. Use the lab frame
+  (`Calculation_Frame: fixed target`).
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--acceptance FILE` | none | HADES single-lepton acceptance file (.acc) |
+| `--resolution 1\|2\|3` | `3` | HADES momentum resolution for files without resolution tables |
+| `--opening-angle DEG` | `9` | Minimal opening angle (with `--acceptance`) |
+| `--lepton-momentum MIN MAX` | `0 1000` | Lepton momentum range in GeV (with `--acceptance`) |
+| `--mass-bins`, `--mass-max`, `--pt-bins`, `--pt-max`, `--y-bins`, `--y-max` | 150/2, 80/2, 32/4 | Binning |
+| `--mass-windows E...` | `0 0.15 0.47 0.7` | Mass windows for `pt_<i>` and `y_<i>` |
+| `--pair-momentum-cut P` | `0.8` | Pair momentum for `mass_below` / `mass_above` |
+| `--seed N` | none | Random seed of the smearing |
+
+```bash
+brass dilepton-spectra runs/* --acceptance HadesSingleAcc-p35p-APR07-effgt5-RK-v2.acc \
+    --lepton-momentum 0.08 2.0 -o dileptons.pkl
+```
+
+Each result has `spectrum(name, channels=..., mothers=..., exclude_mothers=...)`,
+giving `(bin centres, dN/dx per event)` for the spectra `mass`, `pt`, `y`,
+`mass_below`, `mass_above`, `pt_<i>` and `y_<i>`; `channels()` (e.g.
+`"113 -> -11 11"`), `mothers(channel)` and `events`. For example
+`spectrum("mass", channels=["113 -> -11 11"], exclude_mothers=(223,))` is the
+ρ⁰ → e⁺e⁻ spectrum without ρ mesons from ω decays.
 
 ## Reading the results
 

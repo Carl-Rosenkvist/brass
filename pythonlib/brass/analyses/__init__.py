@@ -7,12 +7,14 @@ from .bulk_observables import BulkObservables
 from .centrality import Centrality
 from .collision_counts import CollisionCounts
 from .cross_sections import CrossSections
+from .dilepton_spectra import DileptonSpectra
 from .dileptons import Dileptons
 from .multiplicity_vs_time import MultiplicityVsTime
 from .reaction_counts import ReactionCounts
 
 ANALYSES: dict[str, type[Analysis]] = {
     "dileptons": Dileptons,
+    "dilepton-spectra": DileptonSpectra,
     "bulk": Bulk,
     "bulk-observables": BulkObservables,
     "baryon-stopping": BaryonStopping,
@@ -30,6 +32,7 @@ __all__ = [
     "BaryonStopping",
     "Bulk",
     "BulkObservables",
+    "DileptonSpectra",
     "Dileptons",
     "MultiplicityVsTime",
     "ReactionCounts",
