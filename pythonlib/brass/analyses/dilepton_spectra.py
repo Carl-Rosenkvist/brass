@@ -7,7 +7,6 @@ import numpy as np
 import brass
 from brass.haft import ELECTRON, POSITRON, HadesAcceptance
 
-FAR = 1.0e6
 Key = tuple[str, int]  # (decay channel, PDG of the decaying particle's mother)
 
 class DileptonSpectra(brass.Analysis):
