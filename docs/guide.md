@@ -7,6 +7,7 @@ command-line tools, and how to write your own analysis.
 - [Preparing SMASH runs](#preparing-smash-runs)
 - [Running analyses: `brass`](#running-analyses-brass)
   - [`bulk`](#bulk-rapidity-and-transverse-mass-spectra)
+  - [`bulk-observables`](#bulk-observables-multiplicities-yields-mean-pt-and-mt)
   - [`centrality`](#centrality-impact-parameter-and-multiplicity)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
 - [Reading the results](#reading-the-results)
@@ -151,6 +152,43 @@ Each result has `histograms[kind][pdg]` for the kinds `"xf"` (particles),
 Do not derive x_F observables from the `bulk` (y, mT) histogram: with its
 default bins dN/dx_F is off by 10–30 % and ⟨pT⟩(x_F) is biased by about as
 much as the string parameters change it.
+
+### `bulk-observables`: multiplicities, yields, mean pT and mT
+
+The observables of the SMASH analysis suite's energy scan, for each
+requested PDG code, from one pass of the histogram engine:
+
+- 4π multiplicity and dN/dy at midrapidity (|y| < 0.5),
+- ⟨pT⟩ and ⟨mT − m⟩ at midrapidity, exact (from pT- and mT − m-weighted
+  histograms, not from bin centres),
+- dN/dy, and d²N/(dpT dy) and d²N/(d(mT − m) dy) at midrapidity.
+
+Outer bins catch everything outside the plotted ranges, so the totals are
+exact. `mt0` (= mT − m) is a computed quantity that any histogram request can
+use, like `pt` and `mt`.
+
+- **Reads:** `particles_binary.bin` or `particles_custom.bin`
+- **Needs quantities:** `p0`, `px`, `py`, `pz`, `pdg` (`mass` is used if present)
+- **Counts every event**, including elastic ones (as the analysis suite did);
+  `--skip-elastic` skips and does not count events with exactly two particles.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--pdgs PDG...` | required | PDG codes to analyze |
+| `--add-pdgs PDG...` | none | Add species, as for `bulk` |
+| `--y-range MIN MAX`, `--y-bins N` | `-4 4`, `40` | Rapidity spectrum |
+| `--midrapidity Y` | `0.5` | Midrapidity is \|y\| < Y |
+| `--pt-edges E...`, `--mt0-edges E...` | 0 … 3.2 GeV | Bin edges of the midrapidity spectra |
+| `--skip-elastic` | off | Skip two-particle events |
+
+```bash
+brass bulk-observables runs/* --pdgs 211 -211 321 -321 2212 -2212 3122 3212 -o bulk-observables.pkl
+```
+
+Each result has `observables(pdg)` (or `observables([pdg1, pdg2])` to add
+species), a dictionary with `total_multiplicity`, `midrapidity_yield`,
+`meanpt`, `meanmt`, and `yspectra`, `ptspectra`, `mtspectra` as
+`(bin centres, values)`, all per event; `events` is the number of events.
 
 ### `centrality`: impact parameter and multiplicity
 
