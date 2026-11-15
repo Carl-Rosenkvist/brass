@@ -4,6 +4,7 @@ from .baryon_stopping import BaryonStopping
 from .bulk import Bulk
 from .bulk_observables import BulkObservables
 from .centrality import Centrality
+from .collision_counts import CollisionCounts
 from .dileptons import Dileptons
 
 ANALYSES: dict[str, type[Analysis]] = {
@@ -12,6 +13,7 @@ ANALYSES: dict[str, type[Analysis]] = {
     "bulk-observables": BulkObservables,
     "baryon-stopping": BaryonStopping,
     "centrality": Centrality,
+    "collision-counts": CollisionCounts,
 }
 
 __all__ = [
@@ -21,4 +23,5 @@ __all__ = [
     "BulkObservables",
     "Dileptons",
     "Centrality",
+    "CollisionCounts",
 ]

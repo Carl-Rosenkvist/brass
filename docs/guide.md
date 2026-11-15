@@ -9,6 +9,7 @@ command-line tools, and how to write your own analysis.
   - [`bulk`](#bulk-rapidity-and-transverse-mass-spectra)
   - [`bulk-observables`](#bulk-observables-multiplicities-yields-mean-pt-and-mt)
   - [`centrality`](#centrality-impact-parameter-and-multiplicity)
+  - [`collision-counts`](#collision-counts-interactions-by-process-type)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
 - [Reading the results](#reading-the-results)
 - [Combining results: `brass-merge`](#combining-results-brass-merge)
@@ -206,6 +207,27 @@ brass centrality runs/* -o centrality.pkl
 
 Each result has `impact_parameters` and `charged_multiplicities`, two lists
 with one entry per event.
+
+### `collision-counts`: interactions by process type
+
+Counts the interactions of the collision output by (process type, number of
+incoming, number of outgoing particles), e.g. to compare the scattering rate
+of a box with the expected one.
+
+- **Reads:** `collisions_binary.bin` or `collisions_custom.bin`
+- **Needs quantities:** `t` (in `Output.Collisions`)
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--t-start T` | none | Count only interactions after time T (fm), the time of the first incoming particle |
+
+```bash
+brass collision-counts runs/* --t-start 5 -o collision-counts.pkl
+```
+
+Each result has `counts_for(process=..., n_in=..., n_out=...)` (any argument
+can be left out) and `events`. The process types are SMASH's: 1 elastic,
+2 2→1, 3 2→2, 5 decay, 6 wall crossing, 41–49 strings, ...
 
 ### `dileptons`: invariant-mass spectra
 
