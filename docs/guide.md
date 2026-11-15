@@ -12,6 +12,7 @@ command-line tools, and how to write your own analysis.
   - [`collision-counts`](#collision-counts-interactions-by-process-type)
   - [`reaction-counts`](#reaction-counts-detailed-balance-of-reactions)
   - [`multiplicity-vs-time`](#multiplicity-vs-time-multiplicities-at-every-output-time)
+  - [`angular-distributions`](#angular-distributions-dσdθ-and-dσdt-of-22-reactions)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
 - [Reading the results](#reading-the-results)
 - [Combining results: `brass-merge`](#combining-results-brass-merge)
@@ -273,6 +274,33 @@ statistical error, e.g. to see when a box reaches equilibrium.
 
 Each result has `times`, `mean(pdg)` and `error(pdg)` (√(variance / (events − 1)))
 and `events`. Counts include test particles.
+
+### `angular-distributions`: dσ/dθ and dσ/d|t| of 2→2 reactions
+
+Angular distributions of the 2 → 2 reactions of one colliding pair, e.g.
+NN → NN and NN → NΔ in elementary collisions in the centre-of-mass frame.
+
+- **Reads:** `collisions_binary.bin` or `collisions_custom.bin`
+- **Needs quantities:** `p0`, `px`, `py`, `pz`, `pdg` (in `Output.Collisions`)
+- θ is the polar angle of the first outgoing particle in the frame of the
+  output, and |t| = |(p_in[0] − p_out[0])²|. Every interaction of the pair
+  counts towards the total; 2 → 2 ones are histogrammed per channel (sorted
+  outgoing PDGs).
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--incoming PDG1 PDG2` | required | The colliding pair, in either order |
+| `--theta-bins N` | `30` | Bins over [0, π] |
+| `--t-bins N`, `--t-max T` | `50`, 4 p_cm² | \|t\| binning; the default maximum is the elastic one, from the first interaction |
+
+```bash
+brass angular-distributions runs/* --incoming 2212 2212 -o angular.pkl
+```
+
+Each result has `dsigma_dtheta(channels)` and `dsigma_dt(channels)`, each
+`(bin centres, values)` in mb/rad and mb/GeV², summed over the given
+channels (default: all 2 → 2), with dσ/dθ = N_bin σ / (N_total Δθ) and σ the
+mean `sigma` of the interactions; plus `channels()`, `sigma` and `total`.
 
 ### `dileptons`: invariant-mass spectra
 

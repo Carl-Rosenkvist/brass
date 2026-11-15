@@ -159,3 +159,67 @@ def test_multiplicity_vs_time(tmp_path):
     np.testing.assert_allclose(analysis.mean(PI0), [1, 1, 1])
     # sample std / sqrt(n): event counts (2, 4) -> std 1.414, error 1
     np.testing.assert_allclose(analysis.error(PIP), [1, 0, 1])
+
+
+# --- angular distributions ------------------------------------------------
+
+from brass.analyses import AngularDistributions  # noqa: E402
+
+PROTON, DELTA_PP, NEUTRON = 2212, 2224, 2112
+M_P = 0.938
+
+
+def nn_scattering(writer, theta, p=0.5, out=(PROTON, PROTON), masses=(M_P, M_P), sigma=40.0, process=1):
+    """pp -> out in the centre-of-mass frame; the first outgoing particle at angle theta."""
+    incoming = particles(1.0, (PROTON, 0, 0, p, M_P), (PROTON, 0, 0, -p, M_P))
+    px, pz = p * np.sin(theta), p * np.cos(theta)
+    outgoing = particles(1.0, (out[0], px, 0, pz, masses[0]), (out[1], -px, 0, -pz, masses[1]))
+    writer.interaction(incoming, outgoing, sigma=sigma, process=process)
+
+
+def test_angular_distributions(tmp_path):
+    with write_run(tmp_path / "run", QUANTITIES, output="Collisions") as w:
+        nn_scattering(w, 0.05)                        # elastic, first theta bin
+        nn_scattering(w, 0.05)
+        nn_scattering(w, 1.6)                         # elastic, bin 15
+        nn_scattering(w, 0.05, out=(NEUTRON, DELTA_PP), masses=(0.938, 1.232), process=3)
+        three = particles(1.0, (PROTON, 0, 0, 0.1, M_P), (PROTON, 0, 0, -0.1, M_P), (111, 0, 0, 0, 0.138))
+        w.interaction(particles(1.0, (PROTON, 0, 0, 0.5, M_P), (PROTON, 0, 0, -0.5, M_P)), three, sigma=40.0)
+        pion_p = particles(1.0, (211, 0, 0, 0.3, 0.138), (PROTON, 0, 0, -0.3, M_P))
+        w.interaction(pion_p, pion_p, sigma=100.0, process=1)  # other incoming pair: ignored
+        w.end(event=0)
+
+    args = analysis_args(AngularDistributions, "--incoming", "2212", "2212")
+    analysis = AngularDistributions(tmp_path / "run", args)
+    analysis.run()
+
+    assert analysis.total == 5  # four 2 -> 2 and one 2 -> 3
+    assert analysis.channels() == [(NEUTRON, DELTA_PP), (PROTON, PROTON)]
+    assert analysis.sigma == pytest.approx(40.0)
+
+    dtheta = np.pi / 30
+    theta, elastic = analysis.dsigma_dtheta([(PROTON, PROTON)])
+    assert elastic[0] == pytest.approx(2 * 40.0 / (5 * dtheta))
+    assert elastic[15] == pytest.approx(40.0 / (5 * dtheta))
+    _, everything = analysis.dsigma_dtheta()
+    assert everything[0] == pytest.approx(3 * 40.0 / (5 * dtheta))
+
+    # elastic t_max = 4 p_cm^2 = 1; |t| of theta = 0.05 is 2 p^2 (1 - cos theta)
+    assert analysis.t_edges[-1] == pytest.approx(1.0)
+    t, dsdt = analysis.dsigma_dt([(PROTON, PROTON)])
+    t_small = 2 * 0.25 * (1 - np.cos(0.05))
+    assert dsdt[int(t_small / 0.02)] == pytest.approx(2 * 40.0 / (5 * 0.02))
+    # integrating over theta gives the 2 -> 2 share of sigma
+    assert (everything * dtheta).sum() == pytest.approx(4 / 5 * 40.0)
+
+
+def test_angular_distributions_merge(tmp_path):
+    for name in ("a", "b"):
+        with write_run(tmp_path / name, QUANTITIES, output="Collisions") as w:
+            nn_scattering(w, 0.5)
+            w.end(event=0)
+    args = analysis_args(AngularDistributions, "--incoming", "2212", "2212")
+    results = AnalysisRunner(AngularDistributions, [tmp_path / "a", tmp_path / "b"], args=args, max_workers=1).run()
+    merged = results[0]["result"]
+    assert merged.total == 2 and merged.events == 2
+    assert merged.theta_counts[(PROTON, PROTON)].sum() == 2

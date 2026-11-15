@@ -1,5 +1,6 @@
 from brass.analysis import Analysis
 
+from .angular_distributions import AngularDistributions
 from .baryon_stopping import BaryonStopping
 from .bulk import Bulk
 from .bulk_observables import BulkObservables
@@ -17,11 +18,13 @@ ANALYSES: dict[str, type[Analysis]] = {
     "centrality": Centrality,
     "collision-counts": CollisionCounts,
     "reaction-counts": ReactionCounts,
+    "angular-distributions": AngularDistributions,
     "multiplicity-vs-time": MultiplicityVsTime,
 }
 
 __all__ = [
     "ANALYSES",
+    "AngularDistributions",
     "BaryonStopping",
     "Bulk",
     "BulkObservables",
