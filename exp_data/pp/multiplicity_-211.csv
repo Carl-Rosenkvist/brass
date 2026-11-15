@@ -1,0 +1,30 @@
+# observable: multiplicity
+# pdg: -211
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_piminus.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+2.98329,0.2,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+3.49285,0.29,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+4.9295,0.63,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+5.02991,0.75,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+5.09902,0.72,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+5.96657,0.98,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.11555,1.01,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.37966,1.08,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.84105,1.08,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.84178,1.13,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.86294,1.11,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+7.42967,1.21,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+13.784,2.19,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+19.4936,2.82,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+22.0227,2.98,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+30.9839,3.44,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+45,4.04,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0094,4.2,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0104,4.31,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.27,1.067,,0.053,0.196,na61/shine
+7.62,1.438,,0.219,0.187,na61/shine
+8.8,1.703,,0.192,0.213,na61/shine
+12.3,2.03,,0.248,0.132,na61/shine
+17.3,2.494,,0.259,0.179,na61/shine

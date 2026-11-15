@@ -1,0 +1,26 @@
+# observable: midy
+# pdg: 3122
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_lambda.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+3.325,3.6,0.2,,,"E891, PLB382(1996)35 \cite{Ahmad:1991nv}"
+4.305,10.1,0.25,,,"E891, PLB382(1996)35 \cite{Ahmad:1991nv}"
+4.915,10,1,,,"E891, PLB382(1996)35 \cite{Ahmad:1991nv}"
+7.735,16.5,0.2,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+8.865,15.5,1,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+12.395,13,1,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+17.435,12,2,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+17.435,15,1.5,,,NA57
+6.405,13.4,1.1,,,"NA49, http://arxiv.org/0804.3770, \cite{Alt:2008qm}"
+7.735,14.7,1.2,,,"NA49, http://arxiv.org/0804.3770, \cite{Alt:2008qm}"
+8.865,14.6,1.2,,,"NA49, http://arxiv.org/0804.3770, \cite{Alt:2008qm}"
+12.395,12.9,1,,,"NA49, http://arxiv.org/0804.3770, \cite{Alt:2008qm}"
+17.435,9.5,1,,,"NA49, http://arxiv.org/0804.3770, \cite{Alt:2008qm}"
+7.7,15.3,0.2,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+11.5,14.2,0.2,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+19.6,12.6,0.2,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+27,11.6,0.2,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+39,10.9,0.2,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+130,12.3,2.5,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"
+200,14.8,3,,,"STAR, extracted from Fig. 19, https://arxiv.org/abs/1906.03732, \cite{Adam:2019koz}"

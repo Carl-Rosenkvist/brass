@@ -1,0 +1,27 @@
+# observable: midy
+# pdg: -321
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_kminus.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+3.325,0.19,0.01,,,"E866, PLB490(2000)53 \cite{Ahle:2000wq}"
+3.845,0.61,0.02,,,"E866, PLB490(2000)53 \cite{Ahle:2000wq}"
+4.305,1.26,0.04,,,"E866, PLB490(2000)53 \cite{Ahle:2000wq}"
+4.915,2.21,0.03,,,"E866, PLB490(2000)53 \cite{Ahle:2000wq}"
+6.405,4.8,0.05,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+7.735,6.8,0.15,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+8.865,7.58,0.4,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+12.395,11.7,0.6,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+17.435,16.8,0.8,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+130,40.5,2.3,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,43,1,,,"BRAHMS NPA715, 478 (2003) \cite{Ouerdane:2002gm}"
+200,49.5,7.4,,,star PRL 92 (2004) 112301 \cite{Adams:2003xp}
+7.7,7.69272,0.626932,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,12.3443,1.23705,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,18.8266,1.89743,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,22.6235,2.06408,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+39,25.0124,2.27807,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+9.2,8.7,2,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,32.4,2.3,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2760,109,10,,,"Mid-rapidity (|y|<0.5), yield of kminus 0–5% centrality, Pb+Pb"
+5020,137,6,,,"Mid-rapidity (|y|<0.5), yield of kminus 0–5% centrality, Pb+Pb"

@@ -1,0 +1,17 @@
+# observable: multiplicity
+# pdg: 3312
+# system: AA
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/AA/ally_xi.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+3.845,0.175,0.05,,,"E895, PRL 91 (2003) 202301 \cite{Chung:2003zr}"
+6.405,1.5,0.13,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+7.735,2.48,0.19,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+8.865,2.41,0.24,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+12.395,3.8,0.26,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+17.435,4.45,0.22,,,"NA49, PLB 538, 275 \cite{Afanasiev:2002he}"
+6.405,1.5,0.17,,,"NA49, http://arxiv.org/0804.3770"
+7.735,2.42,0.29,,,"NA49, http://arxiv.org/0804.3770"
+8.865,2.96,0.36,,,"NA49, http://arxiv.org/0804.3770"
+12.395,3.8,0.16,,,"NA49, http://arxiv.org/0804.3770"
+17.435,4.04,0.57,,,"NA49, http://arxiv.org/0804.3770"

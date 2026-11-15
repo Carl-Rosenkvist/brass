@@ -1,0 +1,20 @@
+# observable: multiplicity
+# pdg: 3122
+# system: AA
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/AA/ally_lambda.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+2.695,0.5,0.4,,,"E895, Nucl. Phys.  A 698 (2002) 495 \cite{Pinkenburg:2001fj}"
+3.325,5.5,0.5,,,"E895, Nucl. Phys.  A 698 (2002) 495 \cite{Pinkenburg:2001fj}"
+3.845,12.5,0.5,,,"E895, Nucl. Phys.  A 698 (2002) 495 \cite{Pinkenburg:2001fj}"
+4.305,16,0.5,,,"E895, Nucl. Phys.  A 698 (2002) 495 \cite{Pinkenburg:2001fj}"
+6.405,28,1.5,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+7.735,41.9,4,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+8.865,43,3.4,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+12.395,44.7,3.2,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+17.435,44.9,5.4,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+6.405,27.1,2.2,,,"NA49, http://arxiv.org/0804.3770"
+7.735,36.9,3.3,,,"NA49, http://arxiv.org/0804.3770"
+8.865,43.1,4.3,,,"NA49, http://arxiv.org/0804.3770"
+12.395,50.1,5.5,,,"NA49, http://arxiv.org/0804.3770"
+17.435,44.9,8,,,"NA49, http://arxiv.org/0804.3770"

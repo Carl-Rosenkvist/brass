@@ -1,0 +1,17 @@
+# observable: meanpt
+# pdg: 321
+# system: AA
+# quantity: <pT> at midrapidity [GeV]
+# from: smash-analysis-extras mean_pT/AA/midy_kplus.exp
+sqrtsnn,meanpt,meanpt_err,meanpt_stat_err,meanpt_sys_err,source
+130,0.56,0.04,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+7.7,0.576,0.024,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,0.585,0.03,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,0.59,0.0359,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,0.6031,0.0367,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+39,0.6129,0.0373,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+9.2,0.59,0.112,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,0.646,0.029,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+200,0.72,0.074,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2760,0.876,0.026,,,"Mean pT of kplus at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"
+5020,0.9177,0.015,,,"Mean pT of kplus at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"

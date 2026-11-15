@@ -1,0 +1,20 @@
+# observable: multiplicity
+# pdg: -3122
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_antilambda.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+4.93359,0.0001,4e-05,,,
+6.84237,0.0007,0.0002,,,
+11.4549,0.005,0,,,
+13.7611,0.008,0,,,
+13.8968,0.005,0,,,
+16.6595,0.025,0,,,
+17.4,0.0137,0,,,
+19.4156,0.02,0,,,
+19.6556,0.012,0,,,
+23.7605,0.02,0,,,
+23.7605,0.031,0,,,
+26.0216,0.013,0,,,
+27.4256,0.013,0,,,
+27.596,0.02,0,,,

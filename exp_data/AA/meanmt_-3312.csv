@@ -1,0 +1,14 @@
+# observable: meanmt
+# pdg: -3312
+# system: AA
+# quantity: <mT> - m0 at midrapidity [GeV]
+# from: smash-analysis-extras mean_mT/AA/midy_antixi.exp
+sqrtsnn,meanmt,meanmt_err,meanmt_stat_err,meanmt_sys_err,source
+7.735,0.399,0.062,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+8.865,0.371,0.036,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+12.395,0.365,0.04,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+17.435,0.343,0.056,,,"NA49, PLB 538, 275 \cite{Afanasiev:2002he}"
+7.735,0.326,0.06,,,"NA49, http://arxiv.org/0804.3770"
+8.865,0.337,0.036,,,"NA49, http://arxiv.org/0804.3770"
+12.395,0.298,0.038,,,"NA49, http://arxiv.org/0804.3770"
+17.435,0.384,0.038,,,"NA49, http://arxiv.org/0804.3770"

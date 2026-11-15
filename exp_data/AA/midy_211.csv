@@ -1,0 +1,30 @@
+# observable: midy
+# pdg: 211
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_piplus.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+2.695,14.1,0.5,,,"E866, PLB476(2000)2 \cite{Ahle:1999uy}"
+3.325,26.4,0.4,,,"E866, PLB476(2000)2 \cite{Ahle:1999uy}"
+3.845,38.9,0.5,,,"E866, PLB476(2000)2 \cite{Ahle:1999uy}"
+4.305,49.7,0.7,,,"E866, PLB476(2000)2 \cite{Ahle:1999uy}"
+4.915,57.1,0.8,,,"E866, PLB476(2000)2 \cite{Ahle:1999uy}"
+2.695,12.229,2.157,,,E895 PRC 68 054905 \cite{Klay:2003zf}
+3.325,27.647,3.539,,,E895 PRC 68 054905 \cite{Klay:2003zf}
+3.845,37.62,4.436,,,E895 PRC 68 054905 \cite{Klay:2003zf}
+4.305,46.103,5.655,,,E895 PRC 68 054905 \cite{Klay:2003zf}
+8.865,96.6,6,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+12.395,132,7,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+17.435,170.1,9,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+130,276,3,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,300,10,,,BRAHMS JPG 30 S85 (2004) \cite{Lee:2004bx}
+200,322,32,,,"confirmed (17.04.2019, Dima) from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html"
+7.7,93.4598,8.45672,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,123.781,12.5359,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,161.395,17.9484,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,172.972,19.1314,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+39,182.28,20.1775,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+9.2,100.3,10.9,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,233,17.1,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2760,733,58,,,"Mid-rapidity (|y|<0.5), yield of piplus 0–5% centrality, Pb+Pb"
+5020,850,59,,,"Mid-rapidity (|y|<0.5), yield of piplus 0–5% centrality, Pb+Pb"

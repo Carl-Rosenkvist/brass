@@ -1,0 +1,11 @@
+# observable: meanpt
+# pdg: 2212
+# system: pp
+# quantity: <pT> at midrapidity [GeV]
+# from: smash-analysis-extras mean_pT/pp/midy_proton.exp
+sqrtsnn,meanpt,meanpt_err,meanpt_stat_err,meanpt_sys_err,source
+130,0.88,0.04,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+900,0.768,,0.008,0.06,"ALICE EPJ C71, 1655 (2011)"
+2700,0.94,,0.009,0.02,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+7000,1.06,,0.01,0.06,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+5020,0.882,0.05,,,"Mean pT of proton at mid-rapidity (|y|<0.5), 0–5% centrality, pp"

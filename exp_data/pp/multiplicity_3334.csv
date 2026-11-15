@@ -1,0 +1,7 @@
+# observable: multiplicity
+# pdg: 3334
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_omega.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+17.4,0.00026,0.00013,,,e	om

@@ -1,0 +1,30 @@
+# observable: midy
+# pdg: 2212
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_proton.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+2.695,79.12,0.301,,,"doi:10.1103/PhysRevLett.88.102301, \cite{Klay:2001tf}"
+3.325,71.247,0.18,,,"doi:10.1103/PhysRevLett.88.102301, \cite{Klay:2001tf}"
+3.845,61.996,0.185,,,"doi:10.1103/PhysRevLett.88.102301, \cite{Klay:2001tf}"
+4.305,60.8,4.957,,,"doi:10.1103/PhysRevLett.88.102301, \cite{Klay:2001tf}"
+130,17.2,2,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,20.8,4,,,star PRL 92 (2004) 112301 \cite{Adams:2003xp}
+7.7,54.9625,6.06636,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,43.9998,5.29946,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,34.2225,4.4677,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,31.7381,3.81515,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+39,26.4988,2.92656,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+9.2,48.6,9.4,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,29,3.8,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+6.405,46.1,2.1,,,"Midrapidity: 1.5 < y < 2.2 at 20 AGeV (yc.m.=1.88),"
+7.735,42.1,2,,,"Midrapidity: 1.5 < y < 2.2 at 20 AGeV (yc.m.=1.88),"
+8.865,41.3,1.1,,,"Midrapidity: 1.5 < y < 2.2 at 20 AGeV (yc.m.=1.88),"
+12.395,30.1,1,,,"Midrapidity: 1.5 < y < 2.2 at 20 AGeV (yc.m.=1.88),"
+17.435,29.6,0.9,,,"Midrapidity: 1.5 < y < 2.2 at 20 AGeV (yc.m.=1.88),"
+8.865,38.64,1.11,,,"Midrapidity, -0.02 < y - yc.m. < 0.18 at 40 AGeV, -0.12 < y < 0.08 at 160 AGeV"
+17.435,27.51,1.09,,,"Midrapidity, -0.02 < y - yc.m. < 0.18 at 40 AGeV, -0.12 < y < 0.08 at 160 AGeV"
+2.4,62,5,,,Midrapidity (|y| < 0.2)
+4.9,55,5,,,"Combined 0-3%, 3-7%, 7-12% centrality bins, error increased to account for possible problems with combining"
+2760,34,3,,,"Mid-rapidity (|y|<0.5), yield of proton 0–5% centrality, Pb+Pb"
+5020,37.3,1.9,,,"Mid-rapidity (|y|<0.5), yield of proton 0–5% centrality, Pb+Pb"

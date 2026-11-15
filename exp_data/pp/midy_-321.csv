@@ -1,0 +1,16 @@
+# observable: midy
+# pdg: -321
+# system: pp
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/pp/midy_kminus.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+200,0.137,0.006,,,pp-> k-
+900,0.182,,0.004,0.015,pp-> k-
+6.27,0.01413,,0.0021,0.00155,na61/sh
+7.62,0.02504,,0.00167,0.00188,na61/sh
+8.8,0.03524,,0.00262,0.00109,na61/sh
+12.3,0.03845,,0.00135,0.00125,na61/sh
+17.3,0.04726,,0.00586,0.00327,na61/sh
+2700,0.294,,0.004,0.009,"CMS  EPJ C72, 2164 (2012) Fig. 17  \cite{Chatrchyan:2012qb}"
+7000,0.385,,0.006,0.012,"CMS  EPJ C72, 2164 (2012) Fig. 17  \cite{Chatrchyan:2012qb}"
+5020,0.267,0.014,,,"Mean pT of kminus at mid-rapidity (|y|<0.5), 0–5% centrality, Pb+Pb"

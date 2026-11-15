@@ -1,0 +1,20 @@
+# observable: multiplicity
+# pdg: -2212
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_antiproton.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+6.14817,0.0023,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.84105,0.004,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+8.19756,0.005,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+9,0.008,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+10,0.011,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+11.5326,0.015,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+22.0227,0.061,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+30.9839,0.11,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+45,0.15,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0104,0.16,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+7.62,0.0047,,0.0007,0.0003,na61/shine
+8.8,0.0059,,0.0006,0.0004,na61/shine
+12.3,0.0183,,0.0015,0.0011,na61/shine
+17.3,0.0402,,0.002,0.0026,na61/shine

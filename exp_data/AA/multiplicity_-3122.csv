@@ -1,0 +1,16 @@
+# observable: multiplicity
+# pdg: -3122
+# system: AA
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/AA/ally_antilambda.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+6.405,0.16,0.03,,,"NA49, J. Phys. G 31, (2005) S685 \cite {Blume:2004ci}"
+7.735,0.5,0.04,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+8.865,0.66,0.06,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+12.395,2.02,0.2,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+17.435,3.68,0.38,,,"NA49, PRL 93,022302 (2004) \cite{Anticic:2003ux}"
+6.405,0.16,0.03,,,"NA49, http://arxiv.org/0804.3770"
+7.735,0.39,0.04,,,"NA49, http://arxiv.org/0804.3770"
+8.865,0.68,0.07,,,"NA49, http://arxiv.org/0804.3770"
+12.395,1.82,0.19,,,"NA49, http://arxiv.org/0804.3770"
+17.435,3.07,0.31,,,"NA49, http://arxiv.org/0804.3770"

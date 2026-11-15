@@ -1,0 +1,18 @@
+# observable: multiplicity
+# pdg: 2212
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_proton.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+3.49285,1.56,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+4.9295,1.68,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+5.00999,1.55,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.11555,1.41,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.14817,1.69,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.84105,1.64,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.84178,1.59,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+22.0227,1.28,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+30.9839,1.34,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+45,1.41,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0094,1.4,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0104,1.44,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"

@@ -1,0 +1,14 @@
+# observable: midy
+# pdg: -3122
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_antilambda.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+8.865,0.42,0.03,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+12.395,1.06,0.1,,,"NA49, JPG28 1761 (2002) \cite{Mischke:2002wt}"
+17.435,1.81,0.2,,,NA57
+6.405,0.1,0.02,,,"NA49, http://arxiv.org/0804.3770"
+7.735,0.21,0.02,,,"NA49, http://arxiv.org/0804.3770"
+8.865,0.33,0.03,,,"NA49, http://arxiv.org/0804.3770"
+12.395,0.82,0.08,,,"NA49, http://arxiv.org/0804.3770"
+17.435,1.24,0.13,,,"NA49, http://arxiv.org/0804.3770"

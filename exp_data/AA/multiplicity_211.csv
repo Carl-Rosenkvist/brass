@@ -1,0 +1,15 @@
+# observable: multiplicity
+# pdg: 211
+# system: AA
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/AA/ally_piplus.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+2.695,19.2,2,,,
+3.325,46.3,4.5,,,
+3.845,75.7,3.4,,,
+4.305,95.9,6.1,,,
+6.405,190,9,,,"NA49, arXiv:0710.0118 [nucl-ex] \cite{:2007fe}"
+7.735,241,12,,,"NA49, arXiv:0710.0118 [nucl-ex] \cite{:2007fe}"
+8.865,293,15,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+12.395,446,22,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"
+17.435,619,31,,,"NA49, PRC66 054902 (2002) \cite{Afanasiev:2002mx}"

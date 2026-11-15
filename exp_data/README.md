@@ -7,3 +7,16 @@ The data has been collected from various sources over time. References are inclu
 The files are provided as-is and should be used at your own risk. For scientific or publication use, the data should be checked against the original experimental publications.
 
 Corrections and additional references are welcome.
+
+## Energy-scan data from the SMASH analysis suite
+
+The files `multiplicity_<pdg>.csv`, `meanpt_<pdg>.csv`, `meanmt_<pdg>.csv`, `AA/midy_<pdg>.csv` and `pp/midy_-321.csv` (4π multiplicities, midrapidity yields, mean pT and mean mT − m0 against √s_NN) were converted from the internal data collection of the SMASH analysis suite, which was never meant to be published as a data set. The same risks apply, and more so:
+
+- The tables were gathered by hand over many years. Values were typed or read off figures; transcription errors are possible and have not been searched for systematically.
+- References are only the comment line a value was listed under in the original table (the `source` column). Some are incomplete, informal (e.g. `na61/shine`) or missing, and a few may belong to neighbouring rows.
+- Uncertainties are as given there: sometimes total, sometimes statistical and systematic separately (`*_stat_err`, `*_sys_err`), sometimes zero when none was recorded. Asymmetric or correlated errors are not represented.
+- `AA` mixes Au+Au and Pb+Pb, different centrality selections and detector acceptances at similar energies, as the analysis suite did for its overview plots. The files do not say which centrality a point belongs to.
+- Collision energies are given as in the original tables and may be rounded or quoted per nucleon pair inconsistently between experiments.
+- Rows the original tables had commented out are not included; rows marked as missing (`*`) are left out.
+
+Use these files for overview comparisons, as the analysis suite did. Do not use them for fits, calibrations or publications without checking every point against the original publication.

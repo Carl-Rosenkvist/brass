@@ -1,0 +1,25 @@
+# observable: meanmt
+# pdg: 321
+# system: AA
+# quantity: <mT> - m0 at midrapidity [GeV]
+# from: smash-analysis-extras mean_mT/AA/midy_kplus.exp
+sqrtsnn,meanmt,meanmt_err,meanmt_stat_err,meanmt_sys_err,source
+39,0.3256,,0.0001,0.0195,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,0.3178,,0.0002,0.0191,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,0.3072,,0.0002,0.0184,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,0.3035,,0.0005,0.0152,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+7.7,0.2963,,0.0005,0.0148,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+200,0.46,0.047,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+130,0.361,0.016,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,0.385,0.017,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+17.3,0.325,0.02,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+12.3,0.308,0.018,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+9.2,0.307,0.058,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+8.76,0.306,0.018,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+7.62,0.331,0.02,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+6.27,0.292,0.018,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+4.87,0.264,0.008,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+4.29,0.287,0.022,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+3.83,0.27,0.016,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+3.32,0.197,0.011,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2.68,0.168,0.01,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html

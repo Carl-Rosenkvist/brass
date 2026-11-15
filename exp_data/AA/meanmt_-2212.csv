@@ -1,0 +1,24 @@
+# observable: meanmt
+# pdg: -2212
+# system: AA
+# quantity: <mT> - m0 at midrapidity [GeV]
+# from: smash-analysis-extras mean_mT/AA/midy_antiproton.exp
+sqrtsnn,meanmt,meanmt_err,meanmt_stat_err,meanmt_sys_err,source
+8.865,0.355,0.035,,,"NA49, NPA 715, 161 \cite{Afanasiev:2002fk}"
+12.395,0.378,0.045,,,"NA49, NPA 715, 161 \cite{Afanasiev:2002fk}"
+17.435,0.381,0.018,,,"NA49, NPA 661, 383 \cite{Veres:1999ip}"
+39,0.3811,,0.0002,0.0419,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,0.368,,0.0004,0.0331,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,0.357,,0.0004,0.0321,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,0.332,,0.0012,0.0265,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+7.7,0.319,,0.0049,0.0218,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+2760,0.763,0.019,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+200,0.534,0.055,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+130,0.52,0.045,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+62.4,0.48,0.03,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+17.3,0.384,0.019,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+12.3,0.385,0.041,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+8.8,0.355,0.051,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+7.62,0.395,0.06,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+6.27,0.394,0.06,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"
+5.4,0.338,0.043,,,"World data from Lokesh Kumar [STAR], Fig. 22 of arxiv.org/pdf/1701.07065.pdf"

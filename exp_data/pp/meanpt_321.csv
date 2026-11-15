@@ -1,0 +1,24 @@
+# observable: meanpt
+# pdg: 321
+# system: pp
+# quantity: <pT> at midrapidity [GeV]
+# from: smash-analysis-extras mean_pT/pp/midy_kplus.exp
+sqrtsnn,meanpt,meanpt_err,meanpt_stat_err,meanpt_sys_err,source
+5.10412,0.415829,0.0345679,,,midrapidity
+7.10371,0.423591,0.0395184,,,midrapidity
+14.2385,0.434213,0.0419753,,,midrapidity
+24.054,0.442183,0.0444444,,,midrapidity
+31.6228,0.447415,0.0395062,,,midrapidity
+46.0645,0.452756,0.0370248,,,midrapidity
+55.2808,0.448014,0.0444444,,,midrapidity
+130,0.56,0.04,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,0.591,0.071,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+900,0.658,,0.006,0.05,"ALICE EPJ C71, 1655 (2011)"
+6.27,0.3849,,0.0361,0.0334,na61
+7.62,0.4023,,0.0228,0.0304,na61
+8.8,0.4223,,0.0212,0.0305,na61
+12.3,0.4327,,0.0106,0.0254,na61
+17.3,0.4379,,0.0146,0.0186,na61
+2700,0.689,,0.007,0.05,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+7000,0.714,,0.007,0.05,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+5020,0.7412,0.03,,,"Mean pT of kplus at mid-rapidity (|y|<0.5), 0–5% centrality, pp"

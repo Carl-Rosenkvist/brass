@@ -1,0 +1,21 @@
+# observable: meanmt
+# pdg: 211
+# system: AA
+# quantity: <mT> - m0 at midrapidity [GeV]
+# from: smash-analysis-extras mean_mT/AA/midy_piplus.exp
+sqrtsnn,meanmt,meanmt_err,meanmt_stat_err,meanmt_sys_err,source
+39,0.312,,0.0001,0.0187,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+27,0.3046,,0.0001,0.0183,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+19.6,0.2932,,0.0001,0.0176,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+11.5,0.2855,,0.0001,0.0143,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+7.7,0.2813,,0.0002,0.0141,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+200,0.319,0.017,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+130,0.293,0.009,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+62.4,0.307,0.007,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+9.2,0.263,0.028,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+4.87,0.246,0.013,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+4.29,0.233,0.012,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+3.83,0.214,0.012,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+3.32,0.192,0.01,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2.68,0.145,0.008,,,Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/144/data.html
+2760,0.409,0.015,,,"LHC point, Fig. 17-18 of arxiv.org/pdf/0909.4131.pdf"

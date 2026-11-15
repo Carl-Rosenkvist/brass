@@ -1,0 +1,19 @@
+# observable: meanpt
+# pdg: -211
+# system: pp
+# quantity: <pT> at midrapidity [GeV]
+# from: smash-analysis-extras mean_pT/pp/midy_piminus.exp
+sqrtsnn,meanpt,meanpt_err,meanpt_stat_err,meanpt_sys_err,source
+5.12106,0.2975,0.0275,,,ecn mpt err
+7.03543,0.3075,0.03,,,ecn mpt err
+14.2138,0.32,0.0325,,,ecn mpt err
+23.9503,0.325,0.0325,,,ecn mpt err
+31.4439,0.3325,0.03,,,ecn mpt err
+46.2407,0.335,0.0325,,,ecn mpt err
+54.8171,0.3375,0.035,,,ecn mpt err
+130,0.38,0.02,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,0.422,0.022,,,"STAR PRL92, 112301 (2004) \cite{Adams:2003xp}"
+900,0.404,,0.001,0.02,"ALICE EPJ C71, 1655 (2011)"
+2760,0.444,,0.004,0.02,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+7000,0.477,,0.005,0.02,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+5020,0.4582,0.029,,,"Mean pT of piminus at mid-rapidity (|y|<0.5), 0–5% centrality, pp"

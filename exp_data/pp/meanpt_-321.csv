@@ -1,0 +1,24 @@
+# observable: meanpt
+# pdg: -321
+# system: pp
+# quantity: <pT> at midrapidity [GeV]
+# from: smash-analysis-extras mean_pT/pp/midy_kminus.exp
+sqrtsnn,meanpt,meanpt_err,meanpt_stat_err,meanpt_sys_err,source
+5.07366,0.3875,0.0375,,,midrapidity
+7.06384,0.4,0.035,,,midrapidity
+14.1627,0.41,0.0375,,,midrapidity
+24.2036,0.415,0.0425,,,midrapidity
+31.1044,0.4175,0.04,,,midrapidity
+46.3608,0.4225,0.04,,,midrapidity
+55.0058,0.4225,0.045,,,midrapidity
+130,0.57,0.05,,,"PHENIX PRC69, 024904 (2003) \cite{Adcox:2003nr}"
+200,0.719,0.074,,,"STAR PRL92, 112301 (2004) \cite{Adams:2003xp}"
+900,0.642,,0.006,0.05,"ALICE EPJ C71, 1655 (2001)"
+6.27,0.401,,0.0304,0.0161,na61
+7.62,0.427,,0.0312,0.0179,na61
+8.8,0.4426,,0.0257,0.0153,na61
+12.3,0.4456,,0.0143,0.0143,na61
+17.3,0.4448,,0.0119,0.0175,na61
+2700,0.675,,0.007,0.05,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+7000,0.772,,0.008,0.05,"CMS  EPJ C72, 2164 (2012) Fig. 17 \cite{Chatrchyan:2012qb}"
+5020,0.7412,0.03,,,"Mean pT of kminus at mid-rapidity (|y|<0.5), 0–5% centrality, pp"

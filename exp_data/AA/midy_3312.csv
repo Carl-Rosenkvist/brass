@@ -1,0 +1,18 @@
+# observable: midy
+# pdg: 3312
+# system: AA
+# quantity: dN/dy at midrapidity
+# from: smash-analysis-extras midy_yield/AA/midy_xi.exp
+sqrtsnn,dndy,dndy_err,dndy_stat_err,dndy_sys_err,source
+6.405,0.93,0.13,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+7.735,1.17,0.13,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+8.865,1.07,0.06,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+12.395,1.22,0.14,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+17.435,1.61,0.08,,,"NA49, J. Phys. G  32 (2006) S43  \cite{Mitrovski:2006js}"
+17.435,1.8,0.2,,,NA57
+6.405,0.93,0.13,,,"NA49, http://arxiv.org/0804.3770"
+7.735,1.17,0.13,,,"NA49, http://arxiv.org/0804.3770"
+8.865,1.15,0.13,,,"NA49, http://arxiv.org/0804.3770"
+12.395,1.22,0.14,,,"NA49, http://arxiv.org/0804.3770"
+17.435,1.44,0.15,,,"NA49, http://arxiv.org/0804.3770"
+2760,3.34,0.3,,,"Mid-rapidity (|y|<0.5), yield of xi 0–10% centrality"

@@ -1,0 +1,27 @@
+# observable: multiplicity
+# pdg: -321
+# system: pp
+# quantity: 4pi multiplicity
+# from: smash-analysis-extras multiplicity/pp/ally_kminus.exp
+sqrtsnn,multiplicity,multiplicity_err,multiplicity_stat_err,multiplicity_sys_err,source
+5.02749,0.01,0.004,,,
+5.02749,0.008,0.001,,,
+6.14995,0.036,0.005,,,
+6.84237,0.027,0.003,,,
+6.84237,0.033,0.005,,,
+7.86241,0.05,0.015,,,
+8.21238,0.07,0.02,,,
+9.08003,0.08,0.02,,,
+9.96632,0.11,0.03,,,
+11.5365,0.13,0.03,,,
+23.3222,0.209,0.031,,,
+30.5943,0.244,0.037,,,
+22.0227,0.24,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+30.9839,0.29,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+45,0.34,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+53.0104,0.37,0,,,"antinucci et al, Lett. Nuovo. Cim. 6 (1973) 121, \cite{Antinucci:1972ib}"
+6.27,0.024,,0.006,0.002,na61/shine
+7.62,0.045,,0.004,0.003,na61/shine
+8.8,0.084,,0.006,0.003,na61/shine
+12.3,0.095,,0.004,0.005,na61/shine
+17.3,0.132,,0.011,0.009,na61/shine
