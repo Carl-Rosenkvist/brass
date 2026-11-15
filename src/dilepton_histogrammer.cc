@@ -94,6 +94,7 @@ static bool is_dilepton_quantity(Quantity q) {
         case Quantity::pt:
         case Quantity::mass:
         case Quantity::mt:
+        case Quantity::mt0:
         case Quantity::y_rap:
             return true;
         default:
@@ -119,6 +120,8 @@ static double dilepton_value(const DileptonFourVector& p, Quantity q) {
             return dilepton_mass(p);
         case Quantity::mt:
             return std::hypot(dilepton_mass(p), dilepton_pt(p));
+        case Quantity::mt0:
+            return std::hypot(dilepton_mass(p), dilepton_pt(p)) - dilepton_mass(p);
         case Quantity::y_rap:
             return dilepton_rapidity(p);
         default:

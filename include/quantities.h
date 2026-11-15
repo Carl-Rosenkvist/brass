@@ -49,6 +49,7 @@ enum class Quantity : std::uint8_t {
     // Quantities that can only be computed
     pt,
     p,
+    mt0,  // transverse kinetic energy, mt - mass
 
     Count,
 };
@@ -94,7 +95,7 @@ constexpr std::string_view find_name(const std::array<NamedValue<E>, N>& table,
     return "<unknown>";
 }
 
-inline constexpr std::array<NamedValue<Quantity>, 32> quantity_names{{
+inline constexpr std::array<NamedValue<Quantity>, 33> quantity_names{{
     {"t", Quantity::t},
     {"x", Quantity::x},
     {"y", Quantity::y},
@@ -127,6 +128,7 @@ inline constexpr std::array<NamedValue<Quantity>, 32> quantity_names{{
     {"perturbative_weight", Quantity::perturbative_weight},
     {"pt", Quantity::pt},
     {"p", Quantity::p},
+    {"mt0", Quantity::mt0},
 }};
 
 inline std::optional<Quantity> try_parse_quantity(std::string_view name) {
@@ -167,7 +169,8 @@ inline constexpr QuantityType quantity_type(Quantity q) {
 }
 
 inline constexpr bool is_stored_quantity(Quantity q) {
-    return q != Quantity::pt && q != Quantity::p && q != Quantity::Count;
+    return q != Quantity::pt && q != Quantity::p && q != Quantity::mt0 &&
+           q != Quantity::Count;
 }
 
 struct QuantityOffset {

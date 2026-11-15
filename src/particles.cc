@@ -117,6 +117,12 @@ double Particles::value(const ParticleRow& row, Quantity q) const {
             return std::sqrt(m * m + pt * pt);
         }
 
+        case Quantity::mt0: {
+            const auto m = value(row, Quantity::mass);
+            const auto pt = value(row, Quantity::pt);
+            return std::sqrt(m * m + pt * pt) - m;
+        }
+
         case Quantity::y_rap: {
             const auto p0 = get(Quantity::p0);
             const auto pz = get(Quantity::pz);
@@ -227,6 +233,18 @@ void Particles::compute(Quantity q, std::vector<double>& out) const {
                 const auto m = out[i];
                 const auto pt = std::hypot(load(px, i), load(py, i));
                 out[i] = std::sqrt(m * m + pt * pt);
+            }
+            return;
+        }
+
+        case Quantity::mt0: {
+            compute(Quantity::mass, out);
+            const auto px = offset_of(Quantity::px);
+            const auto py = offset_of(Quantity::py);
+            for (std::size_t i = 0; i < size_; ++i) {
+                const auto m = out[i];
+                const auto pt = std::hypot(load(px, i), load(py, i));
+                out[i] = std::sqrt(m * m + pt * pt) - m;
             }
             return;
         }

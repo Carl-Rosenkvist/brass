@@ -92,7 +92,7 @@ class Particles {
 
     ParticleRow row(std::size_t i) const;
 
-    // Stored quantities are read directly; pt, p, and mass, mt, y_rap when
+    // Stored quantities are read directly; pt, p, mt0 (= mt - mass), and mass, mt, y_rap when
     // they are not stored, are computed from the momentum.
     double value(const ParticleRow& row, Quantity q) const;
     double value(std::size_t i, Quantity q) const;
