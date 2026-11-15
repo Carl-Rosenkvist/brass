@@ -274,6 +274,28 @@ channel = "113 -> -11 11"
 dN_dM = dl.values[channel] / (dl.nevents * np.diff(dl.edges[channel]))
 ```
 
+## Experimental data: `brass.expdata`
+
+The `exp_data/` folder of the brass source tree holds measured spectra and
+yields as CSV files with `# key: value` header lines, sorted by system
+(`pp/`, `AA/`). `brass.expdata` reads them:
+
+```python
+from brass import expdata
+
+data = expdata.find("multiplicity", "pp", 211)   # exp_data/pp/multiplicity_211.csv
+sqrts, mult, err = data.points("sqrtsnn", "multiplicity")
+print(data.meta, data.text_columns["source"][:3])
+```
+
+`points` returns the total uncertainty: a `<value>_err` column, or
+statistical and systematic errors added in quadrature. Set `BRASS_EXP_DATA`
+to read another folder in the same format (the data is not part of the
+wheel). The energy-scan files (`multiplicity_`, `midy_`, `meanpt_`,
+`meanmt_<pdg>.csv`) were converted from the data collection of the SMASH
+analysis suite; each row keeps its reference in the `source` column. Read
+`exp_data/README.md` before using them.
+
 ## Combining results: `brass-merge`
 
 When runs are analyzed in several `brass` calls, for example one per cluster
