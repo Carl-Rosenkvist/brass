@@ -29,9 +29,15 @@ The version number follows **X.Y.Z**, where:
 - **`BaryonStoppingEmulator`**: emulates `"dNdxF"`, `"meanpT_xF"`, `"dNdy"`
   and `"meanmT_y"`; mean values are emulated directly. Observables can be
   chosen per particle (`observables={pdg: [...]}`), with an |x_F| range
-  (`xf_max`) and merged x_F bins (`xf_group`) per particle.
+  (`xf_max`) and merged x_F bins (`xf_group`) per particle. `fold=True` adds
+  the bins at -x and +x of symmetric systems; `min_count` merges bins
+  outward from x = 0 until each holds that many particles in every training
+  run (less noise, fewer GP fits). `bins()` gives the bin edges.
 - `EmulatorLikelihood.add(..., emulator=...)`: datasets from several
   emulators of the same scan (e.g. dN/dy and ⟨pT⟩(x_F)) in one likelihood.
+- `EmulatorLikelihood.add(..., matrix=W)`: custom map from the emulated bins
+  to the data points instead of linear interpolation (e.g. to extrapolate
+  into the outer half bins, or to compare bin averages).
 - **`MtSpectrum(y_min, y_max)`**: mT spectrum in a rapidity window, derived
   linearly (with covariance) from a `"hist2d"` emulator.
 - `DataHandler.reduce(mt_max, mt_group)` and `BulkEmulator(mt_max=...,

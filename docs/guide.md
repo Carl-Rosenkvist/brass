@@ -559,6 +559,24 @@ a number for all particles or a dict per PDG; merging bins adds counts and
 summed pT exactly. A choice that leaves no usable bin stops `fit()` with a
 message naming the particle and observable.
 
+Usually better than fixed bins and ranges is to let the statistics choose:
+
+```python
+bs = BaryonStoppingEmulator.from_file(
+    "baryon-stopping.pkl", paths,
+    observables={2212: ["dNdxF", "meanpT_xF"], 211: ["dNdxF", "meanpT_xF"]},
+    fold=True,        # add -x_F and +x_F (pp is symmetric): emulate x_F >= 0
+    min_count=500,    # merge bins outward from x_F = 0 to >= 500 particles per run
+)
+```
+
+With `min_count`, bins stay at the analysis binning where statistics are
+high and widen where they are low, so the training data are less noisy and
+fewer PCA components (GP fits) are needed. For π⁺ in a pp scan this halved
+the number of GP fits and kept the full x_F range. `bs.bins(pdg, observable)`
+gives the bin edges; both settings also accept a dict per PDG and apply to
+the rapidity observables as well.
+
 **2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
 parameter points and predicts them. The standardised residuals
 `(prediction − simulation) / σ` should be roughly standard normal; much wider

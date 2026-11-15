@@ -198,6 +198,7 @@ class EmulatorLikelihood:
         fixed=None,
         label=None,
         emulator=None,
+        matrix=None,
     ):
         """Add one experimental dataset.
 
@@ -208,6 +209,12 @@ class EmulatorLikelihood:
         such as the collision energy of this dataset. ``emulator`` selects
         another emulator of the same scan for this dataset. Points outside
         the emulated range, or with non-finite values, are dropped.
+
+        ``matrix`` (shape (len(y), number of emulated bins)) replaces the
+        linear interpolation: model at the data points = matrix @ model in
+        the emulated bins. Use it e.g. to extrapolate into the first half
+        bin, or for averages over the data's bins. Rows of dropped points
+        are removed; no range check is made.
         """
         emulator = self.emulator if emulator is None else emulator
         if list(emulator.parameter_names) != list(self.emulator.parameter_names):
@@ -229,13 +236,19 @@ class EmulatorLikelihood:
 
         axis = emulator.axis(pdg, observable)
         mask = np.isfinite(y) & np.isfinite(yerr) & (yerr >= 0)
-        if axis is None:
-            W = np.ones((len(y), 1))
+        if matrix is not None:
+            W = np.atleast_2d(np.asarray(matrix, dtype=float))
+            n_bins = 1 if axis is None else len(axis)
+            if W.shape != (len(y), n_bins):
+                raise ValueError(
+                    f"matrix must have shape ({len(y)}, {n_bins}), not {W.shape}"
+                )
+            W = W[mask]
+        elif axis is None:
+            W = np.ones((len(y), 1))[mask]
         else:
             mask &= np.isfinite(x) & (x >= axis.min()) & (x <= axis.max())
             W = _interpolation_matrix(x[mask], axis)
-        if axis is None:
-            W = W[mask]
 
         A_total = W if A is None else W @ A
         error = np.maximum.reduce(

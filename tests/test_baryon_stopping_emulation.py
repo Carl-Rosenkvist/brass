@@ -363,3 +363,187 @@ def test_per_particle_save_and_load(per_particle, tmp_path):
     with pytest.raises(ValueError, match="cannot be obtained"):
         loaded.predict_observable(theta, PROTON_PDG, "dNdxF")
 
+
+
+# -- folding and merging to a minimum count -----------------------------------------
+
+
+def xf_results(counts, edges, pt=0.4, events=1):
+    """BaryonStopping-like results: x_F counts per run (sqrt(s) = 2, so p_z = x_F)."""
+
+    def histogram(values, e):
+        return SimpleNamespace(values=np.asarray(values, float), edges=[np.asarray(e, float)])
+
+    out = []
+    for i, n in enumerate(counts):
+        n = np.asarray(n, float)
+        analysis = SimpleNamespace(
+            config={"Meta": {"a": float(i)}}, events=events, folder_path=f"run{i}", sqrts=2.0,
+            histograms={
+                "xf": {PION_PDG: histogram(n, edges)},
+                "xf_pt": {PION_PDG: histogram(pt * n, edges)},
+                "y": {PION_PDG: histogram([1.0], [-1.0, 1.0])},
+                "y_mt": {PION_PDG: histogram([0.5], [-1.0, 1.0])},
+            },
+        )
+        out.append({"result": analysis})
+    return out
+
+
+A = {"a": ("Meta", "a")}
+EDGES = np.linspace(-1, 1, 11)  # bins of 0.2
+RIGHT = np.array([[5, 3, 2, 1, 0], [6, 1, 1, 2, 0]])  # inner -> outer, two runs
+SYMMETRIC = np.hstack([RIGHT[:, ::-1], RIGHT])
+
+
+def test_data_stores_events():
+    data = BaryonStoppingData(xf_results(SYMMETRIC, EDGES, events=3), A)
+    np.testing.assert_array_equal(data.events, [3, 3])
+
+
+def test_fold_adds_both_sides(results):
+    data = BaryonStoppingData(results, PARAMETER_PATHS)
+    n = data.counts["xf"][PION_PDG]
+    s = data.counts["xf_pt"][PION_PDG]
+    n_f = n[:, 20:] + n[:, :20][:, ::-1]
+    s_f = s[:, 20:] + s[:, :20][:, ::-1]
+
+    np.testing.assert_allclose(data.axis(PION_PDG, "dNdxF", fold=True), np.arange(20) * 0.05 + 0.025)
+    np.testing.assert_allclose(data.observable(PION_PDG, "dNdxF", fold=True), n_f / 2 / 0.05)
+    filled = np.all(n_f > 0, axis=0)
+    np.testing.assert_allclose(
+        data.observable(PION_PDG, "meanpT_xF", fold=True), (s_f / np.where(n_f > 0, n_f, 1))[:, filled]
+    )
+
+
+def test_fold_odd_number_of_bins():
+    edges = [-0.75, -0.25, 0.25, 0.75]
+    data = BaryonStoppingData(xf_results([[1, 2, 3]], edges), A)
+    lo, hi = data.bins(PION_PDG, "dNdxF", fold=True)
+    np.testing.assert_allclose(lo, [0.0, 0.25])
+    np.testing.assert_allclose(hi, [0.25, 0.75])
+    # The middle bin keeps all its particles; dN/dx_F is the average of both sides.
+    np.testing.assert_allclose(data.observable(PION_PDG, "dNdxF", fold=True), [[4.0, 4.0]])
+
+    with pytest.raises(ValueError, match="symmetric"):
+        BaryonStoppingData(xf_results([[1, 2]], [-0.5, 0.0, 1.0]), A).observable(
+            PION_PDG, "dNdxF", fold=True
+        )
+
+
+def test_min_count_merges_outward():
+    data = BaryonStoppingData(xf_results(SYMMETRIC, EDGES), A)
+
+    # Without folding each side is merged separately: [0, 0.2] has 5 and 6
+    # particles, then [0.2, 0.8] (3+2+1, 1+1+2); the empty outer bin is dropped.
+    lo, hi = data.bins(PION_PDG, "dNdxF", min_count=4)
+    np.testing.assert_allclose(lo, [-0.8, -0.2, 0.0, 0.2])
+    np.testing.assert_allclose(hi, [-0.2, 0.0, 0.2, 0.8])
+    np.testing.assert_allclose(
+        data.observable(PION_PDG, "dNdxF", min_count=4),
+        [[6 / 0.6, 5 / 0.2, 5 / 0.2, 6 / 0.6], [4 / 0.6, 6 / 0.2, 6 / 0.2, 4 / 0.6]],
+    )
+
+    # Folded: (10, 12), then (6, 2) + (4, 2) = (10, 4); the rest (2, 4) stays
+    # below 4 particles in one run and joins its inner neighbour.
+    lo, hi = data.bins(PION_PDG, "dNdxF", fold=True, min_count=4)
+    np.testing.assert_allclose(lo, [0.0, 0.2])
+    np.testing.assert_allclose(hi, [0.2, 0.8])
+    np.testing.assert_allclose(data.observable(PION_PDG, "meanpT_xF", fold=True, min_count=4), 0.4)
+    np.testing.assert_allclose(
+        data.observable(PION_PDG, "dNdxF", fold=True, min_count=4),
+        [[10 / 0.4, 12 / 1.2], [12 / 0.4, 8 / 1.2]],
+    )
+
+
+def test_min_count_uses_particle_numbers():
+    # Counts are stored per event; the minimum refers to particles per run.
+    data = BaryonStoppingData(xf_results(SYMMETRIC, EDGES, events=10), A)
+    np.testing.assert_allclose(
+        data.bins(PION_PDG, "dNdxF", fold=True, min_count=4)[0], [0.0, 0.2]
+    )
+    with pytest.raises(ValueError, match="positive"):
+        data.observable(PION_PDG, "dNdxF", min_count=0)
+
+
+def test_min_count_after_xf_max():
+    data = BaryonStoppingData(xf_results(SYMMETRIC, EDGES), A)
+    # The range is cut first: folded bins [0, 0.2] (10, 12) and [0.2, 0.4]
+    # (6, 2). The second stays below 4 in one run and joins the first.
+    lo, hi = data.bins(PION_PDG, "dNdxF", fold=True, xf_max=0.4, min_count=4)
+    np.testing.assert_allclose(lo, [0.0])
+    np.testing.assert_allclose(hi, [0.4])
+    np.testing.assert_allclose(
+        data.observable(PION_PDG, "dNdxF", fold=True, xf_max=0.4, min_count=4),
+        [[16 / 0.8], [14 / 0.8]],
+    )
+
+
+@pytest.fixture(scope="module")
+def merged(results):
+    return BaryonStoppingEmulator(
+        results,
+        PARAMETER_PATHS,
+        observables={PION_PDG: ["dNdxF", "meanpT_xF"], PROTON_PDG: ["meanpT_xF"]},
+        fold=True,
+        min_count={PION_PDG: 200, PROTON_PDG: 100},
+    ).fit()
+
+
+def test_emulator_fold_and_min_count(merged, results):
+    data = BaryonStoppingData(results, PARAMETER_PATHS)
+    for pdg, name in merged.models:
+        lo, hi = merged.bins(pdg, name)
+        assert np.all(lo >= 0)
+        np.testing.assert_allclose(merged.axis(pdg, name), 0.5 * (lo + hi))
+        expected = data.bins(pdg, name, fold=True, min_count=merged.min_count[pdg])
+        np.testing.assert_allclose(lo, expected[0])
+        np.testing.assert_allclose(hi, expected[1])
+        # Every training run has at least min_count particles in every bin.
+        n = data.observable(pdg, "dNdxF", fold=True, min_count=merged.min_count[pdg])
+        width = 2 * (expected[1] - expected[0]) if name == "dNdxF" else None
+        if width is not None:
+            assert np.all(n * width * data.events[:, None] >= merged.min_count[pdg] - 1e-9)
+
+    with pytest.raises(KeyError, match="not emulated"):
+        BaryonStoppingEmulator(
+            results, PARAMETER_PATHS, observables={PION_PDG: ["dNdxF"]}, fold={PROTON_PDG: True}
+        )
+
+
+def test_fold_and_min_count_survive_save_and_load(merged, tmp_path):
+    path = tmp_path / "bs.npz"
+    merged.save(path)
+    loaded = BaryonStoppingEmulator.load(path)
+    assert loaded.fold == merged.fold
+    assert loaded.min_count == merged.min_count
+    for pdg, name in merged.models:
+        for a, b in zip(loaded.bins(pdg, name), merged.bins(pdg, name)):
+            np.testing.assert_allclose(a, b)
+
+
+def test_likelihood_with_custom_matrix(emulator):
+    """A matrix replaces the interpolation, e.g. to extrapolate to x_F = 0."""
+    axis = emulator.axis(PION_PDG, "meanpT_xF")
+    theta = np.array([[0.0, 1.0, 0.4], [0.2, 0.9, 0.3]])
+    model = emulator.predict_observable(theta, PION_PDG, "meanpT_xF")
+
+    # Two points: linear extrapolation below the first bin centre, and the
+    # value of bin 3.
+    W = np.zeros((2, len(axis)))
+    t = (axis[0] - 0.0) / (axis[1] - axis[0])
+    W[0, 0], W[0, 1] = 1 + t, -t
+    W[1, 3] = 1.0
+    y = W @ model[0]
+    like = EmulatorLikelihood(emulator, covariance="none").add(
+        PION_PDG, [0.0, axis[3]], y, [0.01, 0.01], observable="meanpT_xF", matrix=W
+    )
+    assert like.n_points == 2  # x = 0 is kept although it is below the first centre
+    chi2 = like.chi2(theta)
+    assert chi2[0] == pytest.approx(0.0, abs=1e-12)
+    np.testing.assert_allclose(chi2[1], np.sum(((W @ model[1]) - y) ** 2) / 0.01**2)
+
+    with pytest.raises(ValueError, match="shape"):
+        EmulatorLikelihood(emulator).add(
+            PION_PDG, [0.0], [1.0], [0.1], observable="meanpT_xF", matrix=np.ones((1, 2))
+        )

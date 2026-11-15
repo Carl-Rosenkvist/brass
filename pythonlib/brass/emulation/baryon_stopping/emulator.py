@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import numpy as np
 
 from ..base import Emulator
@@ -32,11 +34,22 @@ class BaryonStoppingEmulator(Emulator):
             xf_group=2,
         )
 
-    ``xf_group`` merges that many neighbouring x_F bins (counts and summed
-    p_T add exactly) and ``xf_max`` keeps only bins within |x_F| <= xf_max;
-    each is a number for all particles or a dict per PDG. Mean values are
-    emulated only in bins that hold particles in every training run;
-    :meth:`axis` gives the bins.
+    The binning can be changed (counts and summed p_T or m_T add exactly);
+    each setting is a value for all particles or a dict per PDG:
+
+    ``fold=True``
+        add the bins at -x and +x (symmetric systems such as pp): twice the
+        statistics, half the outputs; observables are then for x >= 0;
+    ``min_count``
+        merge neighbouring bins, outward from x = 0, until each holds at
+        least this many particles in every training run. Bins stay narrow
+        where statistics are high and widen where they are low, so the
+        training data are less noisy and fewer PCA components are needed;
+    ``xf_group``, ``xf_max``
+        merge a fixed number of x_F bins; keep |x_F| <= xf_max.
+
+    Mean values are emulated only in bins that hold particles in every
+    training run. :meth:`axis` and :meth:`bins` give the bins.
 
     Mean values are emulated directly (not as a ratio of emulated spectra),
     which needs fewer PCA components and gives a Gaussian uncertainty.
@@ -56,6 +69,8 @@ class BaryonStoppingEmulator(Emulator):
         *,
         xf_max=None,
         xf_group=1,
+        fold=False,
+        min_count=None,
         **kwargs,
     ):
         per_pdg = None
@@ -79,7 +94,17 @@ class BaryonStoppingEmulator(Emulator):
         self._pdgs = list(per_pdg)
         self.xf_max = self._per_particle(xf_max, "xf_max")
         self.xf_group = self._per_particle(xf_group, "xf_group")
+        self.fold = self._per_particle(fold, "fold")
+        self.min_count = self._per_particle(min_count, "min_count")
         self.axes = {}
+        self._bins = {}
+
+    _DEFAULTS: ClassVar[dict] = {
+        "xf_max": None,
+        "xf_group": 1,
+        "fold": False,
+        "min_count": None,
+    }
 
     def _per_particle(self, value, name):
         if not isinstance(value, dict):
@@ -87,8 +112,7 @@ class BaryonStoppingEmulator(Emulator):
         unknown = set(value) - set(self._pdgs)
         if unknown:
             raise KeyError(f"{name} for PDGs that are not emulated: {sorted(unknown)}")
-        default = 1 if name == "xf_group" else None
-        return {pdg: value.get(pdg, default) for pdg in self._pdgs}
+        return {pdg: value.get(pdg, self._DEFAULTS[name]) for pdg in self._pdgs}
 
     @property
     def pdgs(self):
@@ -98,13 +122,15 @@ class BaryonStoppingEmulator(Emulator):
         return self._per_pdg.get(pdg, [])
 
     def _binning(self, pdg):
-        return {"xf_group": self.xf_group[pdg], "xf_max": self.xf_max[pdg]}
+        return {name: getattr(self, name)[pdg] for name in self._DEFAULTS}
 
     def _training(self, pdg, name):
         return self.data.observable(pdg, name, **self._binning(pdg))
 
     def _fitted(self, pdg, name):
-        self.axes[(pdg, name)] = self.data.axis(pdg, name, **self._binning(pdg))
+        lo, hi = self.data.bins(pdg, name, **self._binning(pdg))
+        self._bins[(pdg, name)] = (lo, hi)
+        self.axes[(pdg, name)] = 0.5 * (lo + hi)
 
     def axis(self, pdg, observable):
         """Bin centres of a fitted observable (x_F or y)."""
@@ -114,15 +140,24 @@ class BaryonStoppingEmulator(Emulator):
             raise KeyError(f"no emulator for PDG {pdg}")
         raise ValueError(f"{observable!r} for PDG {pdg} is not fitted")
 
+    def bins(self, pdg, observable):
+        """Lower and upper bin edges of a fitted observable."""
+        self.axis(pdg, observable)  # same errors as axis()
+        return self._bins[(pdg, observable)]
+
     def _save_arrays(self):
-        return {f"axis/{pdg}/{name}": axis for (pdg, name), axis in self.axes.items()}
+        arrays = {}
+        for (pdg, name), (lo, hi) in self._bins.items():
+            arrays[f"axis/{pdg}/{name}"] = self.axes[(pdg, name)]
+            arrays[f"bins/{pdg}/{name}/lo"] = lo
+            arrays[f"bins/{pdg}/{name}/hi"] = hi
+        return arrays
 
     def _extra_meta(self):
-        return {
-            "observables": {str(p): names for p, names in self._per_pdg.items()},
-            "xf_max": {str(p): v for p, v in self.xf_max.items()},
-            "xf_group": {str(p): v for p, v in self.xf_group.items()},
-        }
+        extra = {"observables": {str(p): names for p, names in self._per_pdg.items()}}
+        for name in self._DEFAULTS:
+            extra[name] = {str(p): v for p, v in getattr(self, name).items()}
+        return extra
 
     def _load_arrays(self, arrays, meta):
         self._pdgs = list(meta["pdgs"])
@@ -130,14 +165,23 @@ class BaryonStoppingEmulator(Emulator):
             (pdg, name): np.asarray(arrays[f"axis/{pdg}/{name}"])
             for pdg, name in meta["models"]
         }
+        self._bins = {}
+        for pdg, name in meta["models"]:
+            if f"bins/{pdg}/{name}/lo" in arrays:
+                lo, hi = (
+                    np.asarray(arrays[f"bins/{pdg}/{name}/{e}"]) for e in ("lo", "hi")
+                )
+            else:  # older files: equal bins around the stored centres
+                x = self.axes[(pdg, name)]
+                half = 0.5 * np.min(np.diff(x)) if len(x) > 1 else 0.0
+                lo, hi = x - half, x + half
+            self._bins[(pdg, name)] = (lo, hi)
         extra = meta.get("extra") or {}
-        if "observables" in extra:
-            self._per_pdg = {int(p): v for p, v in extra["observables"].items()}
-            self.xf_max = {int(p): v for p, v in extra["xf_max"].items()}
-            self.xf_group = {int(p): v for p, v in extra["xf_group"].items()}
-        else:
-            self._per_pdg = {
-                pdg: [n for p, n in meta["models"] if p == pdg] for pdg in self._pdgs
-            }
-            self.xf_max = {pdg: None for pdg in self._pdgs}
-            self.xf_group = {pdg: 1 for pdg in self._pdgs}
+        self._per_pdg = {
+            int(p): v for p, v in extra.get("observables", {}).items()
+        } or {pdg: [n for p, n in meta["models"] if p == pdg] for pdg in self._pdgs}
+        for name, default in self._DEFAULTS.items():
+            stored = extra.get(name, {})
+            setattr(
+                self, name, {pdg: stored.get(str(pdg), default) for pdg in self._pdgs}
+            )
