@@ -67,3 +67,95 @@ def test_collision_counts_merge(tmp_path):
     with pytest.raises(ValueError, match="t-start"):
         merged += other
 
+
+# --- detailed balance -----------------------------------------------------
+
+from brass.analyses import MultiplicityVsTime, ReactionCounts  # noqa: E402
+
+RHO0, PIP, PIM = 113, 211, -211
+
+
+def pion_pair(t, p):
+    return particles(t, (PIP, 0, 0, p, 0.138), (PIM, 0, 0, -p, 0.138))
+
+
+def write_reactions(folder):
+    """Per event: rho formation, rho decay, one early formation, one wall crossing."""
+    with write_run(folder, QUANTITIES, output="Collisions",
+                   config={"General": {"End_Time": 100.0}}) as w:
+        for event in range(2):
+            pions = pion_pair(30.0, 0.35)  # sqrt(s) = 2 sqrt(0.35^2 + 0.138^2) = 0.7524
+            rho = particles(30.0, (RHO0, 0, 0, 0, 0.7524))
+            w.interaction(pions, rho, process=2)
+            w.interaction(rho, pion_pair(31.0, 0.35), process=5)
+            w.interaction(pion_pair(5.0, 0.35), rho, process=2)  # before t_start
+            wall = particles(40.0, (PIP, 0.1, 0, 0, 0.138))
+            w.interaction(wall, wall, process=6)
+            w.end(event=event)
+
+
+def test_reaction_counts(tmp_path):
+    write_reactions(tmp_path / "run")
+    args = analysis_args(ReactionCounts, "--t-start", "20")
+    analysis = ReactionCounts(tmp_path / "run", args)
+    analysis.run()
+
+    formation = ((PIM, PIP), (RHO0,))
+    decay = analysis.inverse(formation)
+    assert set(analysis.counts) == {formation, decay}
+    assert analysis.events == 2
+
+    sqrts = 2 * np.hypot(0.35, 0.138)
+    bin_ = int(sqrts / 0.05)
+    assert analysis.histogram(formation)[bin_] == 2
+    assert analysis.histogram(formation).sum() == 2
+    assert analysis.histogram(decay)[bin_] == 2
+    assert analysis.pairs() == [(formation, decay)] or analysis.pairs() == [(decay, formation)]
+    rate = analysis.rate(formation)
+    assert rate[bin_] == pytest.approx(2 / (2 * 80.0 * 0.05))
+    assert analysis.histogram(((1,), (2,))).sum() == 0
+    assert len(analysis.most_violating(6)) == 1
+
+
+def test_reaction_counts_t(tmp_path):
+    with write_run(tmp_path / "run", QUANTITIES, output="Collisions") as w:
+        incoming = particles(1.0, (PI0, 0, 0, 0.5, 0.138), (PI0, 0, 0, -0.5, 0.138))
+        outgoing = particles(1.0, (PI0, 0.5, 0, 0, 0.138), (PI0, -0.5, 0, 0, 0.138))
+        w.interaction(incoming, outgoing, process=1)
+        w.interaction(particles(1.0, (RHO0, 0, 0, 0, 0.77)), pion_pair(1.0, 0.3), process=5)
+        w.end(event=0)
+    analysis = ReactionCounts(tmp_path / "run", analysis_args(ReactionCounts, "--variable", "t"))
+    analysis.run()
+    # |t| = |(p_in - p_out)^2| = 0.5^2 + 0.5^2 = 0.5 GeV^2 -> bin [0.5, 1.0); the decay is not 2 -> 2
+    assert list(analysis.counts) == [((PI0, PI0), (PI0, PI0))]
+    assert analysis.histogram(((PI0, PI0), (PI0, PI0)))[1] == 1
+
+
+def test_reaction_counts_merge(tmp_path):
+    write_reactions(tmp_path / "a")
+    write_reactions(tmp_path / "b")
+    args = analysis_args(ReactionCounts, "--t-start", "20")
+    results = AnalysisRunner(ReactionCounts, [tmp_path / "a", tmp_path / "b"], args=args, max_workers=1).run()
+    merged = results[0]["result"]
+    assert merged.events == 4
+    assert merged.histogram(((PIM, PIP), (RHO0,))).sum() == 4
+
+
+def test_multiplicity_vs_time(tmp_path):
+    with write_run(tmp_path / "run", ["t", "p0", "px", "py", "pz", "pdg"]) as w:
+        # event 0: 2, 1, 0 pi+ at t = 0, 10, 20; event 1: 4, 1, 2
+        for event, numbers in enumerate([(2, 1, 0), (4, 1, 2)]):
+            for t, n in zip((0.0, 10.0, 20.0), numbers):
+                rows = [(PIP, 0, 0, 0, 0.138)] * n + [(PI0, 0, 0, 0, 0.138)]
+                w.particles(particles(t, *rows), event=event)
+            w.end(event=event)
+    args = analysis_args(MultiplicityVsTime, "--pdgs", str(PIP), str(PI0))
+    analysis = MultiplicityVsTime(tmp_path / "run", args)
+    analysis.run()
+
+    np.testing.assert_allclose(analysis.times, [0, 10, 20])
+    assert analysis.events == 2
+    np.testing.assert_allclose(analysis.mean(PIP), [3, 1, 1])
+    np.testing.assert_allclose(analysis.mean(PI0), [1, 1, 1])
+    # sample std / sqrt(n): event counts (2, 4) -> std 1.414, error 1
+    np.testing.assert_allclose(analysis.error(PIP), [1, 0, 1])

@@ -10,6 +10,8 @@ command-line tools, and how to write your own analysis.
   - [`bulk-observables`](#bulk-observables-multiplicities-yields-mean-pt-and-mt)
   - [`centrality`](#centrality-impact-parameter-and-multiplicity)
   - [`collision-counts`](#collision-counts-interactions-by-process-type)
+  - [`reaction-counts`](#reaction-counts-detailed-balance-of-reactions)
+  - [`multiplicity-vs-time`](#multiplicity-vs-time-multiplicities-at-every-output-time)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
 - [Reading the results](#reading-the-results)
 - [Combining results: `brass-merge`](#combining-results-brass-merge)
@@ -228,6 +230,49 @@ brass collision-counts runs/* --t-start 5 -o collision-counts.pkl
 Each result has `counts_for(process=..., n_in=..., n_out=...)` (any argument
 can be left out) and `events`. The process types are SMASH's: 1 elastic,
 2 2→1, 3 2→2, 5 decay, 6 wall crossing, 41–49 strings, ...
+
+### `reaction-counts`: detailed balance of reactions
+
+Counts every reaction of the collision output, binned in √s of the incoming
+particles (or in |t|), so that each reaction can be compared with its inverse
+in a box in equilibrium. A reaction is (sorted incoming PDGs, sorted outgoing
+PDGs): a decay ρ⁰ → π⁺π⁻ is the inverse of the formation π⁺π⁻ → ρ⁰.
+
+- **Reads:** `collisions_binary.bin` or `collisions_custom.bin`
+- **Needs quantities:** `t`, `p0`, `px`, `py`, `pz`, `pdg` (in `Output.Collisions`)
+- **Skips** 1 → 1 interactions (wall crossings) and interactions before `--t-start`.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--t-start T` | none | Count only after time T (fm), e.g. once the box is in equilibrium |
+| `--variable sqrts\|t` | `sqrts` | Bin in √s, or in \|t\| = \|(p_in[0] − p_out[0])²\| (2 → 2 only) |
+| `--range MIN MAX`, `--bins N` | 0–5 GeV, 100 (√s); 0–30 GeV², 60 (t) | Binning |
+
+```bash
+brass reaction-counts runs/* --t-start 20 -o reaction-counts.pkl
+```
+
+Each result has `histogram(reaction)` (counts per bin), `pairs()` (each
+reaction with its inverse), `rate(reaction)` (per event, per fm after
+`t_start` and per bin width, with `End_Time` from the config),
+`most_violating(n)` (the n pairs with the largest |√N_f − √N_b|), `edges`
+and `events`.
+
+### `multiplicity-vs-time`: multiplicities at every output time
+
+Mean number of particles of each PDG code at every output time, with its
+statistical error, e.g. to see when a box reaches equilibrium.
+
+- **Reads:** `particles_binary.bin` or `particles_custom.bin`, written at
+  several times per event (`Only_Final: No`)
+- **Needs quantities:** `t`, `pdg`
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--pdgs PDG...` | required | PDG codes to count |
+
+Each result has `times`, `mean(pdg)` and `error(pdg)` (√(variance / (events − 1)))
+and `events`. Counts include test particles.
 
 ### `dileptons`: invariant-mass spectra
 
