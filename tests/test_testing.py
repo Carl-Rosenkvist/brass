@@ -87,3 +87,42 @@ def test_rejects_missing_columns(tmp_path):
     with SmashBinaryWriter(tmp_path / "out.bin", ["px", "pdg"]) as w:
         with pytest.raises(KeyError, match="pdg"):
             w.particles({"px": [0.1]})
+
+
+def test_analysis_takes_quantities_of_its_data_file(tmp_path):
+    """With Particles and Collisions output, each analysis reads its own list."""
+    import argparse
+
+    import yaml
+
+    from brass.analysis import Analysis
+
+    class Reads(Analysis):
+        def __init__(self, folder, args, name):
+            self.wanted = name
+            super().__init__(folder, args)
+
+        def data_file_matches(self, path):
+            return path.name == self.wanted
+
+        def analyze_file(self, file_path):
+            pass
+
+        def __iadd__(self, other):
+            return self
+
+    (tmp_path / "config.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "Output": {
+                    "Particles": {"Quantities": ["p0", "pdg"]},
+                    "Collisions": {"Quantities": ["t", "p0", "pdg"]},
+                }
+            }
+        )
+    )
+    (tmp_path / "particles_binary.bin").write_bytes(b"")
+    (tmp_path / "collisions_binary.bin").write_bytes(b"")
+    args = argparse.Namespace()
+    assert Reads(tmp_path, args, "particles_binary.bin").quantities == ["p0", "pdg"]
+    assert Reads(tmp_path, args, "collisions_binary.bin").quantities == ["t", "p0", "pdg"]

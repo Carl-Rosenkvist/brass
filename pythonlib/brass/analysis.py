@@ -35,8 +35,8 @@ class Analysis(ABC):
         self.config_path = self.folder_path / self.config_filename
         self.config = self.load_config()
         self.meta = self.extract_meta()
-        self.quantities = self.extract_output_quantities()
         self.data_file = self.find_data_file()
+        self.quantities = self.extract_output_quantities()
 
     @classmethod
     def add_arguments(
@@ -98,7 +98,13 @@ class Analysis(ABC):
         return make_hashable(meta_config)
 
     def extract_output_quantities(self) -> list[str]:
-        matches: list[list[str]] = []
+        """The Quantities list of the output the data file belongs to.
+
+        A run can write several outputs (e.g. Particles and Collisions); the
+        section is chosen by the data file name (particles_*, collisions_*,
+        Dileptons_*). Otherwise exactly one section may have a list.
+        """
+        found: dict[str, list[str]] = {}
 
         for section in self.output_sections:
             quantities = (
@@ -115,14 +121,19 @@ class Analysis(ABC):
                     f"Output.{section}.Quantities must be a list of strings"
                 )
 
-            matches.append(quantities)
+            found[section] = quantities
 
-        if len(matches) != 1:
+        name = self.data_file.name.lower()
+        for section, quantities in found.items():
+            if name.startswith(section.lower() + "_"):
+                return quantities
+
+        if len(found) != 1:
             raise ValueError(
-                f"Expected exactly one Quantities section, found {len(matches)}"
+                f"Expected exactly one Quantities section, found {len(found)}"
             )
 
-        return matches[0]
+        return next(iter(found.values()))
 
     @abstractmethod
     def analyze_file(self, file_path: str | Path) -> None:

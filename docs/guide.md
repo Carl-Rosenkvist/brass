@@ -41,9 +41,10 @@ Every run folder must contain:
 - **exactly one** binary data file the analysis reads (see each analysis).
 
 BRASS takes the list of stored quantities from the config, so the output
-section must use the binary format with an explicit `Quantities` list, and
-**only one** of `Output.Particles`, `Output.Dileptons` or `Output.Collisions`
-may have a `Quantities` list. For example:
+section must use the binary format with an explicit `Quantities` list. If
+several outputs have one (e.g. `Particles` and `Collisions`), the list of the
+output whose file the analysis reads is used (`particles_*.bin` →
+`Output.Particles`, `collisions_*.bin` → `Output.Collisions`). For example:
 
 ```yaml
 Output:
@@ -638,7 +639,7 @@ times that number of steps.
 | `no matches found: ...=[0,3],[3,6]` | The shell expanded the brackets. Quote the `--param` value. |
 | `No matching data file found in ...` | The folder has no file the analysis reads (see *Reads* for each analysis). |
 | `Expected exactly one matching data file` | The folder has several matching files, e.g. both `particles_binary.bin` and `particles_custom.bin`. |
-| `Expected exactly one Quantities section, found N` | `config.yaml` must have a `Quantities` list in exactly one of `Output.Particles`, `Output.Dileptons` and `Output.Collisions`. |
+| `Expected exactly one Quantities section, found N` | The data file's output (`Output.Particles`, `Output.Dileptons` or `Output.Collisions`, chosen by the file name) has no `Quantities` list, or none of several lists matches the file. |
 | `particle quantity not in file: charge` | The analysis needs a quantity the run did not store. Add it to `Quantities` in the SMASH config. |
 | `cannot add histograms with different binning` | Results analyzed with different options were merged. Re-run with the same options. |
 | `ModuleNotFoundError` when loading a pickle | The pickle contains your own analysis class; add its folder to `sys.path` first. |
