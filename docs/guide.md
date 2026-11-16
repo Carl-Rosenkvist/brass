@@ -15,6 +15,8 @@ command-line tools, and how to write your own analysis.
   - [`multiplicity-vs-time`](#multiplicity-vs-time-multiplicities-at-every-output-time)
   - [`angular-distributions`](#angular-distributions-dσdθ-and-dσdt-of-22-reactions)
   - [`cross-sections`](#cross-sections-total-and-partial-cross-sections)
+  - [`position-grid`](#position-grid-particles-in-an-xy-grid-against-time)
+  - [`thermodynamics`](#thermodynamics-thermodynamics-output-at-a-point)
   - [`dileptons`](#dileptons-invariant-mass-spectra)
   - [`dilepton-spectra`](#dilepton-spectra-mass-pt-and-y-with-the-hades-filter)
 - [Reading the results](#reading-the-results)
@@ -355,6 +357,49 @@ parametrized-inelastic, soft-/hard-/failed-string, other) and
 `is_elastic` (final state equal to the initial one, not after a string),
 all as `(σ, error)` in mb, plus `sqrts`. In a pp run at √s = 3 GeV the total
 agrees with SMASH's own cross section within 0.3 %.
+
+### `position-grid`: particles in an x–y grid against time
+
+Number of particles per cell of an x–y grid (summed over z) at every output
+time, e.g. to check that the density of a box stays uniform.
+
+- **Reads:** `particles_binary.bin` or `particles_custom.bin`, written at
+  several times per event (`Only_Final: No`)
+- **Needs quantities:** `t`, `x`, `y` (and `pdg` with `--pdgs`)
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--bins N` | `40` | Cells along x and y |
+| `--length L` | `Modi.Box.Length` | Grid size in fm |
+| `--pdgs PDG...` | all | Only these PDG codes |
+
+Each result has `times`, `grids` (counts summed over events, shape
+`(times, x, y)`), `density(i)` (particles per event and fm³ at output time
+`i`, with cells `L` deep) and `events`.
+
+### `thermodynamics`: thermodynamics output at a point
+
+Event average of SMASH's ASCII thermodynamics output at a point against
+time, e.g. the Eckart baryon density at the centre of a collision:
+
+```yaml
+Output:
+  Output_Interval: 1.0
+  Thermodynamics:
+    Format: [ASCII]
+    Quantities: [rho_eckart]
+    Type: baryon
+    Position: [0.0, 0.0, 0.0]
+```
+
+- **Reads:** `thermodynamics.dat` (no binary file and no `Quantities` of a
+  binary output are needed)
+- **No options**
+
+Each result has `times`, `mean(quantity)` and `error(quantity)` (statistical
+error of the event average), `names` (the quantities in the file) and
+`events`. `brass.thermodynamics.read_thermodynamics(path)` reads one file
+event by event.
 
 ### `dileptons`: invariant-mass spectra
 

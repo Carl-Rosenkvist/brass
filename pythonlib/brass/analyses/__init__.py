@@ -11,7 +11,9 @@ from .dilepton_spectra import DileptonSpectra
 from .dileptons import Dileptons
 from .multiplicities import Multiplicities
 from .multiplicity_vs_time import MultiplicityVsTime
+from .position_grid import PositionGrid
 from .reaction_counts import ReactionCounts
+from .thermodynamics import Thermodynamics
 
 ANALYSES: dict[str, type[Analysis]] = {
     "dileptons": Dileptons,
@@ -26,6 +28,8 @@ ANALYSES: dict[str, type[Analysis]] = {
     "cross-sections": CrossSections,
     "multiplicity-vs-time": MultiplicityVsTime,
     "multiplicities": Multiplicities,
+    "position-grid": PositionGrid,
+    "thermodynamics": Thermodynamics,
 }
 
 __all__ = [
@@ -38,7 +42,9 @@ __all__ = [
     "Dileptons",
     "Multiplicities",
     "MultiplicityVsTime",
+    "PositionGrid",
     "ReactionCounts",
+    "Thermodynamics",
     "Centrality",
     "CollisionCounts",
     "CrossSections",
