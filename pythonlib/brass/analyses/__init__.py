@@ -9,6 +9,7 @@ from .collision_counts import CollisionCounts
 from .cross_sections import CrossSections
 from .dilepton_spectra import DileptonSpectra
 from .dileptons import Dileptons
+from .multiplicities import Multiplicities
 from .multiplicity_vs_time import MultiplicityVsTime
 from .reaction_counts import ReactionCounts
 
@@ -24,6 +25,7 @@ ANALYSES: dict[str, type[Analysis]] = {
     "angular-distributions": AngularDistributions,
     "cross-sections": CrossSections,
     "multiplicity-vs-time": MultiplicityVsTime,
+    "multiplicities": Multiplicities,
 }
 
 __all__ = [
@@ -34,6 +36,7 @@ __all__ = [
     "BulkObservables",
     "DileptonSpectra",
     "Dileptons",
+    "Multiplicities",
     "MultiplicityVsTime",
     "ReactionCounts",
     "Centrality",

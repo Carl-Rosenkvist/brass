@@ -11,6 +11,7 @@ command-line tools, and how to write your own analysis.
   - [`centrality`](#centrality-impact-parameter-and-multiplicity)
   - [`collision-counts`](#collision-counts-interactions-by-process-type)
   - [`reaction-counts`](#reaction-counts-detailed-balance-of-reactions)
+  - [`multiplicities`](#multiplicities-event-by-event-yields-with-errors)
   - [`multiplicity-vs-time`](#multiplicity-vs-time-multiplicities-at-every-output-time)
   - [`angular-distributions`](#angular-distributions-dσdθ-and-dσdt-of-22-reactions)
   - [`cross-sections`](#cross-sections-total-and-partial-cross-sections)
@@ -260,6 +261,24 @@ reaction with its inverse), `rate(reaction)` (per event, per fm after
 `t_start` and per bin width, with `End_Time` from the config),
 `most_violating(n)` (the n pairs with the largest |√N_f − √N_b|), `edges`
 and `events`.
+
+### `multiplicities`: event-by-event yields with errors
+
+Mean number of particles per event for each PDG code, with a statistical
+error from the event-by-event counts, and the mean pT.
+
+- **Reads:** `particles_binary.bin` or `particles_custom.bin`, one block per event
+- **Needs quantities:** `px`, `py`, `pdg`
+- With test particles (`General.Testparticles`) the multiplicities are
+  divided by their number.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--pdgs PDG...` | required | PDG codes to count |
+
+Each result has `multiplicity(pdg)` and `mean_pt(pdg)`, each `(value, error)`;
+the mean pT is the average over events of each event's mean pT. Plus `events`
+and `testparticles`.
 
 ### `multiplicity-vs-time`: multiplicities at every output time
 
