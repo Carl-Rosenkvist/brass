@@ -1,0 +1,12 @@
+# observable: fopi_pion_ratio
+# system: AuAu
+# quantity: N_pi- / N_pi+ in central collisions against the beam energy
+# ref: W. Reisdorf et al. (FOPI), Nucl. Phys. A781 (2007) 459, Fig. 25, error 5 %
+# from: smash-analysis-extras piplus_piminus_ratio/AuAu/FOPI.exp
+ekin,value,value_err
+0.4,2.956,0.1478
+0.6,2.300,0.115
+0.8,2.037,0.10185
+1.0,1.918,0.0959
+1.2,1.785,0.08925
+1.5,1.652,0.0826

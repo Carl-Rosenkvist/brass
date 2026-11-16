@@ -24,3 +24,7 @@ Use these files for overview comparisons, as the analysis suite did. Do not use 
 ## HADES dilepton spectra
 
 The files `dilepton_mass_*`, `dilepton_pt_*` and `dilepton_y_*` in `pp/`, `pNb/`, `CC/` and `ArKCl/` are HADES dilepton spectra, also converted from the SMASH analysis suite's collection, with the same risks as above. They are HADES-acceptance-filtered measurements: compare them only with spectra passed through the HADES filter of the same beam time (`brass.haft` with the matching acceptance file and lepton momentum cuts). The pp and p+Nb spectra are cross sections (µb/GeV), the C+C and Ar+KCl spectra are yields per π⁰, with N_π⁰ = (N_π⁺ + N_π⁻)/2 as HADES defines it. Only statistical errors are given; the C+C systematic errors of the source were inconsistent and are left out. `cut` in the header gives mass windows (`m150_m470`: 0.15 < M < 0.47 GeV) or the pair-momentum cut of p+Nb (`m800`: p > 0.8 GeV, `m0_m800`: p < 0.8 GeV).
+
+## FOPI pion data
+
+`AA/fopi_pion_multiplicity.csv` and `AA/fopi_pion_ratio.csv` are the pion multiplicity M(π) = 3/2 (N_π⁺ + N_π⁻) and the ratio N_π⁻/N_π⁺ in central Au+Au collisions against the beam energy (FOPI, Nucl. Phys. A781 (2007) 459, Figs. 20 and 25), taken from the data of the published figures as collected for the SMASH analysis suite; the errors are the overall 9.4 % and 5 % quoted there.

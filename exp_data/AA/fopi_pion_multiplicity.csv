@@ -1,0 +1,12 @@
+# observable: fopi_pion_multiplicity
+# system: AuAu
+# quantity: M(pi) = 3/2 (N_pi+ + N_pi-) in central collisions (b < 2 fm) against the beam energy
+# ref: W. Reisdorf et al. (FOPI), Nucl. Phys. A781 (2007) 459, Fig. 20 (high-threshold data), error 9.4 %
+# from: smash-analysis-extras multiplicity/AuAu/FOPI_pions.exp
+ekin,value,value_err
+0.4,5.596,0.526
+0.6,15.25,1.4335
+0.8,28.16,2.64704
+1.0,42.18,3.96492
+1.2,58.20,5.4708
+1.5,81.33,7.64502
