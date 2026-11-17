@@ -340,18 +340,27 @@ Cross sections from runs of one projectile and one target particle
 - **Per event** with an interaction of the two initial particles, the process
   type and outgoing particles of that first interaction and the final-state
   particles are recorded; partial cross sections are σ · N_selected / N_interacting.
+- **Unstable final states:** every decayed resonance of a type in
+  `--resonances` is put back in place of the stable particles it ends up in
+  (p p → n Δ⁺⁺ → n p π⁺ also counts as n Δ⁺⁺). It counts only if neither its
+  decay products nor anything between took part in an interaction with other
+  particles, and all of them are in the final state. An event counts once
+  per such resonance, so these are inclusive resonance cross sections.
 
 | Option | Default | Meaning |
 |---|---|---|
 | `--d-max D` | `Modi.Collider.Impact.Max` | Largest transverse distance in fm |
 | `--d-bins N` | `1000` | Bins in transverse distance |
+| `--resonances PDG...` | φ, Δ(1232), ρ, η, η′, ω | Resonances to reconstruct from their decay products |
 
 ```bash
 brass cross-sections runs/* -o cross-sections.pkl
 ```
 
 Each result (one per energy) has `total()`, `cross_section(select)` with
-`select(process, first_outgoing_pdgs, final_pdgs)`, `final_states()`,
+`select(process, first_outgoing_pdgs, final_pdgs)` (with `reconstructed=True`
+over the final states with a resonance put back), `final_states()`,
+`reconstructed_states()`,
 `first_channels()`, `process_types()` (elastic, resonance,
 parametrized-inelastic, soft-/hard-/failed-string, other) and
 `is_elastic` (final state equal to the initial one, not after a string),

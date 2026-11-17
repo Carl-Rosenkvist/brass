@@ -353,3 +353,63 @@ def test_cross_sections_empty_bins_are_interpolated(tmp_path):
     prob = np.interp(centres, [0.05, 0.25, 0.45, 0.65, 0.85, 1.95], [1, 1, 1, 1, 1, 0])
     expected = 10 * np.pi * (prob * np.diff(np.linspace(0, 2, 21) ** 2)).sum()
     assert sigma == pytest.approx(expected)
+
+
+# --- resonance reconstruction ---------------------------------------------
+
+from brass.analyses.cross_sections import reconstructed_final_states  # noqa: E402
+
+PI_P, PI_M, RHO0 = 211, -211, 113
+
+
+def test_reconstruction_of_a_clean_decay():
+    # p p -> n Delta++, Delta++ -> p pi+
+    pdg = {0: PROTON, 1: PROTON, 2: NEUTRON, 3: DELTA_PP, 4: PROTON, 5: PI_P}
+    interactions = [([0, 1], [2, 3]), ([3], [4, 5])]
+    assert reconstructed_final_states(interactions, [2, 4, 5], pdg, {DELTA_PP}) == [(NEUTRON, DELTA_PP)]
+    # not asked for
+    assert reconstructed_final_states(interactions, [2, 4, 5], pdg, {RHO0}) == []
+
+
+def test_reconstruction_through_a_chain_and_elastic_ids():
+    # p p (elastic, IDs kept) -> p p -> p p rho0 ... rho0 -> pi+ pi-
+    pdg = {0: PROTON, 1: PROTON, 2: PROTON, 3: PROTON, 4: RHO0, 5: PI_P, 6: PI_M}
+    interactions = [([0, 1], [0, 1]), ([0, 1], [2, 3, 4]), ([4], [5, 6])]
+    assert reconstructed_final_states(interactions, [2, 3, 5, 6], pdg, {RHO0}) == [(RHO0, PROTON, PROTON)]
+
+
+def test_reconstruction_skips_rescattered_and_undecayed_resonances():
+    pdg = {0: PROTON, 1: PROTON, 2: NEUTRON, 3: DELTA_PP, 4: PROTON, 5: PI_P}
+    # the pi+ scatters elastically on the neutron afterwards: the Delta is not seen
+    interactions = [([0, 1], [2, 3]), ([3], [4, 5]), ([5, 2], [5, 2])]
+    assert reconstructed_final_states(interactions, [2, 4, 5], pdg, {DELTA_PP}) == []
+    # the pi+ is absorbed into a new resonance with the neutron
+    pdg[6] = 2214
+    interactions = [([0, 1], [2, 3]), ([3], [4, 5]), ([5, 2], [6])]
+    assert reconstructed_final_states(interactions, [4, 6], pdg, {DELTA_PP}) == []
+    # a Delta that has not decayed is already in the final state
+    assert reconstructed_final_states([([0, 1], [2, 3])], [2, 3], pdg, {DELTA_PP}) == []
+
+
+def test_cross_sections_reconstructed_states(tmp_path):
+    config = {"Modi": {"Collider": {"Sqrtsnn": 3.0, "Impact": {"Max": 2.0}}}}
+    bs = (np.arange(100) + 0.5) * 1.0 / 100  # all inside 1 fm, all interact: sigma = 10 pi mb
+    with write_run(tmp_path / "run", XS_QUANTITIES, output="Collisions", config=config) as w:
+        for n, b in enumerate(bs):
+            initial = pp_initial(b)
+            w.particles(initial, event=n)
+            nd = xs_particles((1, 0, 0, 0, NEUTRON, 0.1, 0, 0.5, M_P, 2), (1, 0, 0, 0, DELTA_PP, -0.1, 0, -0.5, 1.232, 3))
+            w.interaction(initial, nd, process=3, sigma=31.4)
+            delta = xs_particles((1, 0, 0, 0, DELTA_PP, -0.1, 0, -0.5, 1.232, 3))
+            ppi = xs_particles((2, 0, 0, 0, PROTON, -0.1, 0, -0.3, M_P, 4), (2, 0, 0, 0, PI_P, 0, 0, -0.2, 0.138, 5))
+            w.interaction(delta, ppi, process=5, sigma=0.0)
+            final = xs_particles((3, 0, 0, 0, NEUTRON, 0.1, 0, 0.5, M_P, 2),
+                                 (3, 0, 0, 0, PROTON, -0.1, 0, -0.3, M_P, 4), (3, 0, 0, 0, PI_P, 0, 0, -0.2, 0.138, 5))
+            w.particles(final, event=n)
+            w.end(event=n)
+    analysis = CrossSections(tmp_path / "run", analysis_args(CrossSections, "--d-bins", "10"))
+    analysis.run()
+    sigma, _ = analysis.total()
+    assert analysis.final_states()[tuple(sorted((NEUTRON, PROTON, PI_P)))][0] == pytest.approx(sigma)
+    assert analysis.reconstructed_states() == {(NEUTRON, DELTA_PP): pytest.approx((sigma, sigma * 0.1))}
+    assert CrossSections(tmp_path / "run", analysis_args(CrossSections, "--resonances")).resonances == frozenset()

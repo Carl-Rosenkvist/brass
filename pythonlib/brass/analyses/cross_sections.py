@@ -17,6 +17,56 @@ STRINGS = range(41, 50)  # soft (41-45) and hard (46-49) strings
 FAILED_STRING = 50
 KAONS = {321, -321, 311, -311}
 FM2_TO_MB = 10.0
+# resonances reconstructed from their decay products by default, as in the
+# SMASH analysis suite: phi, Delta(1232), rho, eta, eta', omega
+RESONANCES = (333, 1114, 2114, 2214, 2224, 113, 213, -213, 221, 331, 223)
+
+
+def reconstructed_final_states(interactions, final_ids, pdg_of, resonances) -> list[PDGs]:
+    """Final states with one resonance put back in place of its decay products.
+
+    `interactions` are (incoming ids, outgoing ids) of one event in order,
+    `final_ids` the particles at the end, `pdg_of` maps every id to its PDG
+    code. For every particle of a PDG code in `resonances` that decayed, the
+    stable particles it ends up in are replaced by the resonance, giving one
+    final state per resonance. A resonance counts only if it could be seen
+    in its decay products: none of them, nor anything between, took part in
+    an interaction with other particles (a rescattering, a formation); and
+    all of them are in the final state.
+
+    Elastic collisions keep the particle IDs; a particle listed among its own
+    mothers is not counted as its own daughter.
+    """
+    mothers: dict[int, list[int]] = {}
+    daughters: dict[int, set[int]] = {}
+    for incoming, outgoing in interactions:
+        for i in incoming:
+            daughters.setdefault(i, set()).update(outgoing)
+        for o in outgoing:
+            mothers.setdefault(o, []).extend(incoming)
+
+    def products(i):
+        return daughters.get(i, set()) - set(mothers.get(i, ()))
+
+    final = set(final_ids)
+    states = []
+    for r in sorted(daughters):
+        if pdg_of[r] not in resonances or not products(r):
+            continue
+        stack, seen, stable, clean = list(products(r)), set(), set(), True
+        while stack and clean:
+            node = stack.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            clean = len(mothers.get(node, ())) == 1
+            if next_ := products(node):
+                stack.extend(next_)
+            else:
+                stable.add(node)
+        if clean and stable <= final:
+            states.append(tuple(sorted([pdg_of[i] for i in final - stable] + [pdg_of[r]])))
+    return states
 
 
 def _rows(particles, names) -> np.ndarray:
@@ -62,6 +112,12 @@ class CrossSections(brass.Analysis):
       process type and outgoing particles of that first interaction and the
       final-state particles are recorded. Partial cross sections are
       sigma * (selected events) / (events with an interaction).
+    - Final states with unstable particles: in each such event, every
+      decayed resonance of a type in --resonances whose decay products reach
+      the final state without further interactions is put back in their
+      place (e.g. p p -> n Delta++ -> n p pi+ also counts as n Delta++).
+      An event can count once per such resonance, so these are inclusive
+      cross sections of the resonances (`reconstructed_states`).
     """
 
     def __init__(self, folder_path, args):
@@ -74,6 +130,8 @@ class CrossSections(brass.Analysis):
         self.all_events = np.zeros(args.d_bins)
         self.interacting = np.zeros(args.d_bins)
         self.events: Counter = Counter()
+        self.resonances = frozenset(args.resonances)
+        self.reconstructed: Counter = Counter()  # (process, first outgoing, state)
         self.initial: PDGs | None = None
         self.n_events = 0
         self.lost = 0
@@ -83,6 +141,9 @@ class CrossSections(brass.Analysis):
         parser.add_argument("--d-max", type=float, default=None,
                             help="Largest transverse distance in fm (default: Modi.Collider.Impact.Max).")
         parser.add_argument("--d-bins", type=int, default=1000, help="Bins in transverse distance. Default: 1000")
+        parser.add_argument("--resonances", type=int, nargs="*", default=list(RESONANCES),
+                            help="PDG codes of the resonances to reconstruct from their decay products "
+                                 "(default: phi, Delta(1232), rho, eta, eta', omega).")
 
     def data_file_matches(self, path: Path) -> bool:
         return path.name in COLLISION_FILES
@@ -92,6 +153,7 @@ class CrossSections(brass.Analysis):
         momentum, position = ("p0", "px", "py", "pz"), ("t", "x", "y", "z")
 
         initial = final = first = None
+        interactions, pdg_of = [], {}
         while (block := reader.read()) is not None:
             if isinstance(block, brass.ParticleBlock):
                 if initial is None:
@@ -99,15 +161,26 @@ class CrossSections(brass.Analysis):
                 else:
                     final = block.particles
             elif isinstance(block, brass.InteractionBlock):
+                incoming = [int(i) for i in block.incoming.column("id")]
+                outgoing = [int(i) for i in block.outgoing.column("id")]
+                for side, ids in ((block.incoming, incoming), (block.outgoing, outgoing)):
+                    pdg_of.update(zip(ids, (int(x) for x in side.column("pdg"))))
+                interactions.append((incoming, outgoing))
                 if first is None and initial is not None:
-                    ids = sorted(int(i) for i in block.incoming.column("id"))
-                    if ids == sorted(int(i) for i in initial.column("id")):
+                    if sorted(incoming) == sorted(int(i) for i in initial.column("id")):
                         first = block
             elif isinstance(block, brass.EndBlock):
-                self._event(initial, first, final, momentum, position)
+                if self._event(initial, first, final, momentum, position) and final is not None:
+                    final_ids = [int(i) for i in final.column("id")]
+                    pdg_of.update(zip(final_ids, (int(x) for x in final.column("pdg"))))
+                    key = (int(first.process), tuple(sorted(int(x) for x in first.outgoing.column("pdg"))))
+                    for state in reconstructed_final_states(interactions, final_ids, pdg_of, self.resonances):
+                        self.reconstructed[(*key, state)] += 1
                 initial = final = first = None
+                interactions, pdg_of = [], {}
 
-    def _event(self, initial, first, final, momentum, position):
+    def _event(self, initial, first, final, momentum, position) -> bool:
+        """Count one event; True if it has an interaction of the initial particles."""
         if initial is None or initial.size() != 2:
             raise ValueError(
                 "cross-sections needs the initial and final particles of each event "
@@ -125,14 +198,15 @@ class CrossSections(brass.Analysis):
         k = int(d / (self.d_edges[1] - self.d_edges[0]))
         if k >= len(self.all_events):
             self.lost += 1
-            return
+            return False
         self.all_events[k] += 1
         if first is None:
-            return
+            return False
         self.interacting[k] += 1
         outgoing = tuple(sorted(int(x) for x in first.outgoing.column("pdg")))
         final_pdgs = tuple(sorted(int(x) for x in final.column("pdg"))) if final is not None else ()
         self.events[(int(first.process), outgoing, final_pdgs)] += 1
+        return True
 
     def __iadd__(self, other: Self) -> Self:
         if not np.array_equal(self.d_edges, other.d_edges):
@@ -142,7 +216,10 @@ class CrossSections(brass.Analysis):
         self.initial = self.initial or other.initial
         self.all_events += other.all_events
         self.interacting += other.interacting
+        if self.resonances != other.resonances:
+            raise ValueError("cannot add results with different --resonances")
         self.events.update(other.events)
+        self.reconstructed.update(other.reconstructed)
         self.n_events += other.n_events
         self.lost += other.lost
         return self
@@ -173,16 +250,20 @@ class CrossSections(brass.Analysis):
         error = FM2_TO_MB * float(np.sqrt((var * area**2).sum()))
         return sigma, error
 
-    def cross_section(self, select: Callable[[int, PDGs, PDGs], bool]) -> tuple[float, float]:
+    def cross_section(self, select: Callable[[int, PDGs, PDGs], bool],
+                      reconstructed: bool = False) -> tuple[float, float]:
         """Cross section of the events with select(process, first_outgoing, final) true.
 
+        With `reconstructed`, `final` runs over the final states with a
+        resonance put back (see the class docstring) instead.
         Returns (sigma, error) in mb; the error is the Poisson error of the
         selected events and the error of the total, added in quadrature.
         """
         n_total = sum(self.events.values())
         if n_total == 0:
             return 0.0, 0.0
-        n = sum(count for key, count in self.events.items() if select(*key))
+        counts = self.reconstructed if reconstructed else self.events
+        n = sum(count for key, count in counts.items() if select(*key))
         sigma_tot, err_tot = self.total()
         sigma = sigma_tot * n / n_total
         if n == 0:
@@ -201,6 +282,12 @@ class CrossSections(brass.Analysis):
         """Cross section per final state (sorted PDGs), elastic included."""
         states = {final for _, _, final in self.events}
         return {s: self.cross_section(lambda p, f, final, s=s: final == s) for s in sorted(states)}
+
+    def reconstructed_states(self) -> dict[PDGs, tuple[float, float]]:
+        """Cross section per final state with one reconstructed resonance (sorted PDGs)."""
+        states = {state for _, _, state in self.reconstructed}
+        return {s: self.cross_section(lambda p, f, state, s=s: state == s, reconstructed=True)
+                for s in sorted(states)}
 
     def first_channels(self) -> dict[PDGs, tuple[float, float]]:
         """Cross section per outgoing state of the first interaction."""
