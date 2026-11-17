@@ -1,0 +1,13 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 3212
+# label: Σ⁰+X
+# inclusive: yes
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/sigmazero_X.exp
+# COSY (Valdau:2010kw)
+plab,sqrts,sigma,sigma_err,source
+2.7,2.66868,0.00024,3.568e-05,error from squared statistical and systematic error
+2.74,2.68194,0.00051,7.582e-05,error from squared statistical and systematic error
+2.805,2.70339,0.0013,0.00019326,error from squared statistical and systematic error

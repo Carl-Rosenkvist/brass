@@ -1,0 +1,12 @@
+# observable: cross_section
+# system: kminus_neutron
+# initial: -321 2112
+# final_state: -321 2114
+# label: Δ⁰+K̅⁻
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/kminus_neutron/deltazero_kminus.exp
+plab,sqrts,sigma,sigma_err
+1.45,1.9994,0.1811,0.09055
+1.65,2.08687,0.30184,0.12074
+2.24,2.32961,0.3773,0.10564

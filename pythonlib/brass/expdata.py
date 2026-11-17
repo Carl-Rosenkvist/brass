@@ -22,6 +22,9 @@ same without the `v_` prefix (`err`, `stat_err`, `sys_err`).
     data = expdata.find("multiplicity", "pp", 211)   # exp_data/pp/multiplicity_211.csv
     x, y, err = data.points("sqrtsnn", "multiplicity")
 
+    for data in expdata.cross_sections("proton_proton"):  # exp_data/xs/proton_proton/*.csv
+        print(data.meta["final_state"], data.points("sqrts", "sigma"))
+
 The folder is `BRASS_EXP_DATA` if set, else `exp_data/` of the brass source
 tree (an editable install).
 """
@@ -139,3 +142,14 @@ def find(observable: str, system: str, pdg: int, suffix: str = "") -> ExpData | 
     """`exp_data/<system>/<observable>_<pdg><suffix>.csv`, or None if there is none."""
     path = data_dir() / system / f"{observable}_{pdg}{suffix}.csv"
     return load(path) if path.is_file() else None
+
+
+def cross_sections(system: str) -> list[ExpData]:
+    """All files of `exp_data/xs/<system>/`, e.g. system "proton_proton".
+
+    Each has `final_state` in its header: "total", "elastic", or the sorted
+    PDG codes of the final state (with `inclusive: yes` for "+ anything"),
+    and the columns `sqrts` and `sigma` in mb.
+    """
+    folder = data_dir() / "xs" / system
+    return [load(path) for path in sorted(folder.glob("*.csv"))] if folder.is_dir() else []

@@ -1,0 +1,55 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 321 2212 3122
+# label: Λ+p+K⁺
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/lambda_proton_kplus.exp
+# Balewski:1998pd
+plab,sqrts,sigma,sigma_err,source
+2.3438,2.54867,2.1e-06,2e-07,Balewski:1998pd
+2.3467,2.54966,1.34e-05,7e-07,Balewski:1998pd
+2.3497,2.55068,3.66e-05,2.6e-06,Balewski:1998pd
+2.3526,2.55167,6.3e-05,3.1e-06,Balewski:1998pd
+2.3556,2.5527,9.22e-05,6.5e-06,Balewski:1998pd
+2.3585,2.55369,0.000135,1.1e-05,Balewski:1998pd
+2.3614,2.55468,0.000164,1e-05,Balewski:1998pd
+2.3644,2.5557,0.000344,4.1e-05,Sewerin:1998ky (hepdata)
+2.3726,2.5585,0.000385,2.7e-05,Sewerin:1998ky (hepdata)
+2.3797,2.56092,0.000505,3.3e-05,Sewerin:1998ky (hepdata)
+2.3826,2.5619,0.00063,7.9e-05,Kowina:2004kr
+2.3885,2.56391,0.000727,5.7e-05,Kowina:2004kr
+2.4011,2.5682,0.001011,9.9e-05,Kowina:2004kr
+2.4302,2.57809,0.001366,0.000247,Kowina:2004kr
+2.4585,2.58769,0.002118,0.000266,Kowina:2004kr
+2.5165,2.60728,0.003838,0.000624,Kowina:2004kr
+2.9537,2.752,0.0239,0.0022,"AbdElSamad:2010tz, sqrt(err_stat**2 + err_sys**2)"
+3.2058,2.83301,0.0284,0.0025,"AbdElSamad:2010tz, sqrt(err_stat**2 + err_sys**2)"
+3.3038,2.86401,0.035,0.0033,"AbdElSamad:2010tz, sqrt(err_stat**2 + err_sys**2)"
+2.9537,2.752,0.0218,0.0027,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+3.0619,2.78699,0.0244,0.003,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+3.2026,2.83199,0.032,0.004,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+2.5,2.60172,0.0027,0.0003,Bilger:1998jf
+2.75,2.68524,0.012,0.0004,Bilger:1998jf
+2.59,2.63199,0.0074,0.0005,AbdelSamad:2006qu
+2.68,2.66203,0.0086,0.0006,AbdelSamad:2006qu
+2.85,2.71816,0.0165,0.0004,AbdelSamad:2006qu
+2.6,2.63534,0.0061,0.001,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.7,2.66868,0.0169,0.0036,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.74,2.68194,0.0161,0.0034,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.806,2.70371,0.0189,0.0056,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.948,2.75015,0.0232,0.00688,"Valdau:2007re, sqrt(err_stat**2 + err_sys**2)"
+2.807,2.70404,0.018,0.005,Landolt-Börnstein
+3.67,2.97757,0.051,0.012,Landolt-Börnstein
+4.95,3.3483,0.048,0.004,Landolt-Börnstein
+5.4,3.47013,0.067,0.005,Landolt-Börnstein
+5.45,3.48342,0.058,0.007,Landolt-Börnstein
+5.5,3.49666,0.0358,0.0099,Landolt-Börnstein
+6,3.62662,0.059,0.011,Landolt-Börnstein
+6,3.62662,0.054,0.005,Landolt-Börnstein
+6.6,3.777,0.054,0.007,Landolt-Börnstein
+6.92,3.85491,0.0433,0.008,Landolt-Börnstein
+7.87,4.07778,0.0544,0.0073,Landolt-Börnstein
+12,4.93359,0.048,0.009,Landolt-Börnstein
+24,6.84237,0.036,0.008,Landolt-Börnstein

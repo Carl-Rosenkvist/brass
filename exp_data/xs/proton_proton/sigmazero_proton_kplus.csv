@@ -1,0 +1,39 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 321 2212 3212
+# label: Σ⁰+p+K⁺
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/sigmazero_proton_kplus.exp
+# Sewerin:1998ky (hepdata)
+plab,sqrts,sigma,sigma_err,source
+2.5662,2.624,1.6e-06,5e-07,Sewerin:1998ky (hepdata)
+2.5721,2.62599,5.7e-06,8e-07,Sewerin:1998ky (hepdata)
+2.5781,2.628,8.6e-06,2.1e-06,Sewerin:1998ky (hepdata)
+2.5802,2.6287,9.7e-06,2e-06,Sewerin:1998ky (hepdata)
+2.5871,2.63102,1.75e-05,3.8e-06,Sewerin:1998ky (hepdata)
+2.5885,2.63149,1.28e-05,2.4e-06,Sewerin:1998ky (hepdata)
+2.5957,2.6339,2.01e-05,3e-06,Sewerin:1998ky (hepdata)
+2.5984,2.6348,3.49e-05,6.5e-06,Kowina:2004kr
+2.6047,2.63691,4.68e-05,6.4e-06,Kowina:2004kr
+2.6178,2.64129,7.8e-05,1.4e-05,Kowina:2004kr
+2.6466,2.65091,0.000125,3.2e-05,Kowina:2004kr
+2.676,2.6607,0.000196,3.3e-05,Kowina:2004kr
+2.7344,2.68008,0.000482,0.000144,Kowina:2004kr
+2.9414,2.74801,0.0031,0.0006,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+3.0495,2.783,0.0039,0.0007,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+3.1901,2.82801,0.0086,0.0017,"AbdelBary:2010pc, sqrt(err_stat**2 + err_sys**2)"
+2.948,2.75015,0.0026,0.00072,"Valdau:2007re, sqrt(err_stat**2 + err_sys**2)"
+2.7,2.66868,0.00024,3.6e-05,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.74,2.68194,0.00051,7.6e-05,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+2.806,2.70371,0.0013,0.00019,"Valdau:2010kw, sqrt(err_stat**2 + err_sys**2)"
+3.67,2.97757,0.013,0.007,Landolt-Börnstein
+4.95,3.3483,0.025,0.003,Landolt-Börnstein
+5.4,3.47013,0.027,0.004,Landolt-Börnstein
+5.5,3.49666,0.016,0.0075,Landolt-Börnstein
+6,3.62662,0.012,0.005,Landolt-Börnstein
+6,3.62662,0.017,0.004,Landolt-Börnstein
+6.6,3.777,0.025,0.003,Landolt-Börnstein
+6.92,3.85491,0.0289,0.0066,Landolt-Börnstein
+7.87,4.07778,0.0252,0.005,Landolt-Börnstein

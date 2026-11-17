@@ -1,0 +1,33 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 3122
+# label: Λ+X
+# inclusive: yes
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/lambda_X.exp
+# COSY (Valdau:2010kw)
+plab,sqrts,sigma,sigma_err,source
+2.546,2.61722,0.0061,0.0011,error from squared statistical and systematic error
+2.7,2.66868,0.0169,0.0036,error from squared statistical and systematic error
+2.74,2.68194,0.0161,0.0034,error from squared statistical and systematic error
+2.805,2.70339,0.018,0.0056,error from squared statistical and systematic error
+4.352,3.17986,0.2073,0.0085,plab calculated from sqrts = 3.18 GeV.
+6,3.62662,0.32,0.02,Landolt-Boernstein
+12,4.93359,1.154,0.02,Landolt-Boernstein
+12.4,5.00885,1.07,0.11,Landolt-Boernstein
+19,6.1194,1.86,0.06,Landolt-Boernstein
+22.4,6.61959,1.96,0.03,Landolt-Boernstein
+24,6.84237,2.011,0.02,Landolt-Boernstein
+69,11.4549,3.44,0.2,Landolt-Boernstein
+100,13.7611,3.5,0.4,Landolt-Boernstein
+102,13.8968,3.2,0.4,Landolt-Boernstein
+147,16.6595,4.2,0.2,Landolt-Boernstein
+205,19.6556,3.33,0.33,Landolt-Boernstein
+300,23.7605,3.61,0.35,Landolt-Boernstein
+300,23.7605,3.6,0.5,Landolt-Boernstein
+360,26.0216,4.08,0.4,Landolt-Boernstein
+400,27.4256,3.97,0.54,Landolt-Boernstein
+405,27.596,4.05,0.39,Landolt-Boernstein
+1495.95,52.9921,4.4,0.2,Landolt-Boernstein
+2047.49,61.9908,4.7,0.2,Landolt-Boernstein

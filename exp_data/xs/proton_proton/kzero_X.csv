@@ -1,0 +1,27 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 311
+# label: K⁰+X
+# inclusive: yes
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/kzero_X.exp
+# Agakishiev:2014moo, error from sum of squared erorrs
+plab,sqrts,sigma,sigma_err,source
+4.3377,3.17574,0.1127,0.0096,"Agakishiev:2014moo, error from sum of squared erorrs"
+6,3.62662,0.2,0.02,Landolt-Börnstein
+12,4.93359,1.18,0.05,Landolt-Börnstein
+12.4,5.00885,1.37,0.16,Landolt-Börnstein
+19.1,6.13469,2.54,0.08,Landolt-Börnstein
+22.4,6.61959,2.86,0.04,Landolt-Börnstein
+24,6.84237,3.1,0.12,Landolt-Börnstein
+24.5,6.91053,2.74,0.25,Landolt-Börnstein
+77,12.0922,6.86,0.46,Landolt-Börnstein
+100,13.7611,7.6,0.6,Landolt-Börnstein
+102,13.8968,9.2,1,Landolt-Börnstein
+147,16.6595,10,0.4,Landolt-Börnstein
+300,23.7605,14.68,1.18,Landolt-Börnstein
+300,23.7605,13.8,1.6,Landolt-Börnstein
+360,26.0216,17.1,1.02,Landolt-Börnstein
+400,27.4256,13.22,1.46,Landolt-Börnstein
+1467.84,52.4922,23,5,Landolt-Börnstein

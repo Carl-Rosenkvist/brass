@@ -28,3 +28,12 @@ The files `dilepton_mass_*`, `dilepton_pt_*` and `dilepton_y_*` in `pp/`, `pNb/`
 ## FOPI pion data
 
 `AA/fopi_pion_multiplicity.csv` and `AA/fopi_pion_ratio.csv` are the pion multiplicity M(π) = 3/2 (N_π⁺ + N_π⁻) and the ratio N_π⁻/N_π⁺ in central Au+Au collisions against the beam energy (FOPI, Nucl. Phys. A781 (2007) 459, Figs. 20 and 25), taken from the data of the published figures as collected for the SMASH analysis suite; the errors are the overall 9.4 % and 5 % quoted there.
+
+## Elementary cross sections
+
+`xs/<system>/` (e.g. `xs/proton_proton/`) holds the total, elastic and partial cross sections the SMASH analysis suite compared its elementary-collision runs with, converted from its collection (`brass.expdata.cross_sections(system)` reads them). `final_state` in the header is `total`, `elastic` or the sorted PDG codes of the final state; `inclusive: yes` means "and anything else" (the suite's `+X`), and `label` is the suite's name of the channel. Cross sections are in mb.
+
+- `total.csv` and `elastic.csv` come from the PDG compilation tables (with the reference per point in `ref`; statistical and systematic errors as given there, the systematic ones converted from per cent), except for π⁺π⁻, which are HepData tables already given against the invariant mass.
+- The partial cross sections were collected by hand for the suite, with the same risks as the energy-scan data above; most give only a total error and no reference beyond an occasional comment (`source`).
+- The original tables give the beam momentum (`plab`) or kinetic energy (`ekin`) of the projectile, the first particle of the system name, on a target at rest. `sqrts` (and `sqrts_min`, `sqrts_max`) were computed from them with SMASH's pole masses (π 0.138, N 0.938, K 0.494 GeV), as the suite did when it plotted them. Near thresholds this choice of masses matters.
+- Some channels were never seen in SMASH, or their data was found inconsistent (Λ+Σ⁰ in pp does not conserve charge as listed); they are kept as they were.

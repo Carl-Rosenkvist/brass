@@ -1,0 +1,23 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 2112 2224
+# label: n+Δ⁺⁺
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/neutron_deltaplusplus.exp
+plab,sqrts,sigma,sigma_err
+5.5,3.49666,3.25,0.16
+6,3.62662,2.7,0.15
+6.92,3.85491,1.9,0.3
+8.1,4.12999,1.35,0.3
+10,4.53895,1.18,0.14
+13,5.11968,0.55,0.099
+16.2,5.67466,0.32,0.05
+18.1,5.98004,0.301,0.052
+19,6.1194,0.27,0.05
+21.1,6.43291,0.217,0.053
+24.2,6.86971,0.205,0.047
+28.5,7.43335,0.115,0.015
+280.959,22.9966,0.0012,0.0002
+511.168,30.9954,0.0006,0.0001

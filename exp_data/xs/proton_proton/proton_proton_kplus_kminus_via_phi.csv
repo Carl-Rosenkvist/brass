@@ -1,0 +1,14 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 333 2212 2212
+# label: p+p+φ
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/proton_proton_kplus_kminus_via_phi.exp
+# Errors are summed squares of statistical and systematic error.
+ekin,sqrts,sigma,sigma_err,source
+2.65,2.91389,3.3e-05,4.5e-06,ANKE data from Maeda:2007cy
+2.7,2.92994,6.4e-05,1.1e-05,ANKE data from Maeda:2007cy
+2.83,2.97127,0.000133,3e-05,ANKE data from Maeda:2007cy
+2.85,2.97758,9e-05,4.1e-05,DISTO data from Balestra:2000ex

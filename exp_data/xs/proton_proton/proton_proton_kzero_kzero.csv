@@ -1,0 +1,15 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: -311 311 2212 2212
+# label: p+p+K⁰+K̅⁰
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/proton_proton_kzero_kzero.exp
+plab,sqrts,sigma,sigma_err
+4.95,3.3483,0.003,0.001
+5.5,3.49666,0.0064,0.004
+6,3.62662,0.005,0.003
+6.92,3.85491,0.0082,0.0036
+7.87,4.07778,0.0104,0.0033
+10,4.53895,0.033,0.016

@@ -69,3 +69,24 @@ def test_find_uses_env_folder(tmp_path, monkeypatch):
 def test_no_data(tmp_path):
     with pytest.raises(ValueError, match="no data"):
         expdata.load(write(tmp_path, "# only: header\n"))
+
+
+def test_cross_sections(tmp_path, monkeypatch):
+    folder = tmp_path / "xs" / "proton_proton"
+    folder.mkdir(parents=True)
+    (folder / "total.csv").write_text("# final_state: total\nsqrts,sigma,sigma_stat_err,sigma_sys_err\n3.0,40,3,4\n")
+    (folder / "rho.csv").write_text("# final_state: 113\n# inclusive: yes\nplab,sqrts,sigma,sigma_err\n12,4.9,1.8,0.25\n")
+    monkeypatch.setenv(expdata.ENV, str(tmp_path))
+    files = {d.meta["final_state"]: d for d in expdata.cross_sections("proton_proton")}
+    assert set(files) == {"total", "113"} and files["113"].meta["inclusive"] == "yes"
+    assert files["total"].points("sqrts", "sigma")[2][0] == 5.0
+    assert expdata.cross_sections("no_such_system") == []
+
+
+def test_shipped_cross_sections_load():
+    for system in ("proton_proton", "piplus_piminus", "kminus_proton"):
+        files = expdata.cross_sections(system)
+        assert {"total", "elastic"} <= {d.meta["final_state"] for d in files}
+        for data in files:
+            x, y, _ = data.points("sqrts", "sigma")
+            assert len(x) and (x > 0.2).all()

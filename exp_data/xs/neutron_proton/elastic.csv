@@ -1,0 +1,19 @@
+# observable: cross_section
+# system: neutron_proton
+# initial: 2112 2212
+# final_state: elastic
+# reaction: N P --> P N
+# ref: PDG compilation (ref column per point)
+# unit: mb
+# from: smash-analysis-extras cross_sections/neutron_proton/data_elastic.exp
+plab,sqrts,sqrts_min,sqrts_max,sigma,sigma_stat_err,sigma_sys_err,ref
+1.25,2.16599,2.065,2.27123,28.58,1.36,0,"BESLIU 86        YF 43, 888"
+1.73,2.33485,2.31718,2.3525,24.3,1.31,0,"BESLIU 86        YF 43, 888"
+2.23,2.50962,2.48544,2.53368,21.14,0.97,0,"BESLIU 86        YF 43, 888"
+3,2.76702,2.60172,2.9253,14.2,2.3,0,"WARD 75B         NP B92, 101"
+3,2.76702,2.60172,2.9253,1.3,0.6,0,"WARD 75B         NP B92, 101"
+3.83,3.02607,2.98976,3.06202,15.68,0.83,0,"BESLIU 86        YF 43, 888"
+5.1,3.38936,3.3428,3.43534,12.92,0.75,0,"BESLIU 86        YF 43, 888"
+5.5,3.49666,2.0813,4.53895,12.5,0.8,0,"BESLIU 69        NC A59, 1"
+8,4.10737,4.10737,4.10737,0.06,0.03,0,"MANNING 66       NC A41, 167"
+17,5.80519,4.53895,6.84237,10.1,1.3,0,"WARD 75B         NP B92, 101"

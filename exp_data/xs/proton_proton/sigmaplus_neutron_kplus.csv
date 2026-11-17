@@ -1,0 +1,20 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 321 2112 3222
+# label: Σ⁺+n+K⁺
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/sigmaplus_neutron_kplus.exp
+# COSY, error from squared statistical and systematic error
+plab,sqrts,sigma,sigma_err,source
+2.6,2.63534,1.1e-05,4.6e-06,Valdau:2010kw
+2.7,2.66868,0.0002,4.7e-05,Valdau:2010kw
+2.74,2.68194,0.00039,8.8e-05,Valdau:2010kw
+2.806,2.70371,0.00076,0.000167,Valdau:2010kw
+2.948,2.75015,0.0025,0.0007,Valdau:2007re
+3.67,2.97757,0.047,0.013,Landolt-Börnstein
+4.95,3.3483,0.0481,0.0035,Landolt-Börnstein
+5.4,3.47013,0.085,0.012,Landolt-Börnstein
+6,3.62662,0.057,0.007,Landolt-Börnstein
+6.6,3.777,0.085,0.011,Landolt-Börnstein

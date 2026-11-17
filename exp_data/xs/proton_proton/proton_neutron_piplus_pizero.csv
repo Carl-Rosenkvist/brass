@@ -1,0 +1,12 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 111 211 2112 2212
+# label: p+n+π⁺+π⁰
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/proton_neutron_piplus_pizero.exp
+plab,sqrts,sigma,sigma_err
+2.23,2.50962,2.37,0.2
+2.81,2.70503,4.07,0.21
+3.99,3.07392,3.8,0.3

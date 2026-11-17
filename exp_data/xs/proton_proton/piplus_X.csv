@@ -1,0 +1,18 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 211
+# label: π⁺+X
+# inclusive: yes
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/piplus_X.exp
+# as found in
+plab,sqrts,sigma,sigma_err
+1.313,2.18789,13.4,2.2
+3.681,2.98093,24.9,1.2
+5.485,3.4927,19.456,1.966
+11.985,4.93075,36.819,3.655
+12.488,5.02525,41.531,3.926
+18.96,6.11328,48.712,4.764
+24.018,6.84484,57.694,5.85
+25.065,6.98674,57.133,6.045

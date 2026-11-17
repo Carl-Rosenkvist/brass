@@ -1,0 +1,10 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 3122 3212
+# label: Λ+Σ⁰
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/lambda_sigmazero.exp
+plab,sqrts,sigma,sigma_err
+24.5,6.91053,1.13,0.2

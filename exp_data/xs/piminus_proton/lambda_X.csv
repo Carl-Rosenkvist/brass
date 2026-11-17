@@ -1,0 +1,22 @@
+# observable: cross_section
+# system: piminus_proton
+# initial: -211 2212
+# final_state: 3122
+# label: Λ+X
+# inclusive: yes
+# unit: mb
+# from: smash-analysis-extras cross_sections/piminus_proton/lambda_X.exp
+plab,sqrts,sigma,sigma_err
+1.232,1.79571,0.22,0.06
+3.95,2.88333,0.952,0.035
+4.85,3.16246,0.7,0.07
+6,3.48681,0.94,0.06
+15,5.38888,1.266,0.0527
+16,5.56022,0.9002,0.0651
+18.5,5.96706,0.9218,0.0713
+40,8.71432,1.38,0.12
+100,13.7295,1.56,0.09
+147,16.6334,1.65,0.21
+200,19.3933,1.53,0.12
+250,21.6772,1.47,0.2
+360,26.005,1.63,0.11

@@ -1,0 +1,17 @@
+# observable: cross_section
+# system: proton_proton
+# initial: 2212 2212
+# final_state: 113 2212 2212
+# label: p+p+ρ⁰
+# inclusive: no
+# unit: mb
+# from: smash-analysis-extras cross_sections/proton_proton/proton_proton_rhozero.exp
+# as found in
+plab,sqrts,sigma,sigma_err
+3.665,2.97604,0.023,0.008
+5.501,3.49693,0.07,0.05
+6.604,3.77798,0.097,0.02
+6.925,3.85611,0.13,0.04
+8.113,4.13292,0.1,0
+13.11,5.13974,0.07,0.02
+25.58,7.0555,0.118,0.041
