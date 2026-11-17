@@ -1,0 +1,20 @@
+# observable: dndmt
+# pdg: 321
+# energy: elb4
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/elab4_kplus.exp
+# note: E866, PLB 490 (2000) 53, \cite{Ahle:2000wq}
+mt_m0,dndmt,dndmt_err
+0.08683,13.0624,0
+0.13655,10.5504,0
+0.18557,7.7872,0
+0.23529,5.52197,0
+0.28501,4.09454,0
+0.33473,2.81059,0
+0.38375,1.91073,0
+0.43347,1.54533,0
+0.48599,1.14586,0
+0.53291,0.74231,0
+0.58193,0.60035,0
+0.62885,0.36003,0

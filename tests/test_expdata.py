@@ -90,3 +90,22 @@ def test_shipped_cross_sections_load():
         for data in files:
             x, y, _ = data.points("sqrts", "sigma")
             assert len(x) and (x > 0.2).all()
+
+
+def test_spectra_energies(tmp_path, monkeypatch):
+    folder = tmp_path / "AA"
+    folder.mkdir()
+    for name, header in (("dndy_211_a", "# energy: elb158"), ("dndy_211_b", "# energy: ecm200"),
+                         ("dndy_211_c", "# sqrt_s: 17.3"), ("dndy_211_d", "# energy: unknown"),
+                         ("dndy_-211_e", "# energy: ecm200")):
+        (folder / f"{name}.csv").write_text(f"{header}\ny,dndy,dndy_err\n0,1,0.1\n")
+    monkeypatch.setenv(expdata.ENV, str(tmp_path))
+    found = expdata.spectra("dndy", "AA", 211)
+    assert [d.path.stem for _, d in found] == ["dndy_211_c", "dndy_211_a", "dndy_211_b"]
+    assert [round(e, 2) for e, _ in found] == [17.3, 17.32, 200.0]
+
+
+def test_shipped_spectra_have_energies():
+    for observable, system, pdg in (("dndy", "pp", 211), ("dndy", "AA", -211), ("dndmt", "AA", 321)):
+        found = expdata.spectra(observable, system, pdg)
+        assert found and all(e > 2 for e, _ in found)

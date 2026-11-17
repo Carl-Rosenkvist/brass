@@ -1,0 +1,38 @@
+# observable: dndmt
+# pdg: -211
+# energy: ecm27
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm27_piminus.exp
+# note: STAR collaboration, Figure 15 from arxiv.org/pdf/1701.07065.pdf
+# note: Mid-rapidity (|y|<0.1) transverse momentum spectrum of piminus
+# note: Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.169683,1208.61,82.9951
+0.215085,928.228,62.0898
+0.261586,700.801,46.1022
+0.308843,532.362,34.6592
+0.35664,405.866,26.2548
+0.404834,309.425,19.9379
+0.453328,236.258,15.1873
+0.502054,179.285,11.5077
+0.550962,139.012,8.91548
+0.600017,108.766,6.97271
+0.332685,464.477,30.1308
+0.429048,272.188,17.5148
+0.526488,162.222,10.4084
+0.62459,99.4685,6.37669
+0.723129,61.606,3.9505
+0.821971,38.5166,2.47371
+0.92103,24.5597,1.58391
+1.02025,15.7482,1.02624
+1.11959,10.2202,0.682947
+1.21904,6.6608,0.471854
+1.31855,4.34859,0.348276
+1.41813,2.89466,0.288524
+1.51776,1.9038,0.189805
+1.61743,1.28428,0.128096
+1.71714,0.85577,0.08545
+1.81688,0.590619,0.059052

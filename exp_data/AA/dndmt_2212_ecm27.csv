@@ -1,0 +1,35 @@
+# observable: dndmt
+# pdg: 2212
+# energy: ecm27
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm27_proton.exp
+# note: STAR collaboration, Figure 15 from arxiv.org/pdf/1701.07065.pdf
+# note: Mid-rapidity (|y|<0.1) transverse momentum spectrum of proton
+# note: Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.091791,61.65,7.45298
+0.113413,57.3875,5.58343
+0.136927,53.8833,4.66223
+0.162213,49.5649,4.05556
+0.189151,45.4978,3.63013
+0.217625,41.7631,3.29502
+0.247525,37.7343,2.96243
+0.278745,35.0602,2.74668
+0.311187,31.7464,2.4854
+0.203203,42.879,3.3981
+0.262976,36.2383,2.84116
+0.327837,30.263,2.36875
+0.397045,24.735,1.93787
+0.469957,19.5891,1.53936
+0.54603,15.3316,1.21279
+0.6248,11.6434,0.933977
+0.705881,8.66326,0.715105
+0.788946,6.37995,0.557176
+0.873724,4.57165,0.442472
+0.959984,3.27417,0.374761
+1.04753,2.32164,0.265801
+1.13621,1.64117,0.187883
+1.22587,1.14668,0.131329

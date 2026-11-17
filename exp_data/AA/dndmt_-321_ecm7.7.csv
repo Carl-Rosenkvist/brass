@@ -1,0 +1,35 @@
+# observable: dndmt
+# pdg: -321
+# energy: ecm7.7
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm7.7_kminus.exp
+# note: STAR collaboration, Figure 12 from arxiv.org/pdf/1701.07065.pdf
+# note: Mid-rapidity (|y|<0.1) transverse momentum spectrum of kminus
+# note: Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.07126,34.0888,2.28598
+0.097157,31.5674,1.99345
+0.126007,29.0534,1.77661
+0.157419,25.5845,1.54018
+0.191039,21.5205,1.29757
+0.226561,18.7076,1.11562
+0.263716,15.2838,0.913201
+0.302277,13.0948,0.789413
+0.342048,10.5683,0.650462
+0.382867,8.5998,0.599135
+0.173973,22.8394,1.36517
+0.244949,16.2948,0.966904
+0.322022,11.5045,0.682623
+0.403624,7.36138,0.438803
+0.488628,4.97691,0.298548
+0.576226,3.20882,0.194765
+0.665829,2.059,0.127295
+0.757008,1.30376,0.083394
+0.849442,0.804876,0.05498
+0.942889,0.528416,0.040638
+1.03716,0.316044,0.030635
+1.13212,0.180327,0.018674
+1.22765,0.152681,0.016101

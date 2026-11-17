@@ -1,0 +1,20 @@
+# observable: dndmt
+# pdg: 2212
+# energy: elb160
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/elab160_proton.exp
+# note: NA49, PRC 73, 044910 (2006) \cite{Alt:2006dk}
+mt_m0,dndmt,dndmt_err
+0.035,35.57,0
+0.1206,31.16,0
+0.1983,26.09,0
+0.2839,21.85,0
+0.3617,16.72,0
+0.4356,14,0
+0.525,9.797,0
+0.5989,7.842,0
+0.6806,6.567,0
+0.7583,4.013,0
+0.8439,4.209,0
+0.9256,2.459,0

@@ -1,0 +1,33 @@
+# observable: dndmt
+# pdg: -2212
+# energy: ecm200
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm200_antiproton.exp
+# note: star PRL 97 (2006) 152301 \cite{STAR:2006uve}
+# note: Mid-rapidity (|y|<0.5) transverse momentum spectrum of antiproton
+# note: Datatable from https://www.hepdata.net/record/ins718231
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.149356,25.6224,2.56944
+0.203203,24.6176,2.46652
+0.262976,23.0476,2.30839
+0.327837,21.1008,2.11304
+0.397045,19.0284,1.90533
+0.469957,15.8256,1.58451
+0.54603,12.6228,1.41551
+0.665073,8.478,0.984521
+0.831137,5.16216,0.545546
+1.00361,3.15256,0.324581
+1.18093,1.83376,0.188513
+1.36197,1.04248,0.157552
+1.59229,0.52752,0.0800796
+1.96757,0.171444,0.0259566
+2.68551,0.024178,0.00376367
+1.84956,0.21666,0.0408246
+2.08615,0.10048,0.0181524
+2.32474,0.0488584,0.00898278
+2.56492,0.024178,0.00444816
+2.80639,0.0123716,0.00243188
+3.04891,0.0064056,0.00129498

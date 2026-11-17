@@ -1,0 +1,27 @@
+# observable: dndmt
+# pdg: -2212
+# energy: ecm7.7
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm7.7_antiproton.exp
+# note: STAR collaboration, Figure 12 from arxiv.org/pdf/1701.07065.pdf
+# note: Mid-rapidity (|y|<0.1) transverse momentum spectrum of antiproton
+# note: Datatable from https://drupal.star.bnl.gov/STAR/files/starpublications/262/data.html
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.091791,0.787283,0.091568
+0.113413,0.689894,0.069665
+0.136927,0.686752,0.064585
+0.162213,0.65031,0.059668
+0.189151,0.611354,0.055498
+0.217625,0.571142,0.051695
+0.247525,0.522761,0.047371
+0.278745,0.486319,0.044106
+0.311187,0.41846,0.038792
+0.262976,0.51208,0.045132
+0.327837,0.388301,0.034853
+0.397045,0.334265,0.030254
+0.469957,0.242531,0.022712
+0.54603,0.190381,0.018368
+0.6248,0.14954,0.015113

@@ -1,0 +1,33 @@
+# observable: dndmt
+# pdg: 2212
+# energy: ecm200
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/ecm200_proton.exp
+# note: star PRL 97 (2006) 152301 \cite{STAR:2006uve}
+# note: Mid-rapidity (|y|<0.5) transverse momentum spectrum of proton
+# note: Datatable from https://www.hepdata.net/record/ins718231
+# note: pT converted to mT (mT = sqrt(pT^2 + m^2), mT dmT = pT dpT), 2*pi factor removed
+# note: mT-m [GeV/c] d^2N/(pt*dpt*dy)[(GeV/c)^-2] error(stat. and sys.)
+mt_m0,dndmt,dndmt_err
+0.149356,33.2212,3.34834
+0.203203,31.4,3.1572
+0.262976,28.888,2.90169
+0.327837,26.6272,2.67334
+0.397045,23.8012,2.38907
+0.469957,20.096,2.01674
+0.54603,16.328,1.82273
+0.665073,11.1784,1.25232
+0.831137,6.7824,0.707564
+1.00361,4.1134,0.423138
+1.18093,2.40524,0.245165
+1.36197,1.39416,0.21039
+1.59229,0.69708,0.105396
+1.96757,0.226708,0.0341975
+2.68551,0.0332212,0.00503674
+1.84956,0.275064,0.051814
+2.08615,0.129368,0.0233017
+2.32474,0.063428,0.0116201
+2.56492,0.0316512,0.00581072
+2.80639,0.0162024,0.00317906
+3.04891,0.008478,0.00170304

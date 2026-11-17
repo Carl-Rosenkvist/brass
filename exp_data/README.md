@@ -21,6 +21,17 @@ The files `multiplicity_<pdg>.csv`, `meanpt_<pdg>.csv`, `meanmt_<pdg>.csv`, `AA/
 
 Use these files for overview comparisons, as the analysis suite did. Do not use them for fits, calibrations or publications without checking every point against the original publication.
 
+## Transverse-mass spectra
+
+`AA/dndmt_<pdg>_<energy>.csv` are the transverse-mass spectra at midrapidity, 1/m_T d²N/dm_T dy against m_T − m₀, that the SMASH analysis suite drew on its energy-scan pages, converted from its collection. The same risks apply as for the energy-scan data above, and more:
+
+- `system: AA` mixes Au+Au and Pb+Pb; centrality is only given where the original file name said so (`_cent0-5`).
+- Some files combine several experiments (e.g. STAR and PHENIX at 200 GeV); the `note` lines list them in order, but the rows do not say which experiment they belong to.
+- Several were converted from p_T spectra (m_T dm_T = p_T dp_T, and a factor 2π removed, as noted), or read off figures; many points have no uncertainty (0).
+- `energy` is `ecm<√s_NN>` or `elb<E_kin per nucleon in GeV>`; `expdata.sqrtsnn` converts the latter with m_N = 0.938 GeV, as the suite did.
+
+`expdata.spectra(observable, system, pdg)` lists the files of a spectrum (`dndy`, `dndmt`) with their √s_NN, from either `energy` or `sqrt_s`.
+
 ## HADES dilepton spectra
 
 The files `dilepton_mass_*`, `dilepton_pt_*` and `dilepton_y_*` in `pp/`, `pNb/`, `CC/` and `ArKCl/` are HADES dilepton spectra, also converted from the SMASH analysis suite's collection, with the same risks as above. They are HADES-acceptance-filtered measurements: compare them only with spectra passed through the HADES filter of the same beam time (`brass.haft` with the matching acceptance file and lepton momentum cuts). The pp and p+Nb spectra are cross sections (µb/GeV), the C+C and Ar+KCl spectra are yields per π⁰, with N_π⁰ = (N_π⁺ + N_π⁻)/2 as HADES defines it. Only statistical errors are given; the C+C systematic errors of the source were inconsistent and are left out. `cut` in the header gives mass windows (`m150_m470`: 0.15 < M < 0.47 GeV) or the pair-momentum cut of p+Nb (`m800`: p > 0.8 GeV, `m0_m800`: p < 0.8 GeV).

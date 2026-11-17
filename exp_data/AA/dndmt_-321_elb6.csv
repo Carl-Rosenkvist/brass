@@ -1,0 +1,19 @@
+# observable: dndmt
+# pdg: -321
+# energy: elb6
+# system: AA
+# quantity: 1/mT d2N/dmT dy [GeV^-2] against mT - m0 [GeV], at midrapidity
+# from: smash-analysis-extras mt_spectrum/AA/elab6_kminus.exp
+# note: E866, PLB 490 (2000) 53, \cite{Ahle:2000wq}
+mt_m0,dndmt,dndmt_err
+0.0447,3.2154,0
+0.08295,3.5042,0
+0.13226,2.5936,0
+0.18111,1.9908,0
+0.23226,1.6014,0
+0.28157,0.9922,0
+0.33041,0.6971,0
+0.37926,0.5376,0
+0.43088,0.4712,0
+0.47972,0.2915,0
+0.53088,0.2156,0

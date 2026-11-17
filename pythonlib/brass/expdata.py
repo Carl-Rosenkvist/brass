@@ -33,6 +33,7 @@ import csv
 import io
 import math
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -153,3 +154,37 @@ def cross_sections(system: str) -> list[ExpData]:
     """
     folder = data_dir() / "xs" / system
     return [load(path) for path in sorted(folder.glob("*.csv"))] if folder.is_dir() else []
+
+
+NUCLEON_MASS = 0.938  # GeV, as the SMASH analysis suite used for elab -> sqrt(s_NN)
+
+
+def sqrtsnn(data: ExpData) -> float | None:
+    """sqrt(s_NN) in GeV from a file's header: `sqrt_s`/`sqrtsnn`, or `energy`
+    as `ecm<sqrt(s_NN)>` or `elb`/`elab`/`ekin<kinetic energy per nucleon in the lab>`."""
+    for key in ("sqrtsnn", "sqrt_s"):
+        if key in data.meta:
+            number = re.match(r"\s*([\d.]+)", str(data.meta[key]))  # also "8.76 GeV"
+            return float(number[1]) if number else None
+    match = re.fullmatch(r"(ecm|elb|elab|ekin)([\d.]+)", str(data.meta.get("energy", "")))
+    if match is None:
+        return None
+    kind, value = match[1], float(match[2])
+    if kind == "ecm":
+        return value
+    return math.sqrt(2 * NUCLEON_MASS * (2 * NUCLEON_MASS + value))
+
+
+def spectra(observable: str, system: str, pdg: int) -> list[tuple[float, ExpData]]:
+    """All `exp_data/<system>/<observable>_<pdg>_*.csv` with their sqrt(s_NN), sorted by it.
+
+    E.g. spectra("dndy", "pp", 211) or spectra("dndmt", "AA", -321); files
+    whose energy cannot be read are left out.
+    """
+    out = []
+    for path in sorted((data_dir() / system).glob(f"{observable}_{pdg}_*.csv")):
+        data = load(path)
+        energy = sqrtsnn(data)
+        if energy is not None:
+            out.append((energy, data))
+    return sorted(out, key=lambda item: item[0])
