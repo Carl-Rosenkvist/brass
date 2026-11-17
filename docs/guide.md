@@ -453,7 +453,7 @@ Dilepton spectra per decay channel and per mother of the decaying particle
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--acceptance FILE` | none | HADES single-lepton acceptance file (.acc) |
+| `--acceptance NAME` | none | HADES acceptance: a beam time shipped with brass (`p125p`, `p22p`, `p35p`, `p35Nb`, `c10c`, `c20c`, `ar17kcl`) or a .acc file |
 | `--resolution 1\|2\|3` | `3` | HADES momentum resolution for files without resolution tables |
 | `--opening-angle DEG` | `9` | Minimal opening angle (with `--acceptance`) |
 | `--lepton-momentum MIN MAX` | `0 1000` | Lepton momentum range in GeV (with `--acceptance`) |
@@ -463,7 +463,7 @@ Dilepton spectra per decay channel and per mother of the decaying particle
 | `--seed N` | none | Random seed of the smearing |
 
 ```bash
-brass dilepton-spectra runs/* --acceptance HadesSingleAcc-p35p-APR07-effgt5-RK-v2.acc \
+brass dilepton-spectra runs/* --acceptance p35p \
     --lepton-momentum 0.08 2.0 -o dileptons.pkl
 ```
 

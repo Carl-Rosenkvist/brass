@@ -5,7 +5,7 @@ from typing import Self
 import numpy as np
 
 import brass
-from brass.haft import ELECTRON, POSITRON, HadesAcceptance
+from brass.haft import ELECTRON, POSITRON, HadesAcceptance, acceptance_files, acceptance_path
 
 Key = tuple[str, int]  # (decay channel, PDG of the decaying particle's mother)
 
@@ -39,7 +39,7 @@ class DileptonSpectra(brass.Analysis):
             raise ValueError("--mass-windows must be increasing")
         self.pair_momentum_cut = float(args.pair_momentum_cut)
         self.lepton = int(args.lepton)
-        self.acceptance_file = args.acceptance
+        self.acceptance_file = None if args.acceptance is None else acceptance_path(args.acceptance)
         self.resolution = int(args.resolution)
         self.opening_angle = float(args.opening_angle)
         self.lepton_momentum = tuple(args.lepton_momentum)
@@ -60,8 +60,9 @@ class DileptonSpectra(brass.Analysis):
         parser.add_argument("--pair-momentum-cut", type=float, default=0.8,
                             help="|p| of the pair in GeV for mass_below / mass_above. Default: 0.8")
         parser.add_argument("--lepton", type=int, default=11, help="Lepton PDG (11 or 13). Default: 11")
-        parser.add_argument("--acceptance", type=Path, default=None,
-                            help="HADES acceptance file (.acc): apply the HADES filter")
+        parser.add_argument("--acceptance", default=None,
+                            help="Apply the HADES filter with this acceptance: a beam time shipped with "
+                                 f"brass ({', '.join(acceptance_files())}) or a .acc file")
         parser.add_argument("--resolution", type=int, default=3, choices=(1, 2, 3),
                             help="HADES momentum resolution without resolution tables: 1 low, 2 medium, 3 high")
         parser.add_argument("--opening-angle", type=float, default=9.0,

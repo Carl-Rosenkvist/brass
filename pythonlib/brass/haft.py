@@ -3,12 +3,13 @@
 A port of the single-particle module of HAFT 2.0 (readHAFT2.f90 by
 R. Holzmann, J. Weil): reading a HADES acceptance file, the interpolated
 acceptance of a particle, and the smearing of its momentum with the HADES
-resolution. The acceptance files are not part of brass; they come with the
-experiments' published data.
+resolution. brass ships the acceptance files of the HADES beam times its
+dilepton data comes from (haft_acceptance/, see the README there); they are
+found by beam time, e.g. "p35p" for p+p at 3.5 GeV, or any .acc file by path.
 
     from brass.haft import HadesAcceptance
 
-    filt = HadesAcceptance("HadesSingleAcc-p35p-APR07-effgt5-RK-v2.acc")
+    filt = HadesAcceptance("p35p")      # or a path to a .acc file
     acc = filt.acceptance(ELECTRON, p, theta_deg, phi_deg)     # arrays
     p4 = filt.smear(p4, ELECTRON, resolution=3, rng=rng)       # (N, 4): E, px, py, pz
 
@@ -26,6 +27,25 @@ from pathlib import Path
 import numpy as np
 
 POSITRON, ELECTRON = 2, 3  # HAFT particle ids
+ACCEPTANCE_DIR = Path(__file__).with_name("haft_acceptance")
+
+
+def acceptance_files() -> dict[str, Path]:
+    """Shipped acceptance files by beam time (the second part of the file name)."""
+    return {path.stem.split("-")[1]: path for path in sorted(ACCEPTANCE_DIR.glob("*.acc"))}
+
+
+def acceptance_path(name: str | Path) -> Path:
+    """A .acc file: a path, or a shipped file by beam time ("p35p") or file name."""
+    path = Path(name)
+    if path.is_file():
+        return path
+    for beam_time, shipped in acceptance_files().items():
+        if str(name) in (beam_time, shipped.name, shipped.stem):
+            return shipped
+    raise FileNotFoundError(
+        f"no HADES acceptance file {name!r}: give a path or one of {', '.join(acceptance_files())}"
+    )
 LG10 = np.log(10.0)
 
 
@@ -103,7 +123,7 @@ class HadesAcceptance:
     """
 
     def __init__(self, path: str | Path):
-        self.path = Path(path)
+        self.path = acceptance_path(path)
         self.matrices: dict[int, _Matrix] = {}
         self.resolutions: dict[int, _Resolution] = {}
         data = self.path.read_bytes()

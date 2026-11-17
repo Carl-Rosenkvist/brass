@@ -113,3 +113,15 @@ def test_resolution_tables(tmp_path):
     assert np.median(ratio) == pytest.approx(-0.0343, abs=0.003)
     assert np.percentile(ratio, 5) == pytest.approx(-0.657, abs=0.03)
     assert np.percentile(ratio, 99) == pytest.approx(0.074, abs=0.006)
+
+
+def test_shipped_acceptance_files():
+    from brass.haft import acceptance_files, acceptance_path
+
+    files = acceptance_files()
+    assert set(files) == {"p125p", "p22p", "p35p", "p35Nb", "c10c", "c20c", "ar17kcl"}
+    assert acceptance_path("p35p") == files["p35p"]
+    assert acceptance_path(files["p22p"].name) == files["p22p"]
+    assert HadesAcceptance("p35p").matrices
+    with pytest.raises(FileNotFoundError, match="p35p"):
+        acceptance_path("no_such_beam_time")
