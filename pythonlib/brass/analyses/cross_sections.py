@@ -250,10 +250,12 @@ class CrossSections(brass.Analysis):
         error = FM2_TO_MB * float(np.sqrt((var * area**2).sum()))
         return sigma, error
 
-    def cross_section(self, select: Callable[[int, PDGs, PDGs], bool],
+    def cross_section(self, select: Callable[[int, PDGs, PDGs], bool | float],
                       reconstructed: bool = False) -> tuple[float, float]:
         """Cross section of the events with select(process, first_outgoing, final) true.
 
+        `select` can also return a weight per event, e.g. the number of a
+        particle in the final state for its inclusive cross section.
         With `reconstructed`, `final` runs over the final states with a
         resonance put back (see the class docstring) instead.
         Returns (sigma, error) in mb; the error is the Poisson error of the
@@ -263,7 +265,7 @@ class CrossSections(brass.Analysis):
         if n_total == 0:
             return 0.0, 0.0
         counts = self.reconstructed if reconstructed else self.events
-        n = sum(count for key, count in counts.items() if select(*key))
+        n = sum(count * select(*key) for key, count in counts.items())
         sigma_tot, err_tot = self.total()
         sigma = sigma_tot * n / n_total
         if n == 0:

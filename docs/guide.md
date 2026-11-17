@@ -359,7 +359,8 @@ brass cross-sections runs/* -o cross-sections.pkl
 
 Each result (one per energy) has `total()`, `cross_section(select)` with
 `select(process, first_outgoing_pdgs, final_pdgs)` (with `reconstructed=True`
-over the final states with a resonance put back), `final_states()`,
+over the final states with a resonance put back; `select` may return a weight,
+e.g. a multiplicity for an inclusive cross section), `final_states()`,
 `reconstructed_states()`,
 `first_channels()`, `process_types()` (elastic, resonance,
 parametrized-inelastic, soft-/hard-/failed-string, other) and

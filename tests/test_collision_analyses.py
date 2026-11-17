@@ -310,6 +310,8 @@ def test_cross_sections(tmp_path):
     assert finals[(PROTON, PROTON)][0] == pytest.approx(sigma * 150 / 200)
     assert finals[(NEUTRON, DELTA_PP)][0] == pytest.approx(sigma * 50 / 200)
     assert analysis.first_channels()[(NEUTRON, DELTA_PP)][0] == pytest.approx(sigma / 4)
+    # a weight per event: protons in the final state
+    assert analysis.cross_section(lambda p, f, final: final.count(PROTON))[0] == pytest.approx(sigma * 300 / 200)
     types = analysis.process_types()
     assert types["elastic"][0] == pytest.approx(sigma / 2)
     assert types["resonance"][0] == pytest.approx(sigma / 4)
