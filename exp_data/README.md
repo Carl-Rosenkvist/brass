@@ -28,6 +28,7 @@ Use these files for overview comparisons, as the analysis suite did. Do not use 
 - `system: AA` mixes Au+Au and Pb+Pb; centrality is only given where the original file name said so (`_cent0-5`).
 - Some files combine several experiments (e.g. STAR and PHENIX at 200 GeV); the `note` lines list them in order, but the rows do not say which experiment they belong to.
 - Several were converted from p_T spectra (m_T dm_T = p_T dp_T, and a factor 2π removed, as noted), or read off figures; many points have no uncertainty (0).
+- The 5.02 TeV Pb+Pb files (ALICE, 0–5 %) were rebuilt from the HEPData tables: the collection's versions held the sum of both charges multiplied by π instead of divided by p_T. ALICE measured both charges together, so the files hold half the sum for each.
 - `energy` is `ecm<√s_NN>` or `elb<E_kin per nucleon in GeV>`; `expdata.sqrtsnn` converts the latter with m_N = 0.938 GeV, as the suite did.
 
 `expdata.spectra(observable, system, pdg)` lists the files of a spectrum (`dndy`, `dndmt`) with their √s_NN, from either `energy` or `sqrt_s`.
