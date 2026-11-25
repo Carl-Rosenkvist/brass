@@ -10,6 +10,13 @@ The version number follows **X.Y.Z**, where:
 ## [Unreleased]
 
 ### Added
+- **`Emulator`**: one emulator for any simulation output, on plain arrays.
+  Give the parameters of the runs, add outputs (one row per run) under a
+  key of your choice (`emu.add("p dNdy", Y, bins=edges)`), fit, and predict
+  with parameters by name (`emu.predict({"Sqrtsnn": 17.3, ...}, "p dNdy",
+  return_std=True)`). All GPs of all outputs are fitted in parallel
+  processes (`fit(n_jobs=-1)`); also `validate()`, `save()` / `load()`,
+  `axis()` and `bins()`.
 - **`BulkEmulator(observables=...)`**: emulate `"dNdy"` (default), `"dNdmt"`
   or the full `"hist2d"` histogram. dN/dy, dN/dmT and yields are derived
   linearly from whichever is fitted. Emulating dN/dy directly needs far fewer
@@ -49,6 +56,13 @@ The version number follows **X.Y.Z**, where:
   predictions and standardised residuals.
 
 ### Changed
+- GP hyperparameters are fitted with BRASS's own log marginal likelihood and
+  its analytic gradient (same optimum as scikit-learn, about twice as fast);
+  the `emulation` extra now needs `scipy` and `joblib` instead of
+  `scikit-learn`.
+- `EmulatorLikelihood.add(key, ...)`: the first argument is the output key
+  of the emulator; `observable=` is only for `BulkEmulator` and
+  `BaryonStoppingEmulator` (default `"dNdy"` there).
 - GP kernel is now `amplitude × Matérn(5/2) + noise`; the noise term absorbs
   statistical fluctuations of the training runs (`noise=False` restores an
   interpolating GP).

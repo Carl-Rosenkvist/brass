@@ -114,6 +114,20 @@ class Likelihood:
         )
 
 
+def _output(emulator, key, observable):
+    """(PCA model, matrix A or None, bin centres or None) of an emulated output."""
+    if hasattr(emulator, "OBSERVABLES"):  # BulkEmulator, BaryonStoppingEmulator
+        observable = "dNdy" if observable is None else observable
+        model, A = emulator.linear_model(key, observable)
+        return model, A, emulator.axis(key, observable)
+    if observable is not None:
+        raise TypeError(
+            "observable= is for BulkEmulator and BaryonStoppingEmulator; an output "
+            "of Emulator is named by its key alone"
+        )
+    return emulator.model(key), None, emulator.axis(key)
+
+
 def _interpolation_matrix(x_new, x):
     """Matrix W with ``W @ f == np.interp(x_new, x, f)`` for any f."""
     W = np.zeros((len(x_new), len(x)))
@@ -134,10 +148,9 @@ class EmulatorLikelihood:
         like.add(211, x=y_exp, y=dndy_exp, yerr=err_exp, fixed={"Sqrtsnn": 17.3})
         logp = like(thetas)          # thetas: (n, len(like.parameters))
 
-    Datasets can come from different emulators of the same scan (e.g. a
-    ``BulkEmulator`` for dN/dy and a ``BaryonStoppingEmulator`` for
-    <p_T>(x_F)): pass ``emulator=`` to :meth:`add`. All emulators must have
-    the same parameters.
+    The first argument of :meth:`add` is the key of an output of the
+    :class:`~brass.emulation.Emulator`. Datasets can come from different
+    emulators with the same parameters: pass ``emulator=`` to :meth:`add`.
 
     For each dataset the model is interpolated (linearly) to the experimental
     points, and
@@ -190,11 +203,11 @@ class EmulatorLikelihood:
 
     def add(
         self,
-        pdg,
+        key,
         x,
         y,
         yerr,
-        observable="dNdy",
+        observable=None,
         fixed=None,
         label=None,
         emulator=None,
@@ -202,9 +215,12 @@ class EmulatorLikelihood:
     ):
         """Add one experimental dataset.
 
-        ``observable`` is a name of the emulator such as ``"dNdy"`` or
-        ``"meanpT_xF"`` (or a derived spectrum such as ``MtSpectrum``); ``x``
-        is then its axis (y, mT or x_F) and ``y`` the measured values.
+        ``key`` is the output of the emulator that the data measure (as given
+        to :meth:`Emulator.add`); ``x`` are the points on its axis (e.g. y or
+        x_F) and ``y`` the measured values. For a ``BulkEmulator`` or
+        ``BaryonStoppingEmulator``, ``key`` is the PDG code and
+        ``observable`` the observable (default ``"dNdy"``, or a derived
+        spectrum such as ``MtSpectrum``).
         ``fixed`` gives values of emulator parameters that are not fitted,
         such as the collision energy of this dataset. ``emulator`` selects
         another emulator of the same scan for this dataset. Points outside
@@ -228,23 +244,27 @@ class EmulatorLikelihood:
         if unknown:
             raise KeyError(f"unknown fixed parameters: {sorted(unknown)}")
 
-        model, A = emulator.linear_model(pdg, observable)
+        model, A, axis = _output(emulator, key, observable)
 
         x = np.atleast_1d(np.asarray(x, dtype=float))
         y = np.atleast_1d(np.asarray(y, dtype=float))
         yerr = np.atleast_1d(np.asarray(yerr, dtype=float))
 
-        axis = emulator.axis(pdg, observable)
         mask = np.isfinite(y) & np.isfinite(yerr) & (yerr >= 0)
+        n_outputs = len(model.output_mean) if A is None else len(A)
         if matrix is not None:
             W = np.atleast_2d(np.asarray(matrix, dtype=float))
-            n_bins = 1 if axis is None else len(axis)
-            if W.shape != (len(y), n_bins):
+            if W.shape != (len(y), n_outputs):
                 raise ValueError(
-                    f"matrix must have shape ({len(y)}, {n_bins}), not {W.shape}"
+                    f"matrix must have shape ({len(y)}, {n_outputs}), not {W.shape}"
                 )
             W = W[mask]
         elif axis is None:
+            if n_outputs != 1:
+                raise ValueError(
+                    f"output {key!r} has {n_outputs} values but no bins: give the "
+                    "bins to Emulator.add, or a matrix here"
+                )
             W = np.ones((len(y), 1))[mask]
         else:
             mask &= np.isfinite(x) & (x >= axis.min()) & (x <= axis.max())
@@ -261,8 +281,13 @@ class EmulatorLikelihood:
 
         self.datasets.append(
             {
-                "label": label or f"{pdg} {observable} {fixed}",
-                "pdg": pdg,
+                "label": label
+                or (
+                    f"{key} {fixed}"
+                    if observable is None
+                    else f"{key} {observable} {fixed}"
+                ),
+                "key": key,
                 "observable": observable,
                 "fixed": fixed,
                 "model": model,

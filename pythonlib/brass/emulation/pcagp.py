@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .gp import GaussianProcess
+from .gp import GaussianProcess, fit_gps
 
 
 class LinearMap:
@@ -100,7 +100,26 @@ class PCAGP:
             n = int(np.searchsorted(fraction, n) + 1)
         return int(min(n, len(explained)))
 
-    def fit(self, X, Y):
+    def fit(self, X, Y, n_jobs=1):
+        """Fit the PCA and one GP per kept component (``n_jobs`` processes)."""
+        tasks = self.prepare(X, Y)
+        self.gps = fit_gps(tasks, n_jobs=n_jobs, **self.gp_settings)
+        return self
+
+    @property
+    def gp_settings(self):
+        return {
+            "noise": self.noise,
+            "n_restarts": self.n_restarts,
+            "random_state": self.random_state,
+        }
+
+    def prepare(self, X, Y):
+        """Fit the PCA; returns the GP training tasks ``[(inputs, scores), ...]``.
+
+        Set ``gps`` to the GPs fitted on them (see :func:`~.gp.fit_gps`), as
+        :meth:`fit` does. Used to fit the GPs of several models together.
+        """
         X = self._raw_inputs(X)
         Y = np.asarray(Y, dtype=float)
         if Y.ndim != 2 or len(Y) != len(X):
@@ -133,15 +152,8 @@ class PCAGP:
             else np.zeros((m, m))
         )
 
-        self.gps = [
-            GaussianProcess(
-                noise=self.noise,
-                n_restarts=self.n_restarts,
-                random_state=self.random_state,
-            ).fit(Xs, Z[:, i])
-            for i in range(k)
-        ]
-        return self
+        self.gps = []
+        return [(Xs, Z[:, i]) for i in range(k)]
 
     # -- prediction -----------------------------------------------------------
 

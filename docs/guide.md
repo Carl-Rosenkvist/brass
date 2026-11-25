@@ -718,138 +718,104 @@ the run fails on macOS and Windows with `BrokenProcessPool`. Pass
 
 ## Calibrating model parameters: `brass.emulation`
 
-With `bulk` results from a parameter scan (for example generated with
+With results from a parameter scan (for example generated with
 `brass-scan`), BRASS can build an emulator — a fast surrogate for SMASH — and
 compare it to experimental data. It needs the `emulation` extra
 (`pip install "pybrass[emulation]"`).
 
-**1. Fit the emulator.** `parameter_paths` says where each parameter is found
-in the run's `config.yaml`. A string key inside a list of PYTHIA settings
-(`"key = value"` entries) is looked up by name. Every parameter is a GP
-input, including the collision energy, so one emulator covers several
-energies.
+**1. Get the training data.** The emulator works on plain arrays: `X` holds
+the model parameters of the training runs (one row per run, one column per
+parameter) and each output `Y` the simulated values (one row per run, e.g.
+dN/dy in rapidity bins). Every parameter is an input, including the collision
+energy, so one emulator covers several energies. For example, dN/dy of
+protons from `baryon-stopping` results:
 
 ```python
-from brass.emulation.bulk import BulkEmulator
+import pickle
+import numpy as np
 
-paths = {
-    "Sqrtsnn": ("Modi", "Collider", "Sqrtsnn"),
-    "Strange_Supp": ("Collision_Term", "String_Parameters", "Strange_Supp"),
-    "probSQtoQQ": ("Collision_Term", "String_Parameters", "Pythia_Settings",
-                   "StringFlav:probSQtoQQ"),
-}
+with open("baryon-stopping.pkl", "rb") as f:
+    runs = [entry["result"] for entry in pickle.load(f)]
 
-emu = BulkEmulator.from_file("bulk.pkl", paths, observables=["dNdy"])
-emu.fit(verbose=True)          # prints the PCA components per particle
-emu.save("emulator.npz")       # later: emu = BulkEmulator.load("emulator.npz")
+names = ["Sqrtsnn", "Strange_Supp"]
+X = np.array([
+    [run.config["Modi"]["Collider"]["Sqrtsnn"],
+     run.config["Collision_Term"]["String_Parameters"]["Strange_Supp"]]
+    for run in runs
+])
+y_edges = np.asarray(runs[0].histograms["y"][2212].edges[0])
+Y = np.array([
+    np.asarray(run.histograms["y"][2212].values) / run.events / np.diff(y_edges)
+    for run in runs
+])
 ```
 
-- `observables`: `"dNdy"` (default), `"dNdmt"` or `"hist2d"`. Emulate only what
-  you compare to data: the 2D histogram of a rare particle is mostly
-  statistical noise and needs many more components.
+**2. Fit the emulator.** Add each output under a key of your choice (a
+string, an integer such as a PDG code, or a tuple of them), then fit:
+
+```python
+from brass.emulation import Emulator
+
+emu = Emulator(X, names=names)       # or Emulator({"Sqrtsnn": ..., ...})
+emu.add("p dNdy", Y, bins=y_edges)
+emu.fit(verbose=True)                # prints the PCA components per output
+emu.save("emulator.npz")             # later: emu = Emulator.load("emulator.npz")
+```
+
+`bins` (the bin edges, or `(lo, hi)`) are optional; they give `emu.axis(key)`
+and let the likelihood interpolate to data points. Each output gets its own
+principal-component analysis, and one Gaussian process per kept component;
+all of them are fitted in parallel processes (`fit(n_jobs=4)` limits them,
+`n_jobs=1` fits in this process).
+
 - `n_components`: a fraction of variance to keep (default `0.99`) or a number.
-- `log_parameters=["Sqrtsnn"]`: use log(√s) as GP input, which suits energy
+- `log_parameters=["Sqrtsnn"]`: use log(√s) as input, which suits energy
   scans.
-- `mt_max=3.0, mt_group=2`: before fitting, drop mT bins above 3 GeV and merge
-  pairs of neighbouring mT bins (particle numbers are kept). This makes a
-  `"hist2d"` emulator several times smaller. Particles above `mt_max` are
-  lost, also from the dN/dy derived from it.
+- Emulate only what you compare to data: the spectrum of a rare particle in
+  fine bins is mostly statistical noise and needs many more components.
 
-From a `"hist2d"` emulator, `MtSpectrum(y_min, y_max)` (d²N/(dy dmT)
-averaged over a rapidity window) is derived as well. Choose window edges on
-the y bin edges; partly covered bins are weighted by the overlap.
-
-**x_F observables** come from `baryon-stopping` results and their own
-emulator, with the same parameters:
+**3. Predict.** Parameters are given by name (or as an array in the order of
+`emu.parameter_names`):
 
 ```python
-from brass.emulation.baryon_stopping import BaryonStoppingEmulator
-
-bs = BaryonStoppingEmulator.from_file(
-    "baryon-stopping.pkl", paths, observables=["dNdxF", "meanpT_xF"])
-bs.fit()
-xf = bs.axis(2212, "meanpT_xF")                 # x_F bin centres
-mean, std = bs.predict_observable(theta, 2212, "meanpT_xF", return_std=True)
+theta = {"Sqrtsnn": 17.3, "Strange_Supp": 0.15}
+mean, std = emu.predict(theta, "p dNdy", return_std=True)
+y = emu.axis("p dNdy")                     # bin centres
+mean, cov = emu.predict(theta, "p dNdy", return_cov=True)
+everything = emu.predict(theta)            # {key: mean} for all outputs
 ```
 
-- Observables: `"dNdxF"`, `"meanpT_xF"`, `"dNdy"` and `"meanmT_y"` (⟨mT⟩, so
-  subtract the mass for ⟨mT⟩ − m), each in the bins of the analysis.
-- ⟨pT⟩ and ⟨mT⟩ are emulated directly. In a pp scan this reached the
-  statistical precision of the runs with 3–5 PCA components; deriving them
-  from emulated spectra needed far more.
-- They are emulated in the bins that hold particles in every training run,
-  so for rare hadrons the x_F range is narrower; `axis()` gives the bins.
+A value given as an array predicts several points at once. `A=` maps the
+output linearly with its uncertainty, e.g. dN/dy integrated over its bins:
+`emu.predict(theta, "p dNdy", A=np.diff(y_edges)[None, :])`.
 
-Rare particles have too few entries for ⟨pT⟩(x_F) far from x_F = 0, so choose
-per particle which observables to emulate, over which x_F range and in which
-bins (plot the training data first to see where it is noisy):
+**4. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
+parameter points (all energies of a point together) and predicts them. The
+standardised residuals `(prediction − simulation) / σ` should be roughly
+standard normal; much wider means the emulator is overconfident.
 
-```python
-bs = BaryonStoppingEmulator.from_file(
-    "baryon-stopping.pkl", paths,
-    observables={
-        2212:  ["dNdxF", "meanpT_xF"],
-        211:   ["dNdxF", "meanpT_xF"],
-        3122:  ["meanpT_xF"],
-        -2212: ["meanpT_xF"],
-    },
-    xf_max={211: 0.8, 3122: 0.8, -2212: 0.3},   # |x_F| range per particle
-    xf_group=2,                                 # merge 2 x_F bins (0.05 wide)
-)
-```
+The older `BulkEmulator` and `BaryonStoppingEmulator` still work;
+`Emulator` does the same for any output.
 
-Particles not in `observables` are not emulated. `xf_max` and `xf_group` are
-a number for all particles or a dict per PDG; merging bins adds counts and
-summed pT exactly. A choice that leaves no usable bin stops `fit()` with a
-message naming the particle and observable.
-
-Usually better than fixed bins and ranges is to let the statistics choose:
-
-```python
-bs = BaryonStoppingEmulator.from_file(
-    "baryon-stopping.pkl", paths,
-    observables={2212: ["dNdxF", "meanpT_xF"], 211: ["dNdxF", "meanpT_xF"]},
-    fold=True,        # add -x_F and +x_F (pp is symmetric): emulate x_F >= 0
-    min_count=500,    # merge bins outward from x_F = 0 to >= 500 particles per run
-)
-```
-
-With `min_count`, bins stay at the analysis binning where statistics are
-high and widen where they are low, so the training data are less noisy and
-fewer PCA components (GP fits) are needed. For π⁺ in a pp scan this halved
-the number of GP fits and kept the full x_F range. `bs.bins(pdg, observable)`
-gives the bin edges; both settings also accept a dict per PDG and apply to
-the rapidity observables as well.
-
-**2. Check it.** `emu.validate(holdout=0.2)` refits without 20 % of the
-parameter points and predicts them. The standardised residuals
-`(prediction − simulation) / σ` should be roughly standard normal; much wider
-means the emulator is overconfident.
-
-**3. Build the likelihood** once, outside the MCMC loop:
+**5. Build the likelihood** once, outside the MCMC loop. The first argument
+is the key of the emulated output:
 
 ```python
 from brass.emulation import EmulatorLikelihood
 
 like = EmulatorLikelihood(emu, rel_error_floor=0.03)
-like.add(211, y_exp, dndy_exp, err_exp, fixed={"Sqrtsnn": 17.3})
-like.add(211, y_exp2, dndy_exp2, err_exp2, fixed={"Sqrtsnn": 8.76})
+like.add("p dNdy", y_exp, dndy_exp, err_exp, fixed={"Sqrtsnn": 17.3})
+like.add("p dNdy", y_exp2, dndy_exp2, err_exp2, fixed={"Sqrtsnn": 8.76})
 print(like.parameters)         # the fitted parameters, in theta order
 ```
 
-`observable=` selects what the data are, and `emulator=` takes the dataset
-from another emulator of the same scan, so dN/dy and ⟨pT⟩(x_F) enter one
-likelihood:
+The model is interpolated linearly between bin centres to the data points;
+`matrix=W` gives another map from the bins to the points (e.g. to compare bin
+averages). `emulator=` takes a dataset from another emulator with the same
+parameters. Do not add both dN/dy and dN/dx_F measured on the same particles
+without accounting for their correlation.
 
-```python
-like.add(2212, xf_exp, mean_pt_exp, err_exp, observable="meanpT_xF",
-         emulator=bs, fixed={"Sqrtsnn": 17.3})
-```
-
-Do not add both dN/dy and dN/dx_F measured on the same particles without
-accounting for their correlation.
-
-**4. Sample.** `like(thetas)` takes all walkers at once and returns their
+**6. Sample.** `like(thetas)` takes all walkers at once and returns their
 log-likelihoods, so it works directly with `emcee`'s `vectorize=True`:
 
 ```python

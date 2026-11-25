@@ -26,7 +26,7 @@ For development, with the test dependencies:
 pip install -e ".[test]"
 ```
 
-The GP emulation (`brass.emulation`) needs scikit-learn, available as an extra:
+The GP emulation (`brass.emulation`) needs SciPy and joblib, available as an extra:
 
 ```bash
 pip install -e ".[emulation]"

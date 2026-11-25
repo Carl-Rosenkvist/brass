@@ -35,11 +35,14 @@ dependencies = [
 
 [project.optional-dependencies]
 emulation = [
-  "scikit-learn",
+  "joblib",
+  "scipy",
 ]
 test = [
+  "joblib",
   "pytest",
   "scikit-learn",
+  "scipy",
 ]
 
 [project.urls]
