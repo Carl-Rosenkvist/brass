@@ -17,8 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY . .
 
-# Install into an isolated prefix
-RUN python3 -m pip install --break-system-packages --prefix=/opt/brass .
+# Install into an isolated prefix. For the emulator fits:
+#   --build-arg EXTRAS="[emulation]" --build-arg EXTRA_PACKAGES="pandas joblib"
+ARG EXTRAS=""
+ARG EXTRA_PACKAGES=""
+RUN python3 -m pip install --break-system-packages --prefix=/opt/brass ".${EXTRAS}" ${EXTRA_PACKAGES}
 
 
 FROM ubuntu:24.04
